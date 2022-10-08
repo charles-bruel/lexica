@@ -1,0 +1,134 @@
+#main-container {
+    display: grid;
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    gap: 0%;
+    left: 0%;
+    top: 0%;
+    grid-template-columns: 30% 70%;
+    grid-template-rows: 5% 90% 5%;
+}
+
+#spreadsheet {
+    grid-column-start: 2;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 3;
+    overflow: scroll;
+}
+
+#spreadsheet-container {
+    display: grid;
+    gap: 0%;
+    left: 0%;
+    top: 0%;
+}
+
+#lexicon {
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 2;
+    grid-row-end: 3;
+    display: flex;
+    flex-direction: column;
+
+}
+
+#bottom-bar {
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 3;
+    grid-row-end: 4;
+    height: calc(100% - 4px);
+    display: flex;
+    flex-direction: column;
+}
+
+#top-bar {
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 1;
+    grid-row-end: 2;
+    height: calc(100% - 4px);
+
+    display: grid;
+    height: 100%;
+    width: 100%;
+    gap: 0%;
+    grid-template-columns: 15% repeat(auto-fill, calc(2.5vh));
+    grid-template-rows: 50% 50%;
+    grid-auto-flow: column;
+}
+
+.top-bar-button {
+    aspect-ratio: 1;
+    height: 100%;
+}
+
+#top-bar-tab-name-div {
+    height: calc(100% - 2px);
+    width: calc(100% - 2px);
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    grid-column-start: 1;
+    grid-column-end: 2;
+    grid-row-start: 1;
+    grid-row-end: 3;
+}
+
+h2 {
+    text-align: center;
+}
+
+table {
+    border-collapse: collapse
+}
+
+.table-box {
+    padding: 0%;
+    border: 0px;
+}
+
+table {
+    border: 1px solid black;
+    table-layout: fixed;
+}
+
+.div-scroll {
+    flex: 1 1 auto;
+    overflow: scroll;
+}
+
+th {
+    position: sticky;
+    top: 0px;
+    z-index: 100;
+}
+
+#bottom-bar {
+    width: 100%;
+}
+
+.bottom-bar-button {
+    height: 100%;
+}
+
+#bottom-bar-buttons {
+    float: left;
+    height: 100%;
+}
+
+#bottom-bar-new-tab {
+    float: right;
+    height: 100%;
+}
+
+#format-bg {
+    grid-column-start: 4;
+    grid-column-end: 5;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}

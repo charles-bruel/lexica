@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<header>
+<title>CSCA Frontend</title>
+<link rel="stylesheet" href="layout.css">
+<link rel="stylesheet" href="style.css">
+</header>
+<body>
+    <div id="main-container">
+        <div id="lexicon" class="div-top-level">
+            <h2>Lexicon</h2>
+            <div id="lexicon-table" class="div-scroll"></div>
+        </div>
+        <div id="spreadsheet" class="div-top-level">
+            <div id="spreadsheet-container"></div>
+        </div>
+        <div id="bottom-bar" class="div-top-level">
+            <div id="bottom-bar-buttons">
+
+            </div>
+            <div id="bottom-bar-new-tab"><button id="new-tab" class="bottom-bar-button">+</button></div>
+        </div>
+        <div id="top-bar" class="div-top-level">
+            <div id="top-bar-tab-name-div"><h2 id="top-bar-tab-name"></h2></div>
+            <button class="top-bar-button" id="format-bold"><b>B</b></button>
+            <button class="top-bar-button" id="format-italic"><i>I</i></button>
+            <button class="top-bar-button" id="format-underline"><u>U</u></button>
+            <button class="top-bar-button" id="format-strikethrough"><s>S</s></button>
+            <button class="top-bar-button" id="format-bg">BG</button>
+        </div>
+    </div>
+    <script src="lexicon.js" defer></script>
+    <script src="spreadsheet.js" defer></script>
+    <script src="bottombar.js" defer></script>
+    <script src="topbar.js" defer></script>
+</body>
+</html>

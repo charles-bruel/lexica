@@ -1,0 +1,16 @@
+[package]
+name = "lexica-sc"
+version = "0.1.0"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+[dependencies]
+regex = "1.6.0"
+fancy-regex = "0.10.0"
+priority-queue = "1.2.3"
+tungstenite = "0.17.3"
+serde = "1.0.145"

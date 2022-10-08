@@ -1,0 +1,65 @@
+:root {
+    --color: #fff;
+}
+
+body, div, input {
+    background-color: black;
+    color: lavender;
+}
+
+input, div, p, h2, button {
+    font-family: 'Fira Code', monospace; 
+}
+
+input {
+    border-color: var(--color);
+}
+
+.selected {
+    background-color: lightblue;
+}
+
+.div-top-level {
+    border: 2px;
+    border-style: solid;
+    border-color: var(--color);
+}
+
+.spreadsheet-header {
+    text-align: center;
+    border:2px outset darkgray;
+    background: gray;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+    -webkit-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+    -moz-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+}
+
+th {
+    background-color: gray;
+    text-align: center;
+}
+
+.formatting-bold {
+    font-weight: bold;
+}
+
+.formatting-italics {
+    font-style: italic;
+}
+
+.formatting-underline {
+    text-decoration: underline;
+}
+
+.formatting-strikethrough {
+    text-decoration: line-through;
+}
+
+.formatting-strikethrough.formatting-underline {
+    text-decoration: underline line-through;
+}
+
+.formatting-bg {
+    background-color: var(--color);
+    border: none;
+}

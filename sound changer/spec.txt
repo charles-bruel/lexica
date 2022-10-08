@@ -1,0 +1,8 @@
+Each character will be stored as a 64-bit long
+The 64-bit long will store feature information
+The exact format is determined by the program
+The beginning of the character is a type code, which differeniates different types of character (consonant, vowel, toneme, etc)
+Derived features depend solely on other features
+Sound changes are applied in order, using lexurgy format
+Another feature is result matrices, where one can specify the result of a combination in matrix form
+The IPA and romanization system will derive from the definition
