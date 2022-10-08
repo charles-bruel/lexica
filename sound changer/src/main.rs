@@ -10,6 +10,9 @@ pub mod rules;
 pub mod data;
 pub mod applicator;
 
+#[cfg(test)]
+mod tests;
+
 fn main() {
     use std::time::Instant;
     let now = Instant::now();
