@@ -3,7 +3,8 @@ function new_spreadsheet_state() {
         num_rows: 60,
         num_columns: 26,
         row_height: 20,
-        column_width: 50,
+        column_width: 50, // Default
+        column_widths: [],
         row_header_width: 25,
         cell_data: [],
         underlying_cell_data: [],
@@ -30,13 +31,18 @@ function generate_cells() {
         container.style.gridTemplateRows += " " + current_spreadsheet_state.row_height + "px";
         county += current_spreadsheet_state.row_height;
     }
+
+    if(current_spreadsheet_state.column_widths.length == 0) {
+        current_spreadsheet_state.column_widths = Array(current_spreadsheet_state.num_columns).fill(current_spreadsheet_state.column_width);
+    }
+
     for(var i = 0;i < current_spreadsheet_state.num_columns;i ++){
         if(i == 0) {
             container.style.gridTemplateColumns += " " + current_spreadsheet_state.row_header_width + "px";
             countx += current_spreadsheet_state.row_header_width;
         }
-        container.style.gridTemplateColumns += " " + current_spreadsheet_state.column_width + "px";
-        countx += current_spreadsheet_state.column_width;
+        container.style.gridTemplateColumns += " " + current_spreadsheet_state.column_widths[i] + "px";
+        countx += current_spreadsheet_state.column_widths[i];
     }
     container.style.height = county + "px";
     container.style.width = countx + "px";
@@ -152,6 +158,13 @@ function save_spreadsheet_state() {
             current_spreadsheet_state.cell_data[i].push(element.value);
             current_spreadsheet_state.cell_style_classes[i].push(element.className);
         }
+    }
+
+    current_spreadsheet_state.column_widths = [];
+    for(var i = 0;i < current_spreadsheet_state.num_columns;i ++) {
+        var elems = spreadsheet_container.style.gridTemplateColumns.split(" ");
+        var temp = parseInt(elems[i + 1].replace("px", ""));
+        current_spreadsheet_state.column_widths.push(temp);
     }
 }
 
