@@ -25,6 +25,11 @@
     top: 0%;
 }
 
+.spreadsheet-column-header {
+    resize: horizontal;
+    overflow: auto;
+}
+
 #lexicon {
     grid-column-start: 1;
     grid-column-end: 2;

@@ -3,7 +3,7 @@ function new_spreadsheet_state() {
         num_rows: 60,
         num_columns: 26,
         row_height: 20,
-        column_width: 100,
+        column_width: 50,
         row_header_width: 25,
         cell_data: [],
         underlying_cell_data: [],
@@ -14,6 +14,7 @@ function new_spreadsheet_state() {
 var current_spreadsheet_state = new_spreadsheet_state();
 var current_spreadsheet_id = 0;
 var spreadsheet_states = [current_spreadsheet_state];
+var spreadsheet_container;
 
 function generate_cells() {
     var container = document.getElementById("spreadsheet-container");
@@ -39,11 +40,19 @@ function generate_cells() {
     }
     container.style.height = county + "px";
     container.style.width = countx + "px";
+
+    spreadsheet_container = container;
 }
 
 function create_header(posx, posy, text) {
     var element = document.createElement("div");
-    element.className = "spreadsheet-header";
+    element.className = "spreadsheet-header unselectable";
+    if(posx != 0) {
+        element.className += " spreadsheet-column-header";
+        element.id = "spreadsheet-header-col-" + posx;
+    } else {
+        element.id = "spreadsheet-header-row-" + posy;
+    }
     element.innerText = text;
     element.style.gridColumnStart = posx;
     element.style.gridColumnStart = posx + 1;
@@ -73,14 +82,29 @@ function convert_column_name(input) {
     return temp;
 }
 
+function handle_column_resize(entries) {
+    for(const entry of entries) {
+        if(entry.target.id.startsWith("spreadsheet-header-col-")) {
+            id = entry.target.id.substring(23) - 0;
+            var size = entry.borderBoxSize[0].inlineSize;
+            var elems = spreadsheet_container.style.gridTemplateColumns.split(" ");
+            elems[id] = size + "px";
+            spreadsheet_container.style.gridTemplateColumns = elems.join(" ");
+        }
+    }
+}
+
 function populate_headers() {
     var container = document.getElementById("spreadsheet-container");
+    const observer = new ResizeObserver((entries) => { handle_column_resize(entries); });
     container.appendChild(create_header(0, 0, ""));
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         container.appendChild(create_header(0, i + 1, i + 1 + ""));
     }
     for(var i = 0;i < current_spreadsheet_state.num_columns;i ++) {
-        container.appendChild(create_header(i + 1, 0, convert_column_name(i)));
+        var element = create_header(i + 1, 0, convert_column_name(i));
+        container.appendChild(element);
+        observer.observe(element);
     }
 }
 
