@@ -1,11 +1,11 @@
 function new_spreadsheet_state() {
     return {
-        num_rows: 60,
-        num_columns: 26,
+        num_rows: 100,
+        num_columns: 30,
         row_height: 20,
         column_width: 50, // Default
         column_widths: [],
-        row_header_width: 25,
+        row_header_width: 35,
         cell_data: [],
         underlying_cell_data: [],
         cell_style_classes: [],
@@ -26,10 +26,14 @@ function generate_cells() {
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++){
         if(i == 0) {
             container.style.gridTemplateRows += " " + current_spreadsheet_state.row_height + "px";
-            countx += current_spreadsheet_state.row_height;
+            county += current_spreadsheet_state.row_height;
         }
         container.style.gridTemplateRows += " " + current_spreadsheet_state.row_height + "px";
         county += current_spreadsheet_state.row_height;
+        if(i == current_spreadsheet_state.num_rows - 1) {
+            container.style.gridTemplateRows += " " + current_spreadsheet_state.row_height + "px";
+            county += current_spreadsheet_state.row_height;
+        }
     }
 
     if(current_spreadsheet_state.column_widths.length == 0) {
@@ -43,6 +47,10 @@ function generate_cells() {
         }
         container.style.gridTemplateColumns += " " + current_spreadsheet_state.column_widths[i] + "px";
         countx += current_spreadsheet_state.column_widths[i];
+        if(i == current_spreadsheet_state.num_columns - 1) {
+            container.style.gridTemplateColumns += " " + current_spreadsheet_state.row_header_width + "px";
+            countx += current_spreadsheet_state.row_header_width;
+        }
     }
     container.style.height = county + "px";
     container.style.width = countx + "px";
@@ -74,18 +82,24 @@ function setCharAt(str,index,chr) {
 }
 
 function convert_column_name(input) {
-    const conversionA = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
-    const conversionB = ['K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-    var temp = input.toString(26);
-    for (var i = 0; i < temp.length; i++) {
-        var charCode = temp.charCodeAt(i);
-        if(charCode >= 97) {
-            temp = setCharAt(temp, i, conversionB[charCode - 97]);
-        } else {
-            temp = setCharAt(temp, i, conversionA[charCode - 48]);
-        }
+    if(input == 0) return "A";
+
+    const table = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+
+    var result = [];
+    var iter = 0;
+    while (input > 0) {
+        var b = 27;
+        if(iter == 0) { b = 26; }
+        var temp = input % b;
+        if(iter != 0) { temp -= 1; }
+        var char = table[temp];
+        result.splice(0, 0, char);
+        input = Math.floor(input / b);
+        iter ++;
     }
-    return temp;
+
+    return result.join("");
 }
 
 function handle_column_resize(entries) {
