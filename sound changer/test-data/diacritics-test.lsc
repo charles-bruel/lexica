@@ -1,0 +1,28 @@
+feature_def
+    switch propA(A1, A2, A3) root
+    feature propB(B1, B2, B3) root
+    feature propC(C1, C2, C3) root
+
+    feature +toggleA root
+    feature +toggleB root
+    feature +toggleC root
+    feature +toggleZ A3
+end
+
+symbols
+    symbol 1 [A1 B1 C1]
+end
+
+diacritics
+    diacritic ᵃ [-toggleA] => [+toggleA]
+    diacritic ᵇ [-toggleB] => [+toggleB]
+    diacritic ᶜ [-toggleC] => [+toggleC]
+    diacritic ᶻ [-toggleZ] => [+toggleZ]
+
+    diacritic A [A2] => [A3]
+    diacritic a [A1] => [A2]
+    diacritic B [B2] => [B3]
+    diacritic b [B1] => [B2]
+    diacritic C [C2] => [C3]
+    diacritic c [C1] => [C2]
+end

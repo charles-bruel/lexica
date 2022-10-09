@@ -125,7 +125,7 @@ impl Letter {
                 queue.push((self.value, self.value, ""), 0);
                 let mut completed_nodes: HashMap<u64, (u64, &str)> = HashMap::new();
                 let mut depth: u16 = 0;
-                while depth < 128 {
+                while depth < 1024 {
                     if queue.is_empty() {
                         panic!("Could not find matching symbol for {:#066b}", self.value);
                     }

@@ -615,7 +615,7 @@ fn parse_features_negative(program: &Program, features: &str) -> (u64, u64, Vec<
     return (mask, key, masks, keys);
 }
 
-fn parse_features(program: &Program, features: &str) -> (u64, u64) {
+pub(crate) fn parse_features(program: &Program, features: &str) -> (u64, u64) {
     let mut feature = features;
     if feature.starts_with("[") {
         feature = feature.trim_start_matches("[");

@@ -1,5 +1,8 @@
 use super::data::*;
 use super::rules::*;
+use super::constructor::*;
+use super::applicator::*;
+use super::io::*;
 
 extern crate rand;
 use self::rand::Rng;
@@ -142,6 +145,88 @@ fn test_positive_negative_predicate() {
     assert!(!predicate.validate(&vec!(neg_test_2), 0));
 }
 
+#[test]
+fn test_letter_creation() {
+    let program = create_diacritic_test_program();
+    let letter = from_string(&program, String::from("1"))[0];
+    assert_eq!("1", letter.get_symbol(&program));
+}
+
+#[test]
+fn test_diacritics_a() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A1 B1 C1 +toggleA]");
+    let letter = Letter { value: key };
+
+    assert_eq!("1ᵃ", letter.get_symbol(&program));
+}
+
+#[test]
+fn test_diacritics_b() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A2 B1 C1]");
+    let letter = Letter { value: key };
+
+    assert_eq!("1a", letter.get_symbol(&program));
+}
+
+#[test]
+fn test_diacritics_c() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A3 B1 C1]");
+    let letter = Letter { value: key };
+
+    assert_eq!("1aA", letter.get_symbol(&program));
+}
+
+#[test]
+fn test_diacritics_d() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleA]");
+    let letter = Letter { value: key };
+
+    assert!(is_anagram(String::from("1aAᵃ"), letter.get_symbol(&program)));
+}
+
+#[test]
+fn test_diacritics_e() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleZ]");
+    let letter = Letter { value: key };
+
+    assert!(is_anagram(String::from("1aAᶻ"), letter.get_symbol(&program)));
+}
+
+#[test]
+fn test_diacritics_f() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A3 B3 C3]");
+    let letter = Letter { value: key };
+
+    assert!(is_anagram(String::from("1aAbBcC"), letter.get_symbol(&program)));
+}
+
+#[test]
+fn test_diacritics_g() {
+    let program = create_diacritic_test_program();
+    let (_, key) = parse_features(&program, "[A3 B3 C3 +toggleA +toggleB +toggleC]");
+    let letter = Letter { value: key };
+
+    assert!(is_anagram(String::from("1aAbBcCᵃᵇᶜ"), letter.get_symbol(&program)));
+}
+
+fn is_anagram(a: String, b: String) -> bool {
+    let mut avec: Vec<char> = a.chars().collect();
+    avec.sort();
+    let mut bvec: Vec<char> = b.chars().collect();
+    bvec.sort();
+    return avec == bvec;
+}
+
+fn create_diacritic_test_program() -> Program {
+    construct(load_from_file(&String::from("test-data/diacritics-test.lsc")))
+}
+
 fn random_letter() -> super::data::Letter {
     let letter = random_u64();
     super::data::Letter{ value: letter }
@@ -150,7 +235,3 @@ fn random_letter() -> super::data::Letter {
 fn random_u64() -> u64 {
     rand::thread_rng().gen()
 }
-
-// fn random_character() -> char {
-//     rand::thread_rng().sample_iter(&Alphanumeric).take(1).map(char::from).next().unwrap()
-// }
