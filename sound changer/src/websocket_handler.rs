@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use super::io::*;
-use no_panic::no_panic;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WebSocketMessage {
