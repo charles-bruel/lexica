@@ -61,7 +61,7 @@
     height: 100%;
     width: 100%;
     gap: 0%;
-    grid-template-columns: 15% repeat(10, minmax(max-content, 25px)) 1fr repeat(2, minmax(max-content, 25px));
+    grid-template-columns: 15% repeat(10, minmax(max-content, 25px)) 1fr repeat(3, minmax(max-content, 25px));
     grid-template-rows: 50% 50%;
     grid-auto-flow: column;
 }
@@ -139,17 +139,18 @@ textarea {
 }
 
 #button-save {
-    grid-column-start: 14;
+    grid-column-start: 15;
     grid-row-start: 1;
 }
 
 #button-load {
-    grid-column-start: 14;
+    grid-column-start: 15;
     grid-row-start: 2;
 }
 
 #save-file-location {
     grid-column-start: 13;
+    grid-column-end: 15;
     grid-row-start: 1;
 }
 
@@ -157,11 +158,15 @@ textarea {
     grid-column-start: 13;
     grid-row-start: 2;
     height: 100%;
-    padding: 0%;
+    padding: 5px;
     margin: 0%;
     border: 0%;
     text-align: center;
     position: relative;
-    top: 5px;
     font-size: 15px;
+}
+
+#button-connect {
+    grid-column-start: 14;
+    grid-row-start: 2;
 }
