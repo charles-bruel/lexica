@@ -1,12 +1,13 @@
 function new_spreadsheet_state() {
     return {
-        num_rows: 100,
-        num_columns: 30,
+        num_rows: 30,
+        num_columns: 24,
         row_height: 20,
         column_width: 50, // Default
         column_widths: [],
         row_header_width: 35,
         cell_data: [],
+        cell_merge_data: [],
         underlying_cell_data: [],
         cell_style_classes: [],
     };
@@ -225,24 +226,29 @@ function load_data() {
             element.className = current_spreadsheet_state.cell_style_classes[i][j];
         }
     }
+
+    for(var i = 0;i < current_spreadsheet_state.cell_merge_data.length;i ++) {
+        var merge = current_spreadsheet_state.cell_merge_data[i];
+        merge_cells(merge.x1, merge.x2, merge.y1, merge.y2, false);
+    }
 }
 
-function merge_cells(x1, x2, y1, y2) {
+function merge_cells(x1, x2, y1, y2, add) {
     var fx1, fx2, fy1, fy2
 
     fx1 = Math.min(x1, x2);
     fx2 = Math.max(x1, x2);
     fy1 = Math.min(y1, y2);
     fy2 = Math.max(y1, y2);
-
-    fx1 -= 2;
-    fx2 -= 2;
-    fy1 -= 2;
-    fy2 -= 2;
-
+    
+    var strings = [];
     for(var i = fx1;i <= fx2;i ++) {
         for(var j = fy1;j <= fy2;j ++) {
-            spreadsheet_container.removeChild(document.getElementById("spreadsheet-" + j + ":" + i));
+            var element = document.getElementById("spreadsheet-" + j + ":" + i);
+            if(element != null) {
+                if(element.value != "") strings.push(element.value);
+                spreadsheet_container.removeChild(element);
+            }
         }
     }
 
@@ -252,7 +258,10 @@ function merge_cells(x1, x2, y1, y2) {
     element.style.gridColumnEnd = fx2 + 3;
     element.style.gridRowStart = fy1 + 2;
     element.style.gridRowEnd = fy2 + 3;
+    element.value = strings.join(" ");
     spreadsheet_container.appendChild(element);
+
+    if(add) current_spreadsheet_state.cell_merge_data.push({ x1: fx1, x2: fx2, y1: fy1, y2: fy2 })
 }
 
 function create_spreadsheet() {
@@ -269,8 +278,13 @@ function save_spreadsheet_state() {
         current_spreadsheet_state.cell_style_classes.push([]);
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
             var element = document.getElementById("spreadsheet-" + i + ":" + j);
-            current_spreadsheet_state.cell_data[i].push(element.value);
-            current_spreadsheet_state.cell_style_classes[i].push(element.className);
+            if(element != null) {
+                current_spreadsheet_state.cell_data[i].push(element.value);
+                current_spreadsheet_state.cell_style_classes[i].push(element.className);
+            } else {
+                current_spreadsheet_state.cell_data[i].push("");
+                current_spreadsheet_state.cell_style_classes[i].push("");
+            }
         }
     }
 

@@ -42,7 +42,7 @@ function handle_merge(e, element) {
             var y1 = selected_elements_for_merge[0].style.gridRowStart;
             var x2 = selected_elements_for_merge[1].style.gridColumnStart;
             var y2 = selected_elements_for_merge[1].style.gridRowStart;
-            merge_cells(x1, x2, y1, y2);
+            merge_cells(x1 - 2, x2 - 2, y1 - 2, y2 - 2, true);
         }
 
         element.classList.remove("selected");
