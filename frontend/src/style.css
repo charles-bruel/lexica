@@ -15,10 +15,6 @@ input {
     border-color: var(--color);
 }
 
-.selected {
-    background-color: lightblue;
-}
-
 .div-top-level {
     border: 2px;
     border-style: solid;
@@ -32,6 +28,32 @@ input {
     box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
     -webkit-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
     -moz-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+}
+
+button {
+    text-align: center;
+    border:2px outset darkgray;
+    background: gray;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+    -webkit-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+    -moz-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
+    color: lavender;
+    transition-duration: 0.05s;
+}
+
+button:hover {
+    border:2px outset lightgray;
+    background: darkgray;
+    font-weight: bold;
+}
+
+.selected {
+    background-color: lightblue;
+    color: black;
+}
+
+.selected:hover {
+    background-color: white;
 }
 
 th {

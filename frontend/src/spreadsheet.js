@@ -114,6 +114,82 @@ function handle_column_resize(entries) {
     }
 }
 
+function add_row_handler(button_ref) {
+    current_spreadsheet_state.num_rows++;
+
+    var elems = spreadsheet_container.style.gridTemplateRows.split(" ");
+    var index = elems.length - 2;
+    elems.splice(index, 0, current_spreadsheet_state.row_height + "px");
+    spreadsheet_container.style.gridTemplateRows = elems.join(" ");
+    button_ref.style.gridRowStart = parseInt(button_ref.style.gridRowStart) + 1;
+    spreadsheet_container.parentNode.scrollBy(0, current_spreadsheet_state.row_height);
+
+    var element = create_header(0, index + 1, index + 1 + "");
+    spreadsheet_container.appendChild(element);
+
+    for(var i = 0;i < current_spreadsheet_state.num_columns;i ++) {
+        var element = document.createElement("input");
+        element.id = "spreadsheet-" + index + ":" + i;
+        element.style.gridColumnStart = i + 1;
+        element.style.gridColumnStart = i + 2;
+        element.style.gridRowStart = index + 1;
+        element.style.gridRowStart = index + 2;
+        spreadsheet_container.appendChild(element);
+    }
+}
+
+function add_column_handler(button_ref) {
+    current_spreadsheet_state.num_columns++;
+
+    var elems = spreadsheet_container.style.gridTemplateColumns.split(" ");
+    var index = elems.length - 2;
+    elems.splice(index, 0, current_spreadsheet_state.column_width + "px");
+    spreadsheet_container.style.gridTemplateColumns = elems.join(" ");
+    button_ref.style.gridColumnStart = parseInt(button_ref.style.gridColumnStart) + 1;
+    spreadsheet_container.parentNode.scrollBy(current_spreadsheet_state.column_width, 0);
+
+    const observer = new ResizeObserver((entries) => { handle_column_resize(entries); });
+    var element = create_header(index + 1, 0, convert_column_name(index));
+    spreadsheet_container.appendChild(element);
+    observer.observe(element);
+
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        var element = document.createElement("input");
+        element.id = "spreadsheet-" + i + ":" + index;
+        element.style.gridColumnStart = index + 1;
+        element.style.gridColumnStart = index + 2;
+        element.style.gridRowStart = i + 1;
+        element.style.gridRowStart = i + 2;
+        spreadsheet_container.appendChild(element);
+    }
+}
+
+function create_expansion_button_rows(posy) {
+    var element = document.createElement("button");
+    element.className = "spreadsheet-header spreadsheet-expansion-button";
+    element.id = "spreadsheet-expansion-row";
+    element.innerText = "+";
+    element.style.gridColumnStart = 0;
+    element.style.gridColumnStart = 1;
+    element.style.gridRowStart = posy;
+    element.style.gridRowStart = posy + 1;
+    element.addEventListener("mousedown", function() { add_row_handler(element); });
+    return element;
+}
+
+function create_expansion_button_columns(posx) {
+    var element = document.createElement("button");
+    element.className = "spreadsheet-header spreadsheet-expansion-button";
+    element.id = "spreadsheet-expansion-column";
+    element.innerText = "+";
+    element.style.gridColumnStart = posx;
+    element.style.gridColumnStart = posx + 1;
+    element.style.gridRowStart = 0;
+    element.style.gridRowStart = 1;
+    element.addEventListener("mousedown", function() { add_column_handler(element); });
+    return element;
+}
+
 function populate_headers() {
     var container = document.getElementById("spreadsheet-container");
     const observer = new ResizeObserver((entries) => { handle_column_resize(entries); });
@@ -126,6 +202,8 @@ function populate_headers() {
         container.appendChild(element);
         observer.observe(element);
     }
+    container.appendChild(create_expansion_button_rows(current_spreadsheet_state.num_rows + 1));
+    container.appendChild(create_expansion_button_columns(current_spreadsheet_state.num_columns + 1));
 }
 
 function populate_cells() {
