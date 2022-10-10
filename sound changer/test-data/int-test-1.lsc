@@ -1,0 +1,112 @@
+rules
+    rule h-loss
+        {h l x ʔ} => *
+    end
+
+    rule vowel-comb
+        a a => [+long] *
+        a i => a j
+        a u => a o
+        i a => j a
+        i i => [+long] *
+        i u => * [+long]
+        u a => w a
+        u i => w e
+        u u => [+long] *
+    end
+
+    rule uvular-vowel
+        {i u} => {ɛ o} / [uvular] _
+    end
+
+    rule rhotic-uvular
+        ʀ => χ
+        r => χ / $ _
+    end
+
+    rule uvular-fricative
+        χ => h
+    end
+
+    rule ao-change
+        a o => [open-mid back +round +long] *
+    end
+
+    rule total-uvular-loss
+        q => k
+    end
+
+    rule b-changes
+        ʙ => β / [vowel] _ [vowel]
+        ʙ => r
+    end
+
+    rule rhotic
+        r => ɹ
+    end
+
+    rule plosive-voice
+        [plosive] => [+voice] / _ [vowel] h
+        [vowel] h => * * / [plosive] _
+    end
+
+    rule j-loss
+        j => * / ɹ _
+        j => * / w _
+        j => * / h _
+    end
+
+    rule j-transform
+        j => ʃ / [plosive] _
+    end
+
+    rule word-final-j
+        j => ʒ / _ $
+    end
+
+    rule h-loss-2
+        h => *
+    end
+
+    rule palatalization
+        {k g n m} => {c ɟ ɲ ɲ} / _ i [vowel]
+        p => [+palatalized] / _ i [vowel]
+        {f s ʃ} => [+palatalized] / _ i [vowel]
+        {f s ʃ} => [+palatalized] / _ [close front -round +long]
+        {k g n m} j => {c ɟ ɲ ɲ} *
+        {p f s ʃ} j => [+palatalized] *
+        i => * / [palatal] _ [vowel]
+        i => * / [+palatalized] _ [vowel]
+        [close front -round +long] => [-long] / [palatal fricative] _
+    end
+
+    rule voicing
+        [consonant -voice -palatalized] => [+voice] / _ [+round]
+    end
+
+    rule vowel-merge
+        a a => [+long] *
+        e e => [+long] *
+        i i => [+long] *
+        o o => [+long] *
+        u u => [+long] *
+        ɛ ɛ => [+long] *
+        ɔ ɔ => [+long] *
+    end
+
+    rule palatal-change
+        [velar plosive +palatalized] => [-palatalized palatal]
+    end
+
+    rule palatal-voice
+        [+palatalized +voice] => [-voice]
+    end
+
+    rule bv-v
+        β => v
+    end
+
+    rule voiced-h
+        ɦ => h
+    end
+end

@@ -466,3 +466,11 @@ pub fn create_enviorment_predicate(predicate: Box<dyn Predicate>, min: u8, max: 
         max_quant: max,
     }
 }
+
+pub fn to_string(program: &Program, word: Vec<Letter>) -> String {
+    let mut result = String::from("");
+    for l in word {
+        result += &l.get_symbol(&program);
+    }
+    return result;
+}
