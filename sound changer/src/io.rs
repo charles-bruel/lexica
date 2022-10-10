@@ -42,8 +42,7 @@ pub fn load_from_file(path_str: &String) -> Result<String, IOError> {
     return Ok(temp);
 }
 
-#[no_panic]
-pub fn save_to_file(path_str: &String, data: String, overwrite: bool) -> Option<IOError> {
+pub fn save_to_file(path_str: &String, data: &String, overwrite: bool) -> Option<IOError> {
     use std::time::Instant;
     let now = Instant::now();
 
@@ -97,7 +96,7 @@ pub fn web_socket_listener() {
                 let response_message = response.handle();
                 match response_message {
                     Some(msg) => push_messages(&mut websocket, msg),
-                    None => todo!(),
+                    None => panic!("Couldn't serialize response"),
                 };
                 // println!("{}", msg);
 

@@ -4,6 +4,7 @@ extern crate fancy_regex;
 extern crate tungstenite;
 extern crate priority_queue;
 extern crate no_panic;
+extern crate serde;
 
 pub mod io;
 pub mod constructor;
@@ -33,6 +34,9 @@ fn main() {
     //     }
     //     println!();
     // }
+
+    // let temp = websocket_handler::WebSocketMessage::SaveFile { file_path: String::from("File path"), data: String::from("Data") };
+    // println!("{}", serde_json::to_string(&temp).unwrap());
 
     io::web_socket_listener();
 }
