@@ -278,6 +278,7 @@ function create_spreadsheet() {
 
 function save_spreadsheet_state() {
     current_spreadsheet_state.cell_data = [];
+    current_spreadsheet_state.cell_style_classes = [];
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         current_spreadsheet_state.cell_data.push([]);
         current_spreadsheet_state.cell_style_classes.push([]);
