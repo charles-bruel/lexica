@@ -1,5 +1,9 @@
 var socket = null;
 
+function post_message(message) {
+    socket.send(JSON.stringify(message));
+}
+
 function create_socket() {
     socket = new WebSocket("ws://127.0.0.1:9001");
 
@@ -8,10 +12,28 @@ function create_socket() {
         temp.textContent = "Connected";
         temp.style.color = "green";
         alert("[open] Connection established");
+
+        var elems = document.getElementsByClassName("require-connection");
+        for(var i = 0;i < elems.length;i ++){
+            elems[i].disabled = false;
+        }
     };
     
     socket.onmessage = function (event) {
-        alert(`[message] Data received from server: ${event.data}`);
+        var obj = JSON.parse(event.data);
+        console.log(event.data);
+        console.log(obj);
+        if(Object.hasOwn(obj, 'Error')) { 
+            alert(`[message] Error received from server: ${event.data}`);
+        } else if(obj == "RequestOverwrite") {
+            if(confirm("Overwrite file?")) {
+                post_message({SaveFile: {file_path: document.getElementById("save-file-location").value, data: get_state_for_save(), overwrite: true}});
+            }
+        } else if (obj == "Success") {
+
+        } else {
+            alert(`[message] Unknown data received from server: ${event.data}`);
+        }
     };
     
     socket.onclose = function (event) {
@@ -25,6 +47,10 @@ function create_socket() {
             // event.code is usually 1006 in this case
             alert('[close] Connection died');
         }
+        var elems = document.getElementsByClassName("require-connection");
+        for(var i = 0;i < elems.length;i ++){
+            elems[i].disabled = true;
+        }
         socket = null;
     };
 }
@@ -36,8 +62,9 @@ function get_state_for_save() {
     return JSON.stringify(obj);
 }
 
-function post_message(message) {
-    socket.send(JSON.stringify(message));
-}
-
 document.getElementById("button-connect").addEventListener("mousedown", function(e) { if(socket == null) create_socket(); });
+
+var elems = document.getElementsByClassName("require-connection");
+for(var i = 0;i < elems.length;i ++){
+    elems[i].disabled = true;
+}

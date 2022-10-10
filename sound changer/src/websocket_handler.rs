@@ -26,7 +26,6 @@ pub struct SCConversion {
     data: String,
 }
 
-#[no_panic]
 pub fn decode(raw_message: String) -> WebSocketMessage {
     let decode_result = serde_json::from_str::<WebSocketMessage>(&raw_message);
     match decode_result {
@@ -48,7 +47,6 @@ impl WebSocketMessage {
 }
 
 impl WebSocketResponse {
-    #[no_panic]
     pub fn handle(&self) -> Option<String> {
         let temp = serde_json::to_string(self);
         match temp {
@@ -58,13 +56,13 @@ impl WebSocketResponse {
     }
 }
 
-#[no_panic]
 fn handle_save_file(file_path: &String, data: &String, overwrite: bool) -> WebSocketResponse {
-    let result = save_to_file(file_path, data, overwrite);
+    let result = save_to_file(file_path, data, overwrite, true);
     match result {
         Some(v) => match v {
             IOError::FileNotFound(err) => WebSocketResponse::Error { message: err },
             IOError::ReadError(err) => WebSocketResponse::Error { message: err },
+            IOError::InvalidFilePath(err) => WebSocketResponse::Error { message: err },
             IOError::WriteError(err) => WebSocketResponse::Error { message: err },
             IOError::Other(err) => WebSocketResponse::Error { message: err },
             IOError::FileExists(_) => WebSocketResponse::RequestOverwrite,

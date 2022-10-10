@@ -164,6 +164,7 @@ textarea {
     text-align: center;
     position: relative;
     font-size: 15px;
+    width: 18ch;
 }
 
 #button-connect {

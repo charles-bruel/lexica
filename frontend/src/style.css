@@ -48,6 +48,13 @@ button:hover {
     font-weight: bold;
 }
 
+button:disabled {
+    border:2px outset darkgray;
+    background: gray;
+    font-weight: normal;
+    color: darkgray;
+}
+
 .selected {
     background-color: lightblue;
     color: black;

@@ -11,6 +11,7 @@ use super::websocket_handler::*;
 pub enum IOError {
     FileNotFound(String),
     FileExists(String),
+    InvalidFilePath(String),
     ReadError(String),
     WriteError(String),
     Other(String),
@@ -42,9 +43,15 @@ pub fn load_from_file(path_str: &String) -> Result<String, IOError> {
     return Ok(temp);
 }
 
-pub fn save_to_file(path_str: &String, data: &String, overwrite: bool) -> Option<IOError> {
+pub fn save_to_file(path_str: &String, data: &String, overwrite: bool, restrict_path: bool) -> Option<IOError> {
     use std::time::Instant;
     let now = Instant::now();
+
+    if restrict_path {
+        if path_str.contains(":") || path_str.contains("..") {
+            return Some(IOError::InvalidFilePath(format!("security settings do not allow the path: {}", path_str)));
+        }
+    }
 
     let path = Path::new(path_str);
     let display = path.display();
@@ -91,6 +98,9 @@ pub fn web_socket_listener() {
             loop {
                 let msg = websocket.read_message().unwrap();
 
+                use std::time::Instant;
+                let now = Instant::now();
+
                 let message = decode(msg.to_string());
                 let response = message.handle();
                 let response_message = response.handle();
@@ -98,10 +108,9 @@ pub fn web_socket_listener() {
                     Some(msg) => push_messages(&mut websocket, msg),
                     None => panic!("Couldn't serialize response"),
                 };
-                // println!("{}", msg);
-
-                // // let msg: Message = Message::Text(String::from("foo baz bar"));
-                // // websocket.write_message(msg).unwrap();
+                
+                let elapsed = now.elapsed();
+                print!("Handled message in : {:.2?}\n", elapsed);
             }
         });
     }
