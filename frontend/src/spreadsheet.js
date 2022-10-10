@@ -240,7 +240,7 @@ function merge_cells(x1, x2, y1, y2, add) {
     fx2 = Math.max(x1, x2);
     fy1 = Math.min(y1, y2);
     fy2 = Math.max(y1, y2);
-    
+
     var strings = [];
     for(var i = fx1;i <= fx2;i ++) {
         for(var j = fy1;j <= fy2;j ++) {
@@ -251,8 +251,13 @@ function merge_cells(x1, x2, y1, y2, add) {
             }
         }
     }
-
-    var element = document.createElement("input");
+    var element;
+    if(y1 == y2) {
+        element = document.createElement("input");
+    } else {
+        element = document.createElement("textarea");
+        element.spellcheck = false;
+    }
     element.id = "spreadsheet-" + fy1 + ":" + fx1;
     element.style.gridColumnStart = fx1 + 2;
     element.style.gridColumnEnd = fx2 + 3;

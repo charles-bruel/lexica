@@ -2,17 +2,18 @@
     --color: #fff;
 }
 
-body, div, input {
+body, div, input, textarea {
     background-color: black;
     color: lavender;
 }
 
-input, div, p, h2, button {
+input, div, p, h2, button, textarea {
     font-family: 'Fira Code', monospace; 
 }
 
-input {
+input, textarea {
     border-color: var(--color);
+    font-size: 12px;
 }
 
 .div-top-level {
