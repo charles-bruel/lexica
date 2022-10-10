@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use super::io::*;
+use no_panic::no_panic;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WebSocketMessage {
@@ -25,6 +26,7 @@ pub struct SCConversion {
     data: String,
 }
 
+#[no_panic]
 pub fn decode(raw_message: String) -> WebSocketMessage {
     let decode_result = serde_json::from_str::<WebSocketMessage>(&raw_message);
     match decode_result {
@@ -46,6 +48,7 @@ impl WebSocketMessage {
 }
 
 impl WebSocketResponse {
+    #[no_panic]
     pub fn handle(&self) -> Option<String> {
         let temp = serde_json::to_string(self);
         match temp {
@@ -55,6 +58,7 @@ impl WebSocketResponse {
     }
 }
 
+#[no_panic]
 fn handle_save_file(file_path: &String, data: &String, overwrite: bool) -> WebSocketResponse {
     let result = save_to_file(file_path, data, overwrite);
     match result {
