@@ -94,3 +94,7 @@ th {
     -ms-user-select: none;
     user-select: none;
  }
+
+ #connection-status-indicator {
+    font-weight: bold;
+}

@@ -61,15 +61,11 @@
     height: 100%;
     width: 100%;
     gap: 0%;
-    grid-template-columns: 15% repeat(auto-fill, calc(2.5vh));
+    grid-template-columns: 15% repeat(10, minmax(max-content, 25px)) 1fr repeat(2, minmax(max-content, 25px));
     grid-template-rows: 50% 50%;
     grid-auto-flow: column;
 }
 
-.top-bar-button {
-    aspect-ratio: 1;
-    height: 100%;
-}
 
 #top-bar-tab-name-div {
     height: calc(100% - 2px);
@@ -140,4 +136,32 @@ th {
 
 textarea {
     resize: none;
+}
+
+#button-save {
+    grid-column-start: 14;
+    grid-row-start: 1;
+}
+
+#button-load {
+    grid-column-start: 14;
+    grid-row-start: 2;
+}
+
+#save-file-location {
+    grid-column-start: 13;
+    grid-row-start: 1;
+}
+
+#connection-status-indicator {
+    grid-column-start: 13;
+    grid-row-start: 2;
+    height: 100%;
+    padding: 0%;
+    margin: 0%;
+    border: 0%;
+    text-align: center;
+    position: relative;
+    top: 5px;
+    font-size: 15px;
 }

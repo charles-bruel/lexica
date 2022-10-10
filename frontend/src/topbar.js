@@ -95,3 +95,5 @@ document.getElementById("format-bg").addEventListener("mousedown", function(e) {
 document.getElementById("format-merge").addEventListener("mousedown", function(e) { handle_merge(e, document.getElementById("format-merge")); });
 
 attachEvents();
+
+document.getElementById("button-save").addEventListener("mousedown", function(e) { post_message("SVFL", get_state_for_save()) });

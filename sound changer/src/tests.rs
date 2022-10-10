@@ -224,7 +224,7 @@ fn is_anagram(a: String, b: String) -> bool {
 }
 
 fn create_diacritic_test_program() -> Program {
-    construct(load_from_file(&String::from("test-data/diacritics-test.lsc")))
+    construct(load_from_file(&String::from("test-data/diacritics-test.lsc")).expect("Error reading file"))
 }
 
 fn random_letter() -> super::data::Letter {
