@@ -166,14 +166,6 @@ impl Letter {
             },
         }
     }
-    pub fn extract_property(&self, prop: Feature) -> u64 {
-        let mut result = self.value;
-        result <<= prop.start_byte();
-        let mask: u64 = !(0xFFFFFFFFFFFFFFFF >> prop.length());
-        result &= mask;
-        result >>= 64 - prop.length();
-        return result;
-    }
 }
 
 pub trait Predicate {
@@ -267,7 +259,7 @@ pub fn create_feature_def_bool(name: String, negative_option: String, positive_o
 }
 
 pub fn create_feature_def(name: String, option_names: Vec<String>) -> FeatureDef {
-    let len = f64::from(option_names.len() as u32).log2().ceil() as u8;
+    let len = f64::from((option_names.len() + 1) as u32).log2().ceil() as u8;
     let id = get_id();
     let temp = FeatureDef {
         start_byte: 0,
@@ -284,7 +276,7 @@ pub fn create_feature_def(name: String, option_names: Vec<String>) -> FeatureDef
 }
 
 pub fn create_switch_type(name: String, option_names: Vec<String>, features: Vec<Vec<Feature>>) -> SwitchType {
-    let len = f64::from(option_names.len() as u32).log2().ceil() as u8;
+    let len = f64::from((option_names.len() + 1) as u32).log2().ceil() as u8;
     let id = get_id();
     let temp = SwitchType {
         start_byte: 0,

@@ -4,7 +4,6 @@ use std::path::Path;
 use std::net::TcpListener;
 use std::thread::spawn;
 use tungstenite::{accept, Message, WebSocket};
-use no_panic::no_panic;
 use super::websocket_handler::*;
 
 #[derive(Debug)]

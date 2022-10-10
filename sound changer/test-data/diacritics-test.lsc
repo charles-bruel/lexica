@@ -1,6 +1,6 @@
 feature_def
     switch propA(A1, A2, A3) root
-    feature propB(B1, B2, B3) root
+    feature propB(B1, B2, B3, B4) root
     feature propC(C1, C2, C3) root
 
     feature +toggleA root

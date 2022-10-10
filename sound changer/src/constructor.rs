@@ -736,7 +736,7 @@ fn construct_validation_masks_recurse(features: &mut Vec<Feature>, current_valid
                 let mut j: usize = 0;
                 while j < data.features.len(){
                     let mask = ((2 << data.self_length) - 1) << (64 - data.start_byte - data.self_length);
-                    let key = (j as u64) << (64 - data.start_byte - data.self_length);
+                    let key = (j as u64 + 1) << (64 - data.start_byte - data.self_length);
 
 
                     let temp_validation_key = current_validation_key | key;
@@ -974,7 +974,7 @@ fn construct_switch_line(program: &mut Program, line: &Vec<&str>) {
 
     let mut i: usize = 0;
     while i < temp.option_names.len() {
-        program.features_to_idx.insert(temp.option_names[i].clone(), (temp.id, i));
+        program.features_to_idx.insert(temp.option_names[i].clone(), (temp.id, i + 1));
         i += 1;
     }
 
@@ -1013,7 +1013,7 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) {
 
         let mut i: usize = 0;
         while i < temp.option_names.len() {
-            program.features_to_idx.insert(temp.option_names[i].clone(), (temp.id, i));
+            program.features_to_idx.insert(temp.option_names[i].clone(), (temp.id, i + 1));
             i += 1;
         }
 

@@ -232,6 +232,22 @@ fn test_0_feature_b() {
 }
 
 #[test]
+fn test_0_feature_c() {
+    let program = create_diacritic_test_program();
+    let predicate = construct_simple_predicate(&program, "[-toggleA]");
+    let letter: Letter = Letter { value: 0 };
+    assert!(predicate.validate(&vec![letter], 0));
+}
+
+#[test]
+fn test_0_feature_d() {
+    let program = create_diacritic_test_program();
+    let predicate = construct_simple_predicate(&program, "[+toggleA]");
+    let letter: Letter = Letter { value: 0 };
+    assert!(!predicate.validate(&vec![letter], 0));
+}
+
+#[test]
 fn int_test_1() {
     let program = create_int_test_1();
     let words = load_from_file(&String::from("test-data/int-test-1.words.txt")).unwrap();
