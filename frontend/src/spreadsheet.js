@@ -130,9 +130,7 @@ function add_row_handler(button_ref) {
     for(var i = 0;i < current_spreadsheet_state.num_columns;i ++) {
         var element = document.createElement("input");
         element.id = "spreadsheet-" + index + ":" + i;
-        element.style.gridColumnStart = i + 1;
         element.style.gridColumnStart = i + 2;
-        element.style.gridRowStart = index + 1;
         element.style.gridRowStart = index + 2;
         spreadsheet_container.appendChild(element);
     }
@@ -156,9 +154,7 @@ function add_column_handler(button_ref) {
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         var element = document.createElement("input");
         element.id = "spreadsheet-" + i + ":" + index;
-        element.style.gridColumnStart = index + 1;
         element.style.gridColumnStart = index + 2;
-        element.style.gridRowStart = i + 1;
         element.style.gridRowStart = i + 2;
         spreadsheet_container.appendChild(element);
     }
@@ -212,9 +208,7 @@ function populate_cells() {
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
             var element = document.createElement("input");
             element.id = "spreadsheet-" + i + ":" + j;
-            element.style.gridColumnStart = j + 1;
             element.style.gridColumnStart = j + 2;
-            element.style.gridRowStart = i + 1;
             element.style.gridRowStart = i + 2;
             container.appendChild(element);
         }
@@ -226,11 +220,39 @@ function load_data() {
 
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
-            var element = document.getElementById("spreadsheet-" + i + ":" + j)
+            var element = document.getElementById("spreadsheet-" + i + ":" + j);
             element.value = current_spreadsheet_state.cell_data[i][j];
             element.className = current_spreadsheet_state.cell_style_classes[i][j];
         }
     }
+}
+
+function merge_cells(x1, x2, y1, y2) {
+    var fx1, fx2, fy1, fy2
+
+    fx1 = Math.min(x1, x2);
+    fx2 = Math.max(x1, x2);
+    fy1 = Math.min(y1, y2);
+    fy2 = Math.max(y1, y2);
+
+    fx1 -= 2;
+    fx2 -= 2;
+    fy1 -= 2;
+    fy2 -= 2;
+
+    for(var i = fx1;i <= fx2;i ++) {
+        for(var j = fy1;j <= fy2;j ++) {
+            spreadsheet_container.removeChild(document.getElementById("spreadsheet-" + j + ":" + i));
+        }
+    }
+
+    var element = document.createElement("input");
+    element.id = "spreadsheet-" + fy1 + ":" + fx1;
+    element.style.gridColumnStart = fx1 + 2;
+    element.style.gridColumnEnd = fx2 + 3;
+    element.style.gridRowStart = fy1 + 2;
+    element.style.gridRowEnd = fy2 + 3;
+    spreadsheet_container.appendChild(element);
 }
 
 function create_spreadsheet() {
