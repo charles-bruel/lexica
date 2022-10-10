@@ -291,7 +291,7 @@ fn construct_capture(program: &Program, capture: &str) -> (usize, u64) {
     }
 }
 
-fn construct_simple_predicate(program: &Program, predicate: &str) -> Box<dyn Predicate> {
+pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> Box<dyn Predicate> {
     if predicate.starts_with("[") && predicate.ends_with("]") {
         if predicate.contains("!") {
             let (mask, key, masks, keys) = parse_features_negative(program, predicate);

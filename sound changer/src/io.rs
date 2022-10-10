@@ -18,7 +18,6 @@ pub enum IOError {
 }
 
 //https://doc.rust-lang.org/rust-by-example/std_misc/file/open.html
-#[no_panic]
 pub fn load_from_file(path_str: &String) -> Result<String, IOError> {
     use std::time::Instant;
     let now = Instant::now();
@@ -108,7 +107,7 @@ pub fn web_socket_listener() {
                     Some(msg) => push_messages(&mut websocket, msg),
                     None => panic!("Couldn't serialize response"),
                 };
-                
+
                 let elapsed = now.elapsed();
                 print!("Handled message in : {:.2?}\n", elapsed);
             }

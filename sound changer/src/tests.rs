@@ -215,6 +215,22 @@ fn test_diacritics_g() {
     assert!(is_anagram(String::from("1aAbBcCᵃᵇᶜ"), letter.get_symbol(&program)));
 }
 
+#[test]
+fn test_0_feature_a() {
+    let program = create_diacritic_test_program();
+    let predicate = construct_simple_predicate(&program, "[A1]");
+    let letter: Letter = Letter { value: 0 };
+    assert!(!predicate.validate(&vec![letter], 0));
+}
+
+#[test]
+fn test_0_feature_b() {
+    let program = create_diacritic_test_program();
+    let predicate = construct_simple_predicate(&program, "[B1]");
+    let letter: Letter = Letter { value: 0 };
+    assert!(!predicate.validate(&vec![letter], 0));
+}
+
 fn is_anagram(a: String, b: String) -> bool {
     let mut avec: Vec<char> = a.chars().collect();
     avec.sort();
