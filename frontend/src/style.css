@@ -93,8 +93,13 @@ th {
     -webkit-user-select: none;
     -ms-user-select: none;
     user-select: none;
- }
+}
 
- #connection-status-indicator {
+#connection-status-indicator {
     font-weight: bold;
+}
+
+textarea {
+    padding: 0px;
+    margin: 0px;
 }

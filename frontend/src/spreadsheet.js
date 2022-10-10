@@ -233,6 +233,31 @@ function load_data() {
     }
 }
 
+function umerge_cells(element) {
+    var x1, x2, y1, y2;
+
+    x1 = parseInt(element.style.gridColumnStart) - 2;
+    x2 = parseInt(element.style.gridColumnEnd) - 3;
+    y1 = parseInt(element.style.gridRowStart) - 2;
+    y2 = parseInt(element.style.gridRowEnd) - 3;
+
+    var contents = element.value;
+    element.parentNode.removeChild(element);
+
+    for(var i = y1;i <= y2;i ++) {
+        for(var j = x1;j <= x2;j ++) {
+            var element = document.createElement("input");
+            element.id = "spreadsheet-" + i + ":" + j;
+            element.style.gridColumnStart = j + 2;
+            element.style.gridRowStart = i + 2;
+            spreadsheet_container.appendChild(element);
+            if(i == y1 && j == x1) {
+                element.value = contents;
+            }
+        }
+    }
+}
+
 function merge_cells(x1, x2, y1, y2, add) {
     var fx1, fx2, fy1, fy2
 
@@ -259,6 +284,7 @@ function merge_cells(x1, x2, y1, y2, add) {
         element.spellcheck = false;
     }
     element.id = "spreadsheet-" + fy1 + ":" + fx1;
+    element.classList.add("merged");
     element.style.gridColumnStart = fx1 + 2;
     element.style.gridColumnEnd = fx2 + 3;
     element.style.gridRowStart = fy1 + 2;

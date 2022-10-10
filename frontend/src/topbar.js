@@ -50,10 +50,13 @@ function handle_merge(e, element) {
             x.classList.remove("selected");
         }
         selected_elements_for_merge = [];
+    } else if(document.activeElement.classList.contains("merged")) {
+        umerge_cells(document.activeElement);
     } else {
         topbar_merge_button_state = true;
         element.classList.add("selected");
     }
+    
 }
 
 function detectBlur() {}
