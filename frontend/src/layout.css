@@ -7,7 +7,7 @@
     left: 0%;
     top: 0%;
     grid-template-columns: 30% 70%;
-    grid-template-rows: 5% 90% 5%;
+    grid-template-rows: 50px calc(100% - 100px) 50px;
 }
 
 #spreadsheet {
