@@ -248,7 +248,7 @@ fn test_0_feature_d() {
 }
 
 #[test]
-fn int_test_1() {
+fn test_int_1() {
     let program = create_int_test_1();
     let words = load_from_file(&String::from("test-data/int-test-1.words.txt"), false).unwrap();
     let lines: Vec<&str> = words.split("\n").collect();
@@ -258,6 +258,42 @@ fn int_test_1() {
         let result = to_string(&program, program.apply(word));
         assert_eq!(result, parts[1].trim());
     }
+}
+
+#[test]
+fn test_restrict_path_1() {
+    let result = load_from_file(&String::from("C:/foo"), true);
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, IOError::InvalidFilePath(_))),
+    } 
+}
+
+#[test]
+fn test_restrict_path_2() {
+    let result = load_from_file(&String::from("../foo"), true);
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, IOError::InvalidFilePath(_))),
+    } 
+}
+
+#[test]
+fn test_restrict_path_3() {
+    let result = save_to_file(&String::from("C:/foo"), &String::from(""), false, true);
+    match result {
+        None => assert!(false),
+        Some(v) => assert!(matches!(v, IOError::InvalidFilePath(_))),
+    } 
+}
+
+#[test]
+fn test_restrict_path_4() {
+    let result = save_to_file(&String::from("../foo"), &String::from(""), false, true);
+    match result {
+        None => assert!(false),
+        Some(v) => assert!(matches!(v, IOError::InvalidFilePath(_))),
+    } 
 }
 
 fn is_anagram(a: String, b: String) -> bool {
