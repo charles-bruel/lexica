@@ -16,6 +16,15 @@ var current_lexicon_id = 0;
 const lexicon_root_element = document.getElementById("lexicon-table");
 var lexicon_table_element;
 
+function handle_lexicon_column_resize(entries) {
+    for(const entry of entries) {
+        if(entry.target.parentNode.id.startsWith("lexicon-header-")) {
+            var size = entry.borderBoxSize[0].inlineSize;
+            entry.target.parentNode.style.width = size + "px";
+        }
+    }
+}
+
 function create_lexicon(row_count) {
     lexicon_table_element = document.createElement("table");
     lexicon_table_element.className = "lexicon-table";
@@ -26,14 +35,19 @@ function create_lexicon(row_count) {
 
     var counter = 0;
 
+    const observer = new ResizeObserver((entries) => { handle_lexicon_column_resize(entries); });
     for(var i = 0;i < current_lexicon_table_state.names.length;i ++) {
         var header = document.createElement("th");
-        header.className = "table-element table-header lexicon-header";
+        var text_container = document.createElement("div");
+        text_container.className = "table-element table-header lexicon-header";
         var temp = current_lexicon_table_state.lens[i];
         header.style.width = temp + "px";
+        header.id = "lexicon-header-" + i;
         counter += temp;
-        header.innerText = current_lexicon_table_state.names[i];
+        text_container.innerText = current_lexicon_table_state.names[i];
         header_row.appendChild(header);
+        header.appendChild(text_container);
+        observer.observe(text_container);
     }
 
     lexicon_table_element.style.width = counter + "px";
@@ -61,7 +75,7 @@ function generate_lexicon_row(table_element, row_id) {
 
     for(var i = 0;i < current_lexicon_table_state.names.length;i ++) {
         var element = document.createElement("td");
-        element.className = "table-element table-box lexicon-box";
+        element.className = "table-element table-box lexicon-box lexicon-box-" + current_lexicon_table_state.names[i];;
         element.style.width = current_lexicon_table_state.lens[i] + "px";
         var box = document.createElement("input");
         box.style.width = "calc(100% - 4px)";

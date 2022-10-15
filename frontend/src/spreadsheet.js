@@ -103,7 +103,7 @@ function convert_column_name(input) {
     return result.join("");
 }
 
-function handle_column_resize(entries) {
+function handle_spreadsheet_column_resize(entries) {
     for(const entry of entries) {
         if(entry.target.id.startsWith("spreadsheet-header-col-")) {
             id = entry.target.id.substring(23) - 0;
@@ -147,7 +147,7 @@ function add_column_handler(button_ref) {
     button_ref.style.gridColumnStart = parseInt(button_ref.style.gridColumnStart) + 1;
     spreadsheet_container.parentNode.scrollBy(current_spreadsheet_state.column_width, 0);
 
-    const observer = new ResizeObserver((entries) => { handle_column_resize(entries); });
+    const observer = new ResizeObserver((entries) => { handle_spreadsheet_column_resize(entries); });
     var element = create_header(index + 1, 0, convert_column_name(index));
     spreadsheet_container.appendChild(element);
     observer.observe(element);
@@ -189,7 +189,7 @@ function create_expansion_button_columns(posx) {
 
 function populate_headers() {
     var container = document.getElementById("spreadsheet-container");
-    const observer = new ResizeObserver((entries) => { handle_column_resize(entries); });
+    const observer = new ResizeObserver((entries) => { handle_spreadsheet_column_resize(entries); });
     container.appendChild(create_header(0, 0, ""));
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         container.appendChild(create_header(0, i + 1, i + 1 + ""));
