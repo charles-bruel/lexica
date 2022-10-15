@@ -37,7 +37,7 @@ impl WebSocketMessage {
     pub fn handle(&self) -> WebSocketResponse {
         match self {
             WebSocketMessage::SaveFile { file_path, data, overwrite } => handle_save_file(file_path, data, *overwrite),
-            WebSocketMessage::LoadFile { file_path } => todo!(),
+            WebSocketMessage::LoadFile { file_path } => handle_load_file(file_path),
             WebSocketMessage::LoadProgram { name, contents } => todo!(),
             WebSocketMessage::RunSC { program_name, to_convert } => todo!(),
             WebSocketMessage::Unknown { error } => WebSocketResponse::Error { message: format!("Unknown message, err: {}", error) },
@@ -55,16 +55,20 @@ impl WebSocketResponse {
     }
 }
 
+fn handle_load_file(file_path: &String) -> WebSocketResponse {
+    let data = load_from_file(file_path, true);
+    match data {
+        Ok(v) => WebSocketResponse::LoadFileResult { data: v },
+        Err(v) => v.get_response(),
+    }
+}
+
 fn handle_save_file(file_path: &String, data: &String, overwrite: bool) -> WebSocketResponse {
     let result = save_to_file(file_path, data, overwrite, true);
     match result {
         Some(v) => match v {
-            IOError::FileNotFound(err) => WebSocketResponse::Error { message: err },
-            IOError::ReadError(err) => WebSocketResponse::Error { message: err },
-            IOError::InvalidFilePath(err) => WebSocketResponse::Error { message: err },
-            IOError::WriteError(err) => WebSocketResponse::Error { message: err },
-            IOError::Other(err) => WebSocketResponse::Error { message: err },
             IOError::FileExists(_) => WebSocketResponse::RequestOverwrite,
+            _ => v.get_response()
         },
         None => WebSocketResponse::Success
     }

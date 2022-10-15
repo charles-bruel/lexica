@@ -74,7 +74,7 @@ function add_bottom_bar_button(name) {
     handle_bottom_bar_button(spreadsheet_states.length - 1);
 }
 
-function generate_bottom_bar() {
+function create_bottom_bar() {
     parent_elem = document.getElementById("bottom-bar-buttons");
 
     for(var i = 0;i < bottom_bar_state.names.length;i ++) {
@@ -86,5 +86,10 @@ function generate_bottom_bar() {
     new_tab_button.addEventListener("click", function() { add_bottom_bar_button("New tab " + bottom_bar_state.tab_counter++) } )
 }
 
-generate_bottom_bar();
+function delete_bottom_bar() {
+    var container = document.getElementById("bottom-bar-buttons");
+    container.replaceChildren();
+}
+
+create_bottom_bar();
 handle_bottom_bar_button(bottom_bar_state.selected_index);

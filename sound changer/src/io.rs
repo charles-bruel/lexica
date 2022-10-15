@@ -16,10 +16,33 @@ pub enum IOError {
     Other(String),
 }
 
+impl IOError {
+    pub fn get_response(&self) -> WebSocketResponse {
+        WebSocketResponse::Error { message: self.get_message().clone() }
+    }
+
+    pub fn get_message(&self) -> &String {
+        match &self {
+            IOError::FileNotFound(err) => err,
+            IOError::ReadError(err) => err,
+            IOError::InvalidFilePath(err) => err,
+            IOError::WriteError(err) => err,
+            IOError::Other(err) => err,
+            IOError::FileExists(err) => err,
+        }
+    }
+}
+
 //https://doc.rust-lang.org/rust-by-example/std_misc/file/open.html
-pub fn load_from_file(path_str: &String) -> Result<String, IOError> {
+pub fn load_from_file(path_str: &String, restrict_path: bool) -> Result<String, IOError> {
     use std::time::Instant;
     let now = Instant::now();
+
+    if restrict_path {
+        if path_str.contains(":") || path_str.contains("..") {
+            return Err(IOError::InvalidFilePath(format!("security settings do not allow the path: {}", path_str)));
+        }
+    }
 
     let path = Path::new(path_str);
     let display = path.display();

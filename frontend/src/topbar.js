@@ -100,6 +100,9 @@ document.getElementById("format-merge").addEventListener("mousedown", function(e
 attachEvents();
 
 document.getElementById("button-save").addEventListener("mousedown", function(e) { 
-    save_spreadsheet_state();
     post_message({SaveFile: {file_path: document.getElementById("save-file-location").value, data: get_state_for_save(), overwrite: false}}); 
+});
+
+document.getElementById("button-load").addEventListener("mousedown", function(e) { 
+    post_message({LoadFile: {file_path: document.getElementById("save-file-location").value}}); 
 });

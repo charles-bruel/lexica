@@ -250,7 +250,7 @@ fn test_0_feature_d() {
 #[test]
 fn int_test_1() {
     let program = create_int_test_1();
-    let words = load_from_file(&String::from("test-data/int-test-1.words.txt")).unwrap();
+    let words = load_from_file(&String::from("test-data/int-test-1.words.txt"), false).unwrap();
     let lines: Vec<&str> = words.split("\n").collect();
     for l in lines {
         let parts: Vec<&str> = l.split(":").collect();
@@ -269,12 +269,12 @@ fn is_anagram(a: String, b: String) -> bool {
 }
 
 fn create_diacritic_test_program() -> Program {
-    construct(load_from_file(&String::from("test-data/diacritics-test.lsc")).expect("Error reading file"))
+    construct(load_from_file(&String::from("test-data/diacritics-test.lsc"), false).expect("Error reading file"))
 }
 
 fn create_int_test_1() -> Program {
-    let defs = load_from_file(&String::from("test-data/full-ipa.lsc")).expect("Error reading file");
-    let rules = load_from_file(&String::from("test-data/int-test-1.lsc")).expect("Error reading file");
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let rules = load_from_file(&String::from("test-data/int-test-1.lsc"), false).expect("Error reading file");
     construct(format!("{0}\n{1}", defs, rules))
 }
 

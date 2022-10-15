@@ -81,6 +81,8 @@ function save_lexicon_state() {
             current_lexicon_table_state.cell_data[i].push(element.value);
         }
     }
+
+    lexicon_states[current_lexicon_id] = current_lexicon_table_state;
 }
 
 function delete_lexicon() {
@@ -91,7 +93,6 @@ function delete_lexicon() {
 function switch_lexicon_state(new_index) {
     save_lexicon_state();
     delete_lexicon();
-    console.log(current_lexicon_table_state);
     lexicon_states[current_lexicon_id] = current_lexicon_table_state;
     current_lexicon_id = new_index;
     current_lexicon_table_state = lexicon_states[current_lexicon_id];

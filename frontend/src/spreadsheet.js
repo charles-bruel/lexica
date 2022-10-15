@@ -326,6 +326,8 @@ function save_spreadsheet_state() {
         var temp = parseInt(elems[i + 1].replace("px", ""));
         current_spreadsheet_state.column_widths.push(temp);
     }
+
+    spreadsheet_states[current_spreadsheet_id] = current_spreadsheet_state;
 }
 
 function delete_spreadsheet() {
