@@ -30,7 +30,7 @@ function create_socket() {
                 post_message({SaveFile: {file_path: document.getElementById("save-file-location").value, data: get_state_for_save(), overwrite: true}});
             }
         } else if (obj == "Success") {
-
+            //Do nothing
         } else {
             alert(`[message] Unknown data received from server: ${event.data}`);
         }
@@ -41,11 +41,11 @@ function create_socket() {
         temp.textContent = "Not Connected";
         temp.style.color = "red";
         if (event.wasClean) {
-            alert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+            // alert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
         } else {
             // e.g. server process killed or network down
             // event.code is usually 1006 in this case
-            alert('[close] Connection died');
+            // alert('[close] Connection died');
         }
         var elems = document.getElementsByClassName("require-connection");
         for(var i = 0;i < elems.length;i ++){
