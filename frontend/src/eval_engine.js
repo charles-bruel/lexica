@@ -16,7 +16,7 @@ function handle_run(input, pos) {
     input = get_top_level_parens_content(input);
     var params = input.split(splitter_re);
     if(!Object.hasOwn(conversions_to_send, params[0])) conversions_to_send[params[0]] = [];
-    conversions_to_send[params[0]].push({ id: conversion_id, data: params[1] });
+    conversions_to_send[params[0]].push({ id: conversion_id, data: { Ok: params[1] }});
     spreadsheet_references.push({ id: conversion_id++, val: pos})
     return "AWAITING RESULT";
 }
@@ -49,7 +49,7 @@ function handle_sc_response(entries) {
         if(spreadsheet_references[entry.id] !== null) {
             var ref = spreadsheet_references[entry.id];
             var element = document.getElementById("spreadsheet-" + ref.val.i + ":" + ref.val.j);
-            element.value = entry.data;
+            element.value = entry.data.Ok;
         }
     }
 }

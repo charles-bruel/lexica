@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
+use std::collections::{HashMap, VecDeque};
+use std::fmt;
+
+use super::websocket_handler::WebSocketResponse;
 use super::priority_queue::PriorityQueue;
 
 pub struct Program {
@@ -116,10 +120,10 @@ pub struct Letter {
 }
 
 impl Letter {
-    pub fn get_symbol(&self, program: &Program) -> String{
+    pub fn get_symbol(&self, program: &Program) -> std::result::Result<String, ApplicationError> {
         let temp = program.letter_to_symbol.get(self);
         match temp {
-            Some(result) => result.to_string(),
+            Some(result) => Ok(result.to_string()),
             None => {
                 let mut queue: PriorityQueue<(u64, u64, &str), i8> = PriorityQueue::new();
                 queue.push((self.value, self.value, ""), 0);
@@ -127,7 +131,7 @@ impl Letter {
                 let mut depth: u16 = 0;
                 while depth < 1024 {
                     if queue.is_empty() {
-                        panic!("Could not find matching symbol for {:#066b}", self.value);
+                        return Err(ApplicationError::IntoConversionError(format!("Could not find matching symbol for {:#066b}", self.value)));
                     }
                     let ((value, prev_node, current_symbol), priority) = queue.pop().unwrap();
 
@@ -144,25 +148,25 @@ impl Letter {
 
                     let letter = Letter { value: value };
                     if program.letter_to_symbol.contains_key(&letter){
-                        let mut result = letter.get_symbol(program);
+                        let mut result = letter.get_symbol(program)?;
                         let mut current_node = value;
                         let mut depth2: u16 = 0;
                         while depth2 < 128 {
                             let (new_node, symbol) = match completed_nodes.get(&current_node) {
                                 Some(val) => val,
-                                None => return result,
+                                None => return Ok(result),
                             };
                             current_node = *new_node;
                             result.push_str(symbol);
                             depth2 += 1;
                         }
-                        panic!("Could not find matching symbol for {:#066b}", self.value);
+                        return Err(ApplicationError::IntoConversionError(format!("Could not find matching symbol for {:#066b}", self.value)));
                     }
 
                     depth += 1
                 }
                 
-                panic!("Could not find matching symbol for {:#066b}", self.value);
+                return Err(ApplicationError::IntoConversionError(format!("Could not find matching symbol for {:#066b}", self.value)));
             },
         }
     }
@@ -459,20 +463,39 @@ pub fn create_enviorment_predicate(predicate: Box<dyn Predicate>, min: u8, max: 
     }
 }
 
-pub fn to_string(program: &Program, word: Vec<Letter>) -> String {
+pub fn to_string(program: &Program, word: Vec<Letter>) -> std::result::Result<String, ApplicationError> {
     let mut result = String::from("");
     for l in word {
-        result += &l.get_symbol(&program);
+        result += &l.get_symbol(&program)?;
     }
-    return result;
+    return Ok(result);
 }
 
 pub struct ThreadContext {
     pub programs: HashMap<String, Program>,
+    pub queued_extra_messages: VecDeque<WebSocketResponse>,
 }
 
 pub fn create_thread_context() -> ThreadContext {
     ThreadContext {
         programs: HashMap::new(),
+        queued_extra_messages: VecDeque::new(),
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ApplicationError {
+    IntoConversionError(String),
+    OutofConversionError(String),
+    InternalError(String),
+}
+
+impl fmt::Display for ApplicationError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ApplicationError::IntoConversionError(v) => write!(f, "IntoConversionError({})", v),
+            ApplicationError::OutofConversionError(v) => write!(f, "OutofConversionError({})", v),
+            ApplicationError::InternalError(v) => write!(f, "InternalError({})", v),
+        }
     }
 }

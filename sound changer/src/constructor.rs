@@ -118,13 +118,13 @@ pub fn construct(input: String) -> Program {
     return program;
 }
 
-pub fn construct_words(program: &Program, input: String) -> Vec<Vec<Letter>> {
+pub fn construct_words(program: &Program, input: String) -> std::result::Result<Vec<Vec<Letter>>, ApplicationError> {
     let lines: Vec<&str> = input.split("\n").collect();
     let mut result: Vec<Vec<Letter>> = Vec::new();
     for l in lines {
-        result.push(from_string(&program, &String::from(l.trim())));
+        result.push(from_string(&program, &String::from(l.trim()))?);
     }
-    return result;
+    return Ok(result);
 }
 
 fn construct_diacritic(program: &mut Program, line: &Vec<&str>) {

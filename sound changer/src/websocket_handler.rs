@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use super::data::*;
+use super::data::{ThreadContext, to_string, ApplicationError};
 use super::applicator::*;
 use super::io::*;
 
@@ -23,8 +23,8 @@ pub enum WebSocketResponse {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SCConversion {
-    id: u32,
-    data: String,
+    pub id: u32,
+    pub data: Result<String, ApplicationError>,
 }
 
 pub fn decode(raw_message: String) -> WebSocketMessage {
@@ -48,7 +48,7 @@ impl WebSocketMessage {
 }
 
 impl WebSocketResponse {
-    pub fn handle(&self, context: &mut ThreadContext) -> Option<String> {
+    pub fn handle(&self) -> Option<String> {
         let temp = serde_json::to_string(self);
         match temp {
             Ok(data) => Some(data),
@@ -76,17 +76,44 @@ fn handle_load_file(file_path: &String) -> WebSocketResponse {
     }
 }
 
-fn handle_run_sc(program_name: &String, to_convert: &Vec<SCConversion>, context: &ThreadContext) -> WebSocketResponse {
+fn send_error_response(error: (ApplicationError, usize, String), context: &mut ThreadContext) {
+    let response = WebSocketResponse::Error { message: format!("Issue converting word \"{}\" (id: {}), error: {}", error.2, error.1, error.0) };
+
+    context.queued_extra_messages.push_back(response);
+}
+
+fn handle_run_sc(program_name: &String, to_convert: &Vec<SCConversion>, context: &mut ThreadContext) -> WebSocketResponse {
     if context.programs.contains_key(program_name) {
         let program = context.programs.get(program_name).unwrap();
         let mut result = (*to_convert).clone();
 
+        let mut errors: Vec<(ApplicationError, usize, String)> = Vec::new();
+
         let mut i: usize = 0;
         while i < result.len() {
-            let output = to_string(&program, program.apply(from_string(&program, &result[i].data)));
-
-            result[i].data = output;
+            if !&result[i].data.is_ok() {
+                i += 1;
+                continue;
+            }
+            let input = result[i].data.as_ref().unwrap();
+            match from_string(&program, input) {
+                Ok(val) => {
+                    match program.apply(val) {
+                        Ok(v) => {
+                            let output = to_string(&program, v);
+                            result[i].data = output;
+                        },
+                        Err(v) => { errors.push((v, i, input.clone())); },
+                    };
+                },
+                Err(v) => { errors.push((v, i, input.clone())); },
+            };
+            
             i += 1;
+        }
+
+        for x in errors {
+            send_error_response(x, context);
         }
 
         WebSocketResponse::RunSCResult { to_convert: result }

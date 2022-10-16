@@ -148,8 +148,8 @@ fn test_positive_negative_predicate() {
 #[test]
 fn test_letter_creation() {
     let program = create_diacritic_test_program();
-    let letter = from_string(&program, &String::from("1"))[0];
-    assert_eq!("1", letter.get_symbol(&program));
+    let letter = from_string(&program, &String::from("1")).unwrap()[0];
+    assert_eq!("1", letter.get_symbol(&program).unwrap());
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn test_diacritics_a() {
     let (_, key) = parse_features(&program, "[A1 B1 C1 +toggleA]");
     let letter = Letter { value: key };
 
-    assert_eq!("1ᵃ", letter.get_symbol(&program));
+    assert_eq!("1ᵃ", letter.get_symbol(&program).unwrap());
 }
 
 #[test]
@@ -167,7 +167,7 @@ fn test_diacritics_b() {
     let (_, key) = parse_features(&program, "[A2 B1 C1]");
     let letter = Letter { value: key };
 
-    assert_eq!("1a", letter.get_symbol(&program));
+    assert_eq!("1a", letter.get_symbol(&program).unwrap());
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn test_diacritics_c() {
     let (_, key) = parse_features(&program, "[A3 B1 C1]");
     let letter = Letter { value: key };
 
-    assert_eq!("1aA", letter.get_symbol(&program));
+    assert_eq!("1aA", letter.get_symbol(&program).unwrap());
 }
 
 #[test]
@@ -185,7 +185,7 @@ fn test_diacritics_d() {
     let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleA]");
     let letter = Letter { value: key };
 
-    assert!(is_anagram(String::from("1aAᵃ"), letter.get_symbol(&program)));
+    assert!(is_anagram(String::from("1aAᵃ"), letter.get_symbol(&program).unwrap()));
 }
 
 #[test]
@@ -194,7 +194,7 @@ fn test_diacritics_e() {
     let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleZ]");
     let letter = Letter { value: key };
 
-    assert!(is_anagram(String::from("1aAᶻ"), letter.get_symbol(&program)));
+    assert!(is_anagram(String::from("1aAᶻ"), letter.get_symbol(&program).unwrap()));
 }
 
 #[test]
@@ -203,7 +203,7 @@ fn test_diacritics_f() {
     let (_, key) = parse_features(&program, "[A3 B3 C3]");
     let letter = Letter { value: key };
 
-    assert!(is_anagram(String::from("1aAbBcC"), letter.get_symbol(&program)));
+    assert!(is_anagram(String::from("1aAbBcC"), letter.get_symbol(&program).unwrap()));
 }
 
 #[test]
@@ -212,7 +212,7 @@ fn test_diacritics_g() {
     let (_, key) = parse_features(&program, "[A3 B3 C3 +toggleA +toggleB +toggleC]");
     let letter = Letter { value: key };
 
-    assert!(is_anagram(String::from("1aAbBcCᵃᵇᶜ"), letter.get_symbol(&program)));
+    assert!(is_anagram(String::from("1aAbBcCᵃᵇᶜ"), letter.get_symbol(&program).unwrap()));
 }
 
 #[test]
@@ -254,9 +254,9 @@ fn test_int_1() {
     let lines: Vec<&str> = words.split("\n").collect();
     for l in lines {
         let parts: Vec<&str> = l.split(":").collect();
-        let word = from_string(&program, &String::from(parts[0].trim()));
-        let result = to_string(&program, program.apply(word));
-        assert_eq!(result, parts[1].trim());
+        let word = from_string(&program, &String::from(parts[0].trim())).unwrap();
+        let result = to_string(&program, program.apply(word).unwrap());
+        assert_eq!(result.unwrap(), parts[1].trim());
     }
 }
 

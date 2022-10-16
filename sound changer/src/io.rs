@@ -135,13 +135,22 @@ pub fn web_socket_listener() {
                 use std::time::Instant;
                 let now = Instant::now();
 
+
                 let message = decode(msg.to_string());
                 let response = message.handle(&mut context);
-                let response_message = response.handle(&mut context);
+                let response_message = response.handle();
                 match response_message {
                     Some(msg) => push_messages(&mut websocket, msg),
                     None => panic!("Couldn't serialize response"),
                 };
+
+                while context.queued_extra_messages.len() > 0 {
+                    let extra_message = context.queued_extra_messages.pop_front().unwrap().handle();
+                    match extra_message {
+                        Some(msg) => push_messages(&mut websocket, msg),
+                        None => panic!("Couldn't serialize response"),
+                    };
+                }
 
                 let elapsed = now.elapsed();
                 match message {
