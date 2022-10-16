@@ -122,7 +122,7 @@ pub fn construct_words(program: &Program, input: String) -> Vec<Vec<Letter>> {
     let lines: Vec<&str> = input.split("\n").collect();
     let mut result: Vec<Vec<Letter>> = Vec::new();
     for l in lines {
-        result.push(from_string(&program, String::from(l.trim())));
+        result.push(from_string(&program, &String::from(l.trim())));
     }
     return result;
 }

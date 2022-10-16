@@ -18,6 +18,9 @@ var current_spreadsheet_id = 0;
 var spreadsheet_states = [current_spreadsheet_state];
 var spreadsheet_container;
 
+var last_focused_cell = null;
+var underyling_editor_mode = false;
+
 function generate_cells() {
     var container = document.getElementById("spreadsheet-container");
     var countx = 0;
@@ -203,15 +206,41 @@ function populate_headers() {
     container.appendChild(create_expansion_button_columns(current_spreadsheet_state.num_columns + 1));
 }
 
+function handle_blur(element, i, j) {
+    last_focused_cell = null;
+    if(underyling_editor_mode) {
+        underyling_editor_mode = false;
+        element.value = eval_value(element.value, { i: i, j:j });
+        set_root_variable("--select-color", "blue");
+        current_spreadsheet_state.underlying_cell_data[i][j] = element.value;//TODO FIXME
+    }
+}
+
+function handle_focus(element, i, j) {
+    if(last_focused_cell == element) {
+        //Enter underlying value editor
+        underyling_editor_mode = true;
+        set_root_variable("--select-color", "green");
+    } else {
+        last_focused_cell = element;
+    }
+}
+
+function populate_single_cell(container, i, j) {
+    var element = document.createElement("input");
+    element.id = "spreadsheet-" + i + ":" + j;
+    element.style.gridColumnStart = j + 2;
+    element.style.gridRowStart = i + 2;
+    container.appendChild(element);
+    element.addEventListener("click", function() { handle_focus(element, i, j); });
+    element.addEventListener("blur", function() { handle_blur(element, i, j); });
+}
+
 function populate_cells() {
     var container = document.getElementById("spreadsheet-container");
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
-            var element = document.createElement("input");
-            element.id = "spreadsheet-" + i + ":" + j;
-            element.style.gridColumnStart = j + 2;
-            element.style.gridRowStart = i + 2;
-            container.appendChild(element);
+            populate_single_cell(container, i, j);
         }
     }
 }
@@ -345,7 +374,6 @@ function switch_spreadsheet_state(new_index) {
 }
 
 create_spreadsheet();
-
 
 document.body.addEventListener("keyup", function(event) {
     if (event.key === "Enter") {

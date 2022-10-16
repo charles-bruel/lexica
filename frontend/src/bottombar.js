@@ -12,7 +12,6 @@ var bottom_bar_state = {
 function set_root_variable(variable_name, value) {
     var r = document.querySelector(':root');
     r.style.setProperty(variable_name, value);
-
 }
 
 function handle_bottom_bar_button(index) {
@@ -93,3 +92,4 @@ function delete_bottom_bar() {
 
 create_bottom_bar();
 handle_bottom_bar_button(bottom_bar_state.selected_index);
+set_root_variable("--select-color", "blue");

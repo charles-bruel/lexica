@@ -4,6 +4,8 @@ use std::path::Path;
 use std::net::TcpListener;
 use std::thread::spawn;
 use tungstenite::{accept, Message, WebSocket};
+use crate::data::create_thread_context;
+
 use super::websocket_handler::*;
 
 #[derive(Debug)]
@@ -116,23 +118,41 @@ pub fn web_socket_listener() {
                 }
             };
             println!("Successfully opened websocket");
+
+            let mut context = create_thread_context();
+
+            //Hacky thing for testing
+            let prog = super::constructor::construct(super::io::load_from_file(&String::from("local/sava1.csc"), true).expect(""));
+            context.programs.insert(String::from("sava1"), prog);
+
             loop {
-                let msg = websocket.read_message().unwrap();
+                let temp = websocket.read_message();
+                let msg = match temp {
+                    Ok(v) => v,
+                    Err(_) => break,
+                };
 
                 use std::time::Instant;
                 let now = Instant::now();
 
                 let message = decode(msg.to_string());
-                let response = message.handle();
-                let response_message = response.handle();
+                let response = message.handle(&mut context);
+                let response_message = response.handle(&mut context);
                 match response_message {
                     Some(msg) => push_messages(&mut websocket, msg),
                     None => panic!("Couldn't serialize response"),
                 };
 
                 let elapsed = now.elapsed();
-                print!("Handled message in : {:.2?}\n", elapsed);
+                match message {
+                    WebSocketMessage::SaveFile { file_path:_, data:_, overwrite:_ } => print!("Handled save file message in : {:.2?}\n", elapsed),
+                    WebSocketMessage::LoadFile { file_path:_ } => print!("Handled load file message in : {:.2?}\n", elapsed),
+                    WebSocketMessage::LoadProgram { name:_, contents:_ } => print!("Handled load program message in : {:.2?}\n", elapsed),
+                    WebSocketMessage::RunSC { program_name:_, to_convert:_ } => print!("Handled run sound changer message in : {:.2?}\n", elapsed),
+                    WebSocketMessage::Unknown { error:_ } => print!("Handled unknown message in : {:.2?}\n", elapsed),
+                }
             }
+            println!("Thread closed")
         });
     }
 }

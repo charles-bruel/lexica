@@ -148,7 +148,7 @@ fn test_positive_negative_predicate() {
 #[test]
 fn test_letter_creation() {
     let program = create_diacritic_test_program();
-    let letter = from_string(&program, String::from("1"))[0];
+    let letter = from_string(&program, &String::from("1"))[0];
     assert_eq!("1", letter.get_symbol(&program));
 }
 
@@ -254,7 +254,7 @@ fn test_int_1() {
     let lines: Vec<&str> = words.split("\n").collect();
     for l in lines {
         let parts: Vec<&str> = l.split(":").collect();
-        let word = from_string(&program, String::from(parts[0].trim()));
+        let word = from_string(&program, &String::from(parts[0].trim()));
         let result = to_string(&program, program.apply(word));
         assert_eq!(result, parts[1].trim());
     }

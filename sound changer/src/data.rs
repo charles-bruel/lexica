@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 use super::priority_queue::PriorityQueue;
 
 pub struct Program {
@@ -465,4 +465,14 @@ pub fn to_string(program: &Program, word: Vec<Letter>) -> String {
         result += &l.get_symbol(&program);
     }
     return result;
+}
+
+pub struct ThreadContext {
+    pub programs: HashMap<String, Program>,
+}
+
+pub fn create_thread_context() -> ThreadContext {
+    ThreadContext {
+        programs: HashMap::new(),
+    }
 }

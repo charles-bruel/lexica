@@ -289,7 +289,7 @@ impl super::data::RuleByte {
     }
 }
 
-pub fn from_string(program: &Program, input: String) -> Vec<Letter> {
+pub fn from_string(program: &Program, input: &String) -> Vec<Letter> {
     let mut string = input.clone();
     let mut result: Vec<Letter> = Vec::new();
     let mut keys: Vec<&str> = Vec::new();
