@@ -293,7 +293,107 @@ fn test_restrict_path_4() {
     match result {
         None => assert!(false),
         Some(v) => assert!(matches!(v, IOError::InvalidFilePath(_))),
-    } 
+    }
+}
+
+#[test]
+fn test_unknown_command_error_a() {
+    const PROG: &str = "foo";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 1))),
+    }
+}
+
+#[test]
+fn test_unknown_command_error_b() {
+    const PROG: &str = "feature_def\nfoo";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+    }
+}
+
+#[test]
+fn test_unknown_command_error_c() {
+    const PROG: &str = "symbols\nfoo";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+    }
+}
+
+#[test]
+fn test_unknown_command_error_d() {
+    const PROG: &str = "diacritics\nfoo";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+    }
+}
+
+#[test]
+fn test_unknown_command_error_e() {
+    const PROG: &str = "rules\nfoo";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+    }
+}
+
+#[test]
+fn test_hanging_section_error_a() {
+    const PROG: &str = "feature_def";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+    }
+}
+
+#[test]
+fn test_hanging_section_error_b() {
+    const PROG: &str = "symbols";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+    }
+}
+
+#[test]
+fn test_hanging_section_error_c() {
+    const PROG: &str = "diacritics";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+    }
+}
+
+#[test]
+fn test_hanging_section_error_d() {
+    const PROG: &str = "rules";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+    }
+}
+
+#[test]
+fn test_hanging_section_error_e() {
+    const PROG: &str = "rules\nrule";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 2))),
+    }
 }
 
 fn is_anagram(a: String, b: String) -> bool {
@@ -305,13 +405,13 @@ fn is_anagram(a: String, b: String) -> bool {
 }
 
 fn create_diacritic_test_program() -> Program {
-    construct(load_from_file(&String::from("test-data/diacritics-test.lsc"), false).expect("Error reading file"))
+    construct(load_from_file(&String::from("test-data/diacritics-test.lsc"), false).expect("Error reading file")).unwrap()
 }
 
 fn create_int_test_1() -> Program {
     let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
     let rules = load_from_file(&String::from("test-data/int-test-1.lsc"), false).expect("Error reading file");
-    construct(format!("{0}\n{1}", defs, rules))
+    construct(format!("{0}\n{1}", defs, rules)).unwrap()
 }
 
 fn random_letter() -> super::data::Letter {

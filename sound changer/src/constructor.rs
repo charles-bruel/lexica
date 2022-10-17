@@ -12,7 +12,7 @@ enum State {
     RuleAccum,
 }
 
-pub fn construct(input: String) -> Program {
+pub fn construct(input: String) -> std::result::Result<Program, ConstructorError> {
     use std::time::Instant;
     let now = Instant::now();
 
@@ -23,9 +23,13 @@ pub fn construct(input: String) -> Program {
 
     let mut rule_accum: Vec<&str> = Vec::new();
 
+    let mut line_number: u16 = 0;
+
     for f in lines {
-        let mut line = f.clone();
-        line = line.trim();
+        line_number += 1;
+
+        let line_og = f.clone();
+        let mut line = line_og.trim();
 
         if line.contains("#") {
             let temp: Vec<&str> = line.split("#").collect();
@@ -47,7 +51,7 @@ pub fn construct(input: String) -> Program {
                 } else if words[0] == "diacritics" {
                     current_state = State::Diacritics;
                 } else if words[0] != "" {
-                    //panic!("Unknown command on line \"{}\"", line);
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
                 }
             },
             State::Features => {
@@ -59,7 +63,7 @@ pub fn construct(input: String) -> Program {
                     end_feature_def(&mut program);
                     current_state = State::None;
                 } else if words[0] != "" {
-                    panic!("Unknown command on line \"{}\"", line);
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
                 }
             },
             State::Symbols => {
@@ -68,7 +72,7 @@ pub fn construct(input: String) -> Program {
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    panic!("Unknown command on line \"{}\"", line);
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
                 }
             },
             State::Rules => {
@@ -79,7 +83,7 @@ pub fn construct(input: String) -> Program {
                     end_feature_def(&mut program);
                     current_state = State::None;
                 } else if words[0] != "" {
-                    panic!("Unknown command on line \"{}\"", line);
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
                 }
             },
             State::RuleAccum => {
@@ -97,7 +101,7 @@ pub fn construct(input: String) -> Program {
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    panic!("Unknown command on line \"{}\"", line);
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
                 }
             },
         }
@@ -105,17 +109,17 @@ pub fn construct(input: String) -> Program {
 
     match current_state {
         State::None => {},
-        State::Features => panic!("Features section never finished"),
-        State::Symbols => panic!("Symbols section never finished"),
-        State::Diacritics => panic!("Diacritics section never finished"),
-        State::Rules => panic!("Rules section never finished"),
-        State::RuleAccum => panic!("Rule never finished"),
+        State::Features => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
+        State::Symbols => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
+        State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
+        State::Rules => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
+        State::RuleAccum => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
     }
 
     let elapsed = now.elapsed();
     print!("Done loading and constructing program in {:.2?}\n", elapsed);
 
-    return program;
+    return Ok(program);
 }
 
 pub fn construct_words(program: &Program, input: String) -> std::result::Result<Vec<Vec<Letter>>, ApplicationError> {
