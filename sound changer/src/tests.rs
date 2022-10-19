@@ -396,6 +396,36 @@ fn test_hanging_section_error_e() {
     }
 }
 
+#[test]
+fn test_malformed_feature_def_error_a() {
+    const PROG: &str = "feature_def\nswitch a(b, c)";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2))),
+    }
+}
+
+#[test]
+fn test_malformed_feature_def_error_b() {
+    const PROG: &str = "feature_def\nfeature a(b, c)";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2))),
+    }
+}
+
+#[test]
+fn test_missing_node_error() {
+    const PROG: &str = "feature_def\nfeature a(b, c) d";
+    let result = construct(String::from(PROG));
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ConstructorError::MissingNode(_, _, 2))),
+    }
+}
+
 fn is_anagram(a: String, b: String) -> bool {
     let mut avec: Vec<char> = a.chars().collect();
     avec.sort();

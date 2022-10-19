@@ -504,6 +504,8 @@ impl fmt::Display for ApplicationError {
 pub enum ConstructorError {
     UnknownCommandError(String, String, u16),
     HangingSection(String, String, u16),
+    MalformedDefinition(String, String, u16),
+    MissingNode(String, String, u16),
 }
 
 impl fmt::Display for ConstructorError {
@@ -511,6 +513,8 @@ impl fmt::Display for ConstructorError {
         match self {
             ConstructorError::UnknownCommandError(a, b, c) => write_constructor_error(f, "UnknownCommandError", a, b, *c).expect("Error formatting error message"),
             ConstructorError::HangingSection(a, b, c) => write_constructor_error(f, "HangingSection", a, b, *c).expect("Error formatting error message"),
+            ConstructorError::MalformedDefinition(a, b, c) => write_constructor_error(f, "MalformedDefinition", a, b, *c).expect("Error formatting error message"),
+            ConstructorError::MissingNode(a, b, c) => write_constructor_error(f, "MissingNode", a, b, *c).expect("Error formatting error message"),
         };
         Ok(())
     }

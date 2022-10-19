@@ -56,9 +56,9 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
             },
             State::Features => {
                 if words[0] == "switch" {
-                    construct_switch_line(&mut program, &words);
+                    handle_err(construct_switch_line(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "feature" {
-                    construct_feature_def(&mut program, &words);
+                    handle_err(construct_feature_def(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
                     end_feature_def(&mut program);
                     current_state = State::None;
@@ -120,6 +120,20 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
     print!("Done loading and constructing program in {:.2?}\n", elapsed);
 
     return Ok(program);
+}
+
+fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, line_number: u16) -> std::result::Result<(), ConstructorError> {
+    match result {
+        Ok(_) => Ok(()),
+        Err(v) => {
+            Err(match v {
+                ConstructorError::UnknownCommandError(m, _, _) => ConstructorError::UnknownCommandError(m, line, line_number),
+                ConstructorError::HangingSection(m, _, _) => ConstructorError::HangingSection(m, line, line_number),
+                ConstructorError::MalformedDefinition(m, _, _) => ConstructorError::MalformedDefinition(m, line, line_number),
+                ConstructorError::MissingNode(m, _, _) => ConstructorError::MissingNode(m, line, line_number),
+            })
+        }
+    }
 }
 
 pub fn construct_words(program: &Program, input: String) -> std::result::Result<Vec<Vec<Letter>>, ApplicationError> {
@@ -954,9 +968,9 @@ fn bump_offsets_recurse(features: &mut Vec<Feature>, start_pos: usize, amount: u
     }
 }
 
-fn construct_switch_line(program: &mut Program, line: &Vec<&str>) {
+fn construct_switch_line(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        panic!("Malformed feature definition on line \"{}\"", line.join(" "));
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0));
     }
 
     let parameter_array: Vec<&str> = line[1].split("(").collect();
@@ -982,12 +996,14 @@ fn construct_switch_line(program: &mut Program, line: &Vec<&str>) {
         i += 1;
     }
 
-    assign_feature(program, Feature::SwitchType(temp), line[2]);    
+    assign_feature(program, Feature::SwitchType(temp), line[2])?;
+    
+    return Ok(());
 }
 
-fn construct_feature_def(program: &mut Program, line: &Vec<&str>) {
+fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        panic!("Malformed feature definition on line \"{}\"", line.join(" "));
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0));
     }
 
     if line[1].starts_with("+") {
@@ -999,7 +1015,7 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) {
         program.features_to_idx.insert(String::from(neg), (temp.id, 0));
         program.features_to_idx.insert(String::from(line[1]), (temp.id, 1));
 
-        assign_feature(program, Feature::FeatureDef(temp), line[2]);
+        assign_feature(program, Feature::FeatureDef(temp), line[2])?;
     } else if line[1].ends_with(")") && line[1].contains("(") {
         let parts: Vec<&str> = line[1].split("(").collect();
         if parts.len() != 2 {
@@ -1021,34 +1037,39 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) {
             i += 1;
         }
 
-        assign_feature(program, Feature::FeatureDef(temp), line[2]);
+        assign_feature(program, Feature::FeatureDef(temp), line[2])?;
     } else {
-        panic!("Malformed feature definition on line \"{}\"", line.join(" "));
+        if line.len() != 3 {
+            return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0));
+        }
     }
+    return Ok(());
 }
 
-fn assign_feature(program: &mut Program, feature: Feature, node_name: &str) {
+fn assign_feature(program: &mut Program, feature: Feature, node_name: &str) -> std::result::Result<(), ConstructorError> {
     if node_name == "all" || node_name == "root" {
         program.features.push(feature);
-        return;
+        return Ok(());
     }
     if node_name.starts_with("(") && node_name.ends_with(")") {
         let node_name_mod = node_name.trim_start_matches("(").trim_end_matches(")");
         let nodes: Vec<&str> = node_name_mod.split(",").collect();
         for n in nodes {
-            assign_feature_simple(program, feature.clone(), n.trim());
+            assign_feature_simple(program, feature.clone(), n.trim())?;
         }
     } else {
-        assign_feature_simple(program, feature, node_name);
+        assign_feature_simple(program, feature, node_name)?;
     }
+    return Ok(());
 }
 
-fn assign_feature_simple(program: &mut Program, feature: Feature, node_name: &str) {
+fn assign_feature_simple(program: &mut Program, feature: Feature, node_name: &str) -> std::result::Result<(), ConstructorError> {
     let mut add_count: u8 = 0;
     assign_feature_recurse(&mut program.features, &feature, node_name, &mut add_count);
     if add_count == 0 {
-        panic!("Could not find node {}", node_name);
+        return Err(ConstructorError::MissingNode(format!("Could not find node {}", node_name), String::from(""), 0));
     }
+    Ok(())
 }
 
 fn assign_feature_recurse(features: &mut Vec<Feature>, feature: &Feature, node_name: &str, add_count: &mut u8){
