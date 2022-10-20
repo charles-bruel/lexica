@@ -155,7 +155,7 @@ fn test_letter_creation() {
 #[test]
 fn test_diacritics_a() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A1 B1 C1 +toggleA]");
+    let (_, key) = parse_features(&program, "[A1 B1 C1 +toggleA]").expect("");
     let letter = Letter { value: key };
 
     assert_eq!("1ᵃ", letter.get_symbol(&program).unwrap());
@@ -164,7 +164,7 @@ fn test_diacritics_a() {
 #[test]
 fn test_diacritics_b() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A2 B1 C1]");
+    let (_, key) = parse_features(&program, "[A2 B1 C1]").expect("");
     let letter = Letter { value: key };
 
     assert_eq!("1a", letter.get_symbol(&program).unwrap());
@@ -173,7 +173,7 @@ fn test_diacritics_b() {
 #[test]
 fn test_diacritics_c() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A3 B1 C1]");
+    let (_, key) = parse_features(&program, "[A3 B1 C1]").expect("");
     let letter = Letter { value: key };
 
     assert_eq!("1aA", letter.get_symbol(&program).unwrap());
@@ -182,7 +182,7 @@ fn test_diacritics_c() {
 #[test]
 fn test_diacritics_d() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleA]");
+    let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleA]").expect("");
     let letter = Letter { value: key };
 
     assert!(is_anagram(String::from("1aAᵃ"), letter.get_symbol(&program).unwrap()));
@@ -191,7 +191,7 @@ fn test_diacritics_d() {
 #[test]
 fn test_diacritics_e() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleZ]");
+    let (_, key) = parse_features(&program, "[A3 B1 C1 +toggleZ]").expect("");
     let letter = Letter { value: key };
 
     assert!(is_anagram(String::from("1aAᶻ"), letter.get_symbol(&program).unwrap()));
@@ -200,7 +200,7 @@ fn test_diacritics_e() {
 #[test]
 fn test_diacritics_f() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A3 B3 C3]");
+    let (_, key) = parse_features(&program, "[A3 B3 C3]").expect("");
     let letter = Letter { value: key };
 
     assert!(is_anagram(String::from("1aAbBcC"), letter.get_symbol(&program).unwrap()));
@@ -209,7 +209,7 @@ fn test_diacritics_f() {
 #[test]
 fn test_diacritics_g() {
     let program = create_diacritic_test_program();
-    let (_, key) = parse_features(&program, "[A3 B3 C3 +toggleA +toggleB +toggleC]");
+    let (_, key) = parse_features(&program, "[A3 B3 C3 +toggleA +toggleB +toggleC]").expect("");
     let letter = Letter { value: key };
 
     assert!(is_anagram(String::from("1aAbBcCᵃᵇᶜ"), letter.get_symbol(&program).unwrap()));
@@ -218,7 +218,7 @@ fn test_diacritics_g() {
 #[test]
 fn test_0_feature_a() {
     let program = create_diacritic_test_program();
-    let predicate = construct_simple_predicate(&program, "[A1]");
+    let predicate = construct_simple_predicate(&program, "[A1]").expect("");
     let letter: Letter = Letter { value: 0 };
     assert!(!predicate.validate(&vec![letter], 0));
 }
@@ -226,7 +226,7 @@ fn test_0_feature_a() {
 #[test]
 fn test_0_feature_b() {
     let program = create_diacritic_test_program();
-    let predicate = construct_simple_predicate(&program, "[B1]");
+    let predicate = construct_simple_predicate(&program, "[B1]").expect("");
     let letter: Letter = Letter { value: 0 };
     assert!(!predicate.validate(&vec![letter], 0));
 }
@@ -234,7 +234,7 @@ fn test_0_feature_b() {
 #[test]
 fn test_0_feature_c() {
     let program = create_diacritic_test_program();
-    let predicate = construct_simple_predicate(&program, "[-toggleA]");
+    let predicate = construct_simple_predicate(&program, "[-toggleA]").expect("");
     let letter: Letter = Letter { value: 0 };
     assert!(predicate.validate(&vec![letter], 0));
 }
@@ -242,7 +242,7 @@ fn test_0_feature_c() {
 #[test]
 fn test_0_feature_d() {
     let program = create_diacritic_test_program();
-    let predicate = construct_simple_predicate(&program, "[+toggleA]");
+    let predicate = construct_simple_predicate(&program, "[+toggleA]").expect("");
     let letter: Letter = Letter { value: 0 };
     assert!(!predicate.validate(&vec![letter], 0));
 }
@@ -302,7 +302,7 @@ fn test_unknown_command_error_a() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 1))),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 1, _))),
     }
 }
 
@@ -312,7 +312,7 @@ fn test_unknown_command_error_b() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
     }
 }
 
@@ -322,7 +322,7 @@ fn test_unknown_command_error_c() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
     }
 }
 
@@ -332,7 +332,7 @@ fn test_unknown_command_error_d() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
     }
 }
 
@@ -342,7 +342,7 @@ fn test_unknown_command_error_e() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
     }
 }
 
@@ -352,7 +352,7 @@ fn test_hanging_section_error_a() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
     }
 }
 
@@ -362,7 +362,7 @@ fn test_hanging_section_error_b() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
     }
 }
 
@@ -372,7 +372,7 @@ fn test_hanging_section_error_c() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
     }
 }
 
@@ -382,7 +382,7 @@ fn test_hanging_section_error_d() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1))),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
     }
 }
 
@@ -392,7 +392,7 @@ fn test_hanging_section_error_e() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 2, _))),
     }
 }
 
@@ -402,7 +402,7 @@ fn test_malformed_feature_def_error_a() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2, _))),
     }
 }
 
@@ -412,7 +412,7 @@ fn test_malformed_feature_def_error_b() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2, _))),
     }
 }
 
@@ -422,7 +422,7 @@ fn test_missing_node_error() {
     let result = construct(String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::MissingNode(_, _, 2))),
+        Err(v) => assert!(matches!(v, ConstructorError::MissingNode(_, _, 2, _))),
     }
 }
 

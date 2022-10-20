@@ -51,7 +51,7 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
                 } else if words[0] == "diacritics" {
                     current_state = State::Diacritics;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
                 }
             },
             State::Features => {
@@ -60,19 +60,19 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
                 } else if words[0] == "feature" {
                     handle_err(construct_feature_def(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
-                    end_feature_def(&mut program);
+                    handle_err(end_feature_def(&mut program), String::from(line_og), line_number)?;
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
                 }
             },
             State::Symbols => {
                 if words[0] == "symbol" {
-                    construct_symbol(&mut program, &words);
+                    handle_err(construct_symbol(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
                 }
             },
             State::Rules => {
@@ -80,15 +80,15 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
                     rule_accum.push(line);
                     current_state = State::RuleAccum;
                 } else if words[0] == "end" {
-                    end_feature_def(&mut program);
+                    handle_err(end_feature_def(&mut program), String::from(line_og), line_number)?;
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
                 }
             },
             State::RuleAccum => {
                 if words[0] == "end" {
-                    construct_rule(&mut program, rule_accum);
+                    handle_err(construct_rule(&mut program, rule_accum), String::from(line_og), line_number)?;
                     rule_accum = Vec::new();
                     current_state = State::Rules;
                 } else {
@@ -97,11 +97,11 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
             },
             State::Diacritics => {
                 if words[0] == "diacritic" {
-                    construct_diacritic(&mut program, &words);
+                    handle_err(construct_diacritic(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number))
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
                 }
             },
         }
@@ -109,11 +109,11 @@ pub fn construct(input: String) -> std::result::Result<Program, ConstructorError
 
     match current_state {
         State::None => {},
-        State::Features => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
-        State::Symbols => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
-        State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
-        State::Rules => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
-        State::RuleAccum => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number)),
+        State::Features => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
+        State::Symbols => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
+        State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
+        State::Rules => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
+        State::RuleAccum => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
     }
 
     let elapsed = now.elapsed();
@@ -127,10 +127,15 @@ fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, l
         Ok(_) => Ok(()),
         Err(v) => {
             Err(match v {
-                ConstructorError::UnknownCommandError(m, _, _) => ConstructorError::UnknownCommandError(m, line, line_number),
-                ConstructorError::HangingSection(m, _, _) => ConstructorError::HangingSection(m, line, line_number),
-                ConstructorError::MalformedDefinition(m, _, _) => ConstructorError::MalformedDefinition(m, line, line_number),
-                ConstructorError::MissingNode(m, _, _) => ConstructorError::MissingNode(m, line, line_number),
+                ConstructorError::UnknownCommandError(m, _, _, n) => ConstructorError::UnknownCommandError(m, line, line_number, n),
+                ConstructorError::HangingSection(m, _, _, n) => ConstructorError::HangingSection(m, line, line_number, n),
+                ConstructorError::MalformedDefinition(m, _, _, n) => ConstructorError::MalformedDefinition(m, line, line_number, n),
+                ConstructorError::MissingNode(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
+                ConstructorError::FeatureOverflow(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
+                ConstructorError::MissingSymbol(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
+                ConstructorError::InvalidFeature(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
+                ConstructorError::MissingFeature(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
+                ConstructorError::ParseError(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
             })
         }
     }
@@ -145,56 +150,58 @@ pub fn construct_words(program: &Program, input: String) -> std::result::Result<
     return Ok(result);
 }
 
-fn construct_diacritic(program: &mut Program, line: &Vec<&str>) {
+fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 5 || line[3] != "=>" {
-        panic!("Malformed diacritic definition");
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed diacritic definition"), String::from(""), 0, line!()));
     }
     let mut symbol = String::from(line[1]);
     symbol.remove_matches("◌");
-    let (mask, key) = parse_features_simple(program, line[2]);
-    let (mod_mask, mod_key) = parse_features_simple(program, line[4]);
+    let (mask, key) = parse_features_simple(program, line[2])?;
+    let (mod_mask, mod_key) = parse_features_simple(program, line[4])?;
 
     if mask != mod_mask {
-        panic!("Features don't have the same mask for diacritic");
+        return Err(ConstructorError::MalformedDefinition(String::from("Features don't have the same mask for diacritic"), String::from(""), 0, line!()));
     }
 
     let diacritic = create_diacritic(symbol, mask, key, mod_key);
     program.diacritics.push(diacritic);
+    Ok(())
 }
 
-fn construct_rule(program: &mut Program, line: Vec<&str>){
+fn construct_rule(program: &mut Program, line: Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() < 2 {
-        panic!("Malformed rule, header: \"{}\"", line[0]);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule definition"), String::from(""), 0, line!()));
     }
-    let (name, flags) = construct_rule_header(line[0]);
+    let (name, flags) = construct_rule_header(line[0])?;
 
     let mut i: usize = 1;
     let mut rule_bytes: Vec<RuleByte> = Vec::new();
     while i < line.len() {
-        rule_bytes.push(construct_rule_byte(program, line[i]));
+        rule_bytes.push(construct_rule_byte(program, line[i])?);
         i += 1;
     }
 
     let temp = create_rule(name, rule_bytes, flags);
     program.rules.push(temp);
+    Ok(())
 }
 
-fn construct_rule_byte(program: &Program, data: &str) -> RuleByte {
+fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<RuleByte, ConstructorError> {
     let split1: Vec<&str> = data.split("=>").collect();
     if split1.len() != 2 {
-        panic!("Malformed rule byte on line: \"{}\"", data);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!()));
     }
 
     let split2: Vec<&str> = split1[1].split("/").collect();
     if split2.len() > 2 {
-        panic!("Malformed rule byte on line: \"{}\"", data);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!()));
     }
 
     let predicate = split1[0].trim();
     let (result, enviorment) = match split2.len() {
         1 => { (split2[0].trim(), "") }
         2 => { (split2[0].trim(), split2[1].trim()) }
-        _ => { panic!("Malformed rule byte on line: \"{}\"", data); }
+        _ => {         return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!())); }
     };
 
     let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])(?![^\{]*\})").unwrap();
@@ -204,7 +211,7 @@ fn construct_rule_byte(program: &Program, data: &str) -> RuleByte {
     let result_split: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
     if predicate_split.len() != result_split.len() {
-        panic!("Predicate and result have a different number of elements on rule \"{}\"", data);
+        return Err(ConstructorError::MalformedDefinition(String::from("Predicate and result have a different number of elements on rule"), String::from(""), 0, line!()));
     }
 
     if predicate_split.len() > 1 {
@@ -212,17 +219,17 @@ fn construct_rule_byte(program: &Program, data: &str) -> RuleByte {
         let mut predicates: Vec<(Vec<Box<dyn Predicate>>, Vec<(usize, u64)>)> = Vec::new();
         let mut results: Vec<(Vec<Box<dyn Result>>, Vec<usize>)> = Vec::new();
         while i < predicate_split.len() {
-            predicates.push(construct_predicate(program, predicate_split[i]));
-            results.push(construct_result(program, result_split[i]));
+            predicates.push(construct_predicate(program, predicate_split[i])?);
+            results.push(construct_result(program, result_split[i])?);
             i += 1;
         }
-        return create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment));
+        return Ok(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment)?));
     } else {
-        return create_rule_byte(construct_predicate(program, predicate), construct_result(program, result), construct_enviorment(program, enviorment));
+        return Ok(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment)?));
     }
 }
 
-fn construct_predicate(program: &Program, predicate: &str) -> (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>) {
+fn construct_predicate(program: &Program, predicate: &str) -> std::result::Result<(Vec<Box<dyn Predicate>>, Vec<(usize, u64)>), ConstructorError> {
     let mut input = predicate.trim();
 
     let mut captures: Vec<(usize, u64)> = Vec::new();
@@ -231,54 +238,54 @@ fn construct_predicate(program: &Program, predicate: &str) -> (Vec<Box<dyn Predi
         input = temp[0];
         let mut i: usize = 1;
         while i < temp.len() {
-            let val = construct_capture(program, temp[i].trim());
+            let val = construct_capture(program, temp[i].trim())?;
             captures.push(val);
             i += 1;
         }
     }
 
     if input == "*" { 
-        return (Vec::new(), Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     }
     if input.starts_with("{") && input.ends_with("}") {
         input = input.trim_end_matches("}").trim_start_matches("{");
-        let results = construct_predicates(program, input);
-        return (results, captures);
+        let results = construct_predicates(program, input)?;
+        return Ok((results, captures));
     }
     if input.contains("{") || input.contains("}") {
-        panic!("Malformed predicate: \"{}\"", input);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed predicate definition"), String::from(""), 0, line!()));
     }
     if input.starts_with("(") && input.ends_with(")") {
         input = input.trim_end_matches(")").trim_start_matches("(");
-        let results = construct_predicates(program, input);
+        let results = construct_predicates(program, input)?;
         let multi_predicate = create_multi_predicate(results, false);
-        return (vec!(Box::new(multi_predicate)), captures);
+        return Ok((vec!(Box::new(multi_predicate)), captures));
     }
     if input.contains("(") || input.contains(")") {
-        panic!("Malformed predicate: \"{}\"", input);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed predicate definition"), String::from(""), 0, line!()));
     }
 
-    return (vec!(construct_simple_predicate(program, input)), captures);
+    return Ok((vec!(construct_simple_predicate(program, input)?), captures));
 }
 
-fn construct_predicates(program: &Program, input: &str) -> Vec<Box<dyn Predicate>> {
+fn construct_predicates(program: &Program, input: &str) -> std::result::Result<Vec<Box<dyn Predicate>>, ConstructorError> {
     let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])(?![^\{]*\})").unwrap();
     let mut temp = regex.replace_all(input, String::from_utf8(vec![0]).unwrap());
     let input_split: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
     let mut results: Vec<Box<dyn Predicate>> = Vec::new();
     for x in input_split {
-        let (mut pred, _) = construct_predicate(program, x);
+        let (mut pred, _) = construct_predicate(program, x)?;
         results.append(&mut pred);
     }
 
-    return results;
+    return Ok(results);
 }
 
-fn construct_capture(program: &Program, capture: &str) -> (usize, u64) {
+fn construct_capture(program: &Program, capture: &str) -> std::result::Result<(usize, u64), ConstructorError> {
     if capture.contains("(") {
         if !capture.ends_with(")") {
-            panic!("Malformed capture \"{}\"", capture);
+            return Err(ConstructorError::MalformedDefinition(String::from("Malformed capture definition"), String::from(""), 0, line!()));
         }
 
         let split: Vec<&str> = capture.split("(").collect();
@@ -289,7 +296,7 @@ fn construct_capture(program: &Program, capture: &str) -> (usize, u64) {
             Some(val) => {
                 program.idx_to_features.get(val).unwrap()
             },
-            None => panic!("Could find feature in capture \"{}\"", capture),
+            None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", split[1].trim_end_matches(")")), String::from(""), 0, line!())); },
         };
 
         let offset = 64 - feature.start_byte() - feature.length();
@@ -297,43 +304,43 @@ fn construct_capture(program: &Program, capture: &str) -> (usize, u64) {
 
         let temp = split[0].parse::<usize>();
         match temp {
-            Ok(val) => return (val, mask),
-            Err(_) => panic!("Could not read capture id \"{}\"", capture),
+            Ok(val) => return Ok((val, mask)),
+            Err(_) => { return Err(ConstructorError::ParseError(format!("Could not read capture id {}", split[0]), String::from(""), 0, line!())); },
         }
     } else {
         let temp = capture.parse::<usize>();
         match temp {
-            Ok(val) => return (val, 0xFFFFFFFFFFFFFFFF),
-            Err(_) => panic!("Could not read capture id \"{}\"", capture),
+            Ok(val) => return Ok((val, 0xFFFFFFFFFFFFFFFF)),
+            Err(_) => { return Err(ConstructorError::ParseError(format!("Could not read capture id {}", capture), String::from(""), 0, line!())); },
         }
     }
 }
 
-pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> Box<dyn Predicate> {
+pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> std::result::Result<Box<dyn Predicate>, ConstructorError> {
     if predicate.starts_with("[") && predicate.ends_with("]") {
         if predicate.contains("!") {
-            let (mask, key, masks, keys) = parse_features_negative(program, predicate);
+            let (mask, key, masks, keys) = parse_features_negative(program, predicate)?;
             let predicate = create_positive_negative_predicate(mask, key, masks, keys);
-            return Box::new(predicate);  
+            return Ok(Box::new(predicate));  
         } else {
-            let (mask, key) = parse_features(program, predicate);
+            let (mask, key) = parse_features(program, predicate)?;
             let predicate = create_simple_predicate(key, mask);
-            return Box::new(predicate);    
+            return Ok(Box::new(predicate));    
         }
     }
     if predicate.contains("[") || predicate.contains("]") {
-        panic!("Malformed predicate: \"{}\"", predicate);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed predicate"), String::from(""), 0, line!()));
     }
 
     if program.symbol_to_letter.contains_key(predicate) {
         let (letter, mask) = program.symbol_to_letter.get(predicate).unwrap();
         let predicate = create_simple_predicate(letter.value, *mask);
-        return Box::new(predicate);
+        return Ok(Box::new(predicate));
     }
-    panic!("Could not find symbol \"{}\"", predicate);
+    return Err(ConstructorError::MissingSymbol(String::from("Could not find symbol"), String::from(""), 0, line!()));
 }
 
-fn construct_result(program: &Program, result: &str) -> (Vec<Box<dyn Result>>, Vec<usize>) {
+fn construct_result(program: &Program, result: &str) -> std::result::Result<(Vec<Box<dyn Result>>, Vec<usize>), ConstructorError> {
     let mut input = result.trim();
 
     let mut captures: Vec<usize> = Vec::new();
@@ -342,7 +349,7 @@ fn construct_result(program: &Program, result: &str) -> (Vec<Box<dyn Result>>, V
         input = temp[0];
         let mut i: usize = 1;
         while i < temp.len() {
-            let (val, _) = construct_capture(program, temp[i].trim());
+            let (val, _) = construct_capture(program, temp[i].trim())?;
             captures.push(val);
             i += 1;
         }
@@ -350,60 +357,60 @@ fn construct_result(program: &Program, result: &str) -> (Vec<Box<dyn Result>>, V
 
     if input.starts_with("{") && input.ends_with("}") {
         input = input.trim_end_matches("}").trim_start_matches("{");
-        let results = construct_results(program, input);
-        return (results, captures);
+        let results = construct_results(program, input)?;
+        return Ok((results, captures));
     }
     if input.contains("{") || input.contains("}") {
-        panic!("Malformed result: \"{}\"", input);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed result"), String::from(""), 0, line!()));
     }
 
-    return (vec!(construct_single_result(program, input)), captures);
+    return Ok((vec!(construct_single_result(program, input)?), captures));
 }
 
-fn construct_results(program: &Program, input: &str) -> Vec<Box<dyn Result>> {
+fn construct_results(program: &Program, input: &str) -> std::result::Result<Vec<Box<dyn Result>>, ConstructorError> {
     let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])(?![^\{]*\})").unwrap();
     let mut temp = regex.replace_all(input, String::from_utf8(vec![0]).unwrap());
     let input_split: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
     let mut results: Vec<Box<dyn Result>> = Vec::new();
     for x in input_split {
-        let (mut pred, _) = construct_result(program, x);
+        let (mut pred, _) = construct_result(program, x)?;
         results.append(&mut pred);
     }
 
-    return results;
+    return Ok(results);
 }
 
-fn construct_single_result(program: &Program, result: &str) -> Box<dyn Result> {
+fn construct_single_result(program: &Program, result: &str) -> std::result::Result<Box<dyn Result>, ConstructorError> {
     if result.starts_with(">[") || result.starts_with("[") && result.ends_with("]") {
         if result.starts_with(">") {
             let temp = result.trim_start_matches(">");
-            let (_, value) = parse_features(program, temp);
+            let (_, value) = parse_features(program, temp)?;
             let result = create_simple_result(Letter { value: value });
-            return Box::new(result);
+            return Ok(Box::new(result));
         } else {
-            let (mask, value) = parse_features_simple(program, result);
+            let (mask, value) = parse_features_simple(program, result)?;
             let result = create_simple_application_result(mask, value);
-            return Box::new(result);
+            return Ok(Box::new(result));
         }
     }
     if result.contains(">") || result.contains("[") || result.contains("]") {
-        panic!("Malformed result: \"{}\"", result);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed result definition"), String::from(""), 0, line!()));
     }
 
     if result == "*" {
-        return Box::new(create_delete_result());
+        return Ok(Box::new(create_delete_result()));
     }
 
     if program.symbol_to_letter.contains_key(result) {
         let (letter, _) = program.symbol_to_letter.get(result).unwrap();
         let result = create_simple_result(letter.clone());
-        return Box::new(result);
+        return Ok(Box::new(result));
     }
-    panic!("Could not find symbol \"{}\"", result);
+    return Err(ConstructorError::MissingSymbol(String::from("Could not find symbol"), String::from(""), 0, line!()));
 }
 
-fn parse_features_simple(program: &Program, features: &str) -> (u64, u64) {
+fn parse_features_simple(program: &Program, features: &str) -> std::result::Result<(u64, u64), ConstructorError> {
     let mut feature = features;
     if feature.starts_with("[") {
         feature = feature.trim_start_matches("[");
@@ -424,7 +431,7 @@ fn parse_features_simple(program: &Program, features: &str) -> (u64, u64) {
         let temp = program.features_to_idx.get(p);
         let (idx, index) = match temp {
             Some(data) => data,
-            None => panic!("Unknown feature \"{}\"", p),
+            None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", params[i]), String::from(""), 0, line!())); },
         };
         
         let feature = program.idx_to_features.get(idx).unwrap();
@@ -436,29 +443,29 @@ fn parse_features_simple(program: &Program, features: &str) -> (u64, u64) {
         i += 1;
     }
 
-    return (mask, key);
+    return Ok((mask, key));
 }
 
-fn construct_enviorment(program: &Program, enviorment: &str) -> Enviorment {
+fn construct_enviorment(program: &Program, enviorment: &str) -> std::result::Result<Enviorment, ConstructorError> {
     if enviorment == "" {
-        return create_empty_enviorment();
+        return Ok(create_empty_enviorment());
     }
     if !enviorment.contains("_") {
-        panic!("Malformed enviorment \"{}\"", enviorment);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed enviorment definition"), String::from(""), 0, line!()));
     }
 
     let enviorment_wings: Vec<&str> = enviorment.split("_").collect();
     if enviorment_wings.len() != 2 {
-        panic!("Malformed enviorment \"{}\"", enviorment);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed enviorment definition"), String::from(""), 0, line!()));
     }
 
-    let (ante_wing, ante_boundary) = construct_enviorment_wing(program, enviorment_wings[0], Ordering::Reverse);
-    let (post_wing, post_boundary) = construct_enviorment_wing(program, enviorment_wings[1], Ordering::Forward);
+    let (ante_wing, ante_boundary) = construct_enviorment_wing(program, enviorment_wings[0], Ordering::Reverse)?;
+    let (post_wing, post_boundary) = construct_enviorment_wing(program, enviorment_wings[1], Ordering::Forward)?;
 
-    return create_enviorment(ante_wing, post_wing, ante_boundary, post_boundary);
+    return Ok(create_enviorment(ante_wing, post_wing, ante_boundary, post_boundary));
 }
 
-fn construct_enviorment_wing(program: &Program, enviorment: &str, direction: Ordering) -> (Vec<EnviormentPredicate>, bool) {
+fn construct_enviorment_wing(program: &Program, enviorment: &str, direction: Ordering) -> std::result::Result<(Vec<EnviormentPredicate>, bool), ConstructorError> {
     let working_value = enviorment.trim();
 
     let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
@@ -481,27 +488,27 @@ fn construct_enviorment_wing(program: &Program, enviorment: &str, direction: Ord
             flag = true;
         } else {
             if flag {
-                panic!("Word boundary condition in middle of enviorment \"{}\"", enviorment);
+                return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule definition: Word boundary condition in middle of enviorment"), String::from(""), 0, line!()));
             }
-            result.push(construct_enviorment_predicate(program, c));
+            result.push(construct_enviorment_predicate(program, c)?);
         }
     }
 
-    return (result, flag);
+    return Ok((result, flag));
 }
 
-fn construct_enviorment_predicate(program: &Program, predicate: &str) -> EnviormentPredicate {
+fn construct_enviorment_predicate(program: &Program, predicate: &str) -> std::result::Result<EnviormentPredicate, ConstructorError> {
     if predicate.contains("<") {
         let predicate_split: Vec<&str> = predicate.split("<").collect();
         if predicate_split.len() != 2 {
-            panic!("Malformed enviorment predicate \"{}\"", predicate);
+            return Err(ConstructorError::MalformedDefinition(String::from("Malformed enviorment predicate definition"), String::from(""), 0, line!()));
         }
-        let predicate_instance = construct_simple_predicate(program, predicate_split[0]);
+        let predicate_instance = construct_simple_predicate(program, predicate_split[0])?;
 
         let quantity_spec = predicate_split[1].trim_end_matches(">");
         let quantities: Vec<&str> = quantity_spec.split(":").collect();
         if quantities.len() != 2 {
-            panic!("Malformed quantity specifier on \"{}\"", predicate);
+            return Err(ConstructorError::MalformedDefinition(String::from("Malformed quantity specifier definition"), String::from(""), 0, line!()));
         }
 
         let quant_min = quantities[0].parse::<u8>();
@@ -509,63 +516,64 @@ fn construct_enviorment_predicate(program: &Program, predicate: &str) -> Enviorm
 
         let quant_min_value = match quant_min {
             Ok(val) => val,
-            Err(_) => panic!("Malformed quantity specifier on \"{}\"", predicate),
+            Err(_) => { return Err(ConstructorError::MalformedDefinition(String::from("Malformed quantity specifier definition"), String::from(""), 0, line!())); },
         };
         let quant_max_value = match quant_max {
             Ok(val) => val,
-            Err(_) => panic!("Malformed quantity specifier on \"{}\"", predicate),
+            Err(_) => { return Err(ConstructorError::MalformedDefinition(String::from("Malformed quantity specifier definition"), String::from(""), 0, line!())); },
         };
 
-        return create_enviorment_predicate(predicate_instance, quant_min_value, quant_max_value);
+        return Ok(create_enviorment_predicate(predicate_instance, quant_min_value, quant_max_value));
     }
 
     let predicate_features = predicate.trim_end_matches(&['+', '*', '+']);
-    let predicate_instance = construct_simple_predicate(program, predicate_features);
+    let predicate_instance = construct_simple_predicate(program, predicate_features)?;
     if predicate.ends_with("?") {
-        return create_enviorment_predicate(predicate_instance, 0, 1);
+        return Ok(create_enviorment_predicate(predicate_instance, 0, 1));
     }
     if predicate.ends_with("*") {
-        return create_enviorment_predicate(predicate_instance, 0, 255);
+        return Ok(create_enviorment_predicate(predicate_instance, 0, 255));
     }
     if predicate.ends_with("+") {
-        return create_enviorment_predicate(predicate_instance, 1, 255);
+        return Ok(create_enviorment_predicate(predicate_instance, 1, 255));
     }
-    return create_enviorment_predicate_single(predicate_instance);
+    return Ok(create_enviorment_predicate_single(predicate_instance));
 }
 
-fn construct_rule_header(data: &str) -> (String, u16) {
+fn construct_rule_header(data: &str) -> std::result::Result<(String, u16), ConstructorError> {
     let words: Vec<&str> = data.split_whitespace().collect();
 
     if words.len() < 2 {
-        panic!("Malformed rule header on line \"{}\"", data);
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule header definition"), String::from(""), 0, line!()));
     }
 
     let name = String::from(words[1]);
 
     if name.contains(&['(', ')', '+', '!', '"', ',']) {
-        panic!("Invald characters in rule name \"{}\"", name);
+        return Err(ConstructorError::MalformedDefinition(String::from("Invald characters in rule"), String::from(""), 0, line!()));
     }
 
-    return (name, 0);//TODO add flags
+    return Ok((name, 0));//TODO add flags
 }
 
-fn construct_symbol(program: &mut Program, line: &Vec<&str>) {
+fn construct_symbol(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        panic!("Malformed symbol definition on line \"{}\"", line.join(" "));
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed symbol definition"), String::from(""), 0, line!()));
     }
 
     let symbol = line[1];
     if symbol.contains(&['(', ')', '+', '!', '"', ',']) {
-        panic!("Invald characters in symbol \"{}\"", symbol);
+        return Err(ConstructorError::MalformedDefinition(String::from("Invald characters in symbol"), String::from(""), 0, line!()));
     }
 
-    let (mask, value) =  parse_features(&program, line[2]);
+    let (mask, value) =  parse_features(&program, line[2])?;
     let letter = Letter{ value: value };
     program.letter_to_symbol.insert(letter, String::from(symbol));
     program.symbol_to_letter.insert(String::from(symbol), (letter, mask));
+    Ok(())
 }
 
-fn parse_features_negative(program: &Program, features: &str) -> (u64, u64, Vec<u64>, Vec<u64>) {
+fn parse_features_negative(program: &Program, features: &str) -> std::result::Result<(u64, u64, Vec<u64>, Vec<u64>), ConstructorError> {
     let mut feature = features;
     if feature.starts_with("[") {
         feature = feature.trim_start_matches("[");
@@ -592,7 +600,7 @@ fn parse_features_negative(program: &Program, features: &str) -> (u64, u64, Vec<
         let temp = program.features_to_idx.get(p);
         let (idx, index) = match temp {
             Some(data) => data,
-            None => panic!("Unknown feature \"{}\"", p),
+            None =>  { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", p), String::from(""), 0, line!())); },
         };
         
         let feature = program.idx_to_features.get(idx).unwrap();
@@ -624,16 +632,16 @@ fn parse_features_negative(program: &Program, features: &str) -> (u64, u64, Vec<
         let feature = program.idx_to_features.get(idx).unwrap();
 
         if (validation_key & feature.validation_mask()) ^ feature.validation_key() != 0 {
-            panic!("Incompatible feature combination \"{}\"", features);
+            return Err(ConstructorError::MalformedDefinition(String::from("Incompatible feature combination"), String::from(""), 0, line!()));
         }
 
         i += 1;
     }
 
-    return (mask, key, masks, keys);
+    return Ok((mask, key, masks, keys));
 }
 
-pub(crate) fn parse_features(program: &Program, features: &str) -> (u64, u64) {
+pub(crate) fn parse_features(program: &Program, features: &str) -> std::result::Result<(u64, u64), ConstructorError> {
     let mut feature = features;
     if feature.starts_with("[") {
         feature = feature.trim_start_matches("[");
@@ -656,7 +664,7 @@ pub(crate) fn parse_features(program: &Program, features: &str) -> (u64, u64) {
         let temp = program.features_to_idx.get(p);
         let (idx, index) = match temp {
             Some(data) => data,
-            None => panic!("Unknown feature \"{}\"", p),
+            None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", p), String::from(""), 0, line!())); },
         };
         
         let feature = program.idx_to_features.get(idx).unwrap();
@@ -682,19 +690,20 @@ pub(crate) fn parse_features(program: &Program, features: &str) -> (u64, u64) {
         let feature = program.idx_to_features.get(idx).unwrap();
 
         if (validation_key & feature.validation_mask()) ^ feature.validation_key() != 0 {
-            panic!("Incompatible feature combination \"{}\"", features);
+            return Err(ConstructorError::InvalidFeature(String::from("Incompatible feature combination"), String::from(""), 0, line!()));
         }
 
         i += 1;
     }
 
-    return (mask, key);
+    return Ok((mask, key));
 }
 
-fn end_feature_def(program: &mut Program) {
-    calculate_offsets_recurse(&mut program.features, 0);
+fn end_feature_def(program: &mut Program) -> std::result::Result<(), ConstructorError> {
+    calculate_offsets_recurse(&mut program.features, 0)?;
     construct_validation_masks(program);
     copy_features_recurse(&mut program.features, &mut program.names_to_idx, &mut program.idx_to_features);
+    Ok(())
 }
 
 fn copy_features_recurse(features: &mut Vec<Feature>, names_to_idx: &mut HashMap<String, u32>, idx_to_features: &mut HashMap<u32, Feature>) {
@@ -738,8 +747,8 @@ fn copy_features_recurse(features: &mut Vec<Feature>, names_to_idx: &mut HashMap
     
 }
 
-fn construct_validation_masks(program: &mut Program){
-    construct_validation_masks_recurse(&mut program.features, 0, 0);
+fn construct_validation_masks(program: &mut Program) {
+    construct_validation_masks_recurse(&mut program.features, 0, 0)
 }
 
 fn construct_validation_masks_recurse(features: &mut Vec<Feature>, current_validation_mask: u64, current_validation_key: u64) {
@@ -778,7 +787,7 @@ fn construct_validation_masks_recurse(features: &mut Vec<Feature>, current_valid
     }
 }
 
-fn calculate_offsets_recurse(features: &mut Vec<Feature>, offset: u8) {
+fn calculate_offsets_recurse(features: &mut Vec<Feature>, offset: u8) -> std::result::Result<(), ConstructorError> {
     let mut i: usize = 0;
     let mut current_offset = offset;
     while i < features.len() {
@@ -789,7 +798,7 @@ fn calculate_offsets_recurse(features: &mut Vec<Feature>, offset: u8) {
                 let mut j: usize = 0;
 
                 while j < data.features.len() {
-                    calculate_offsets_recurse(&mut data.features[j], current_offset + data.self_length);
+                    calculate_offsets_recurse(&mut data.features[j], current_offset + data.self_length)?;
                     j += 1;
                 }
 
@@ -859,7 +868,7 @@ fn calculate_offsets_recurse(features: &mut Vec<Feature>, offset: u8) {
                             for c in &collisions {
                                 let value = data.features[c.0][c.1].start_byte();
                                 if value < max_value {
-                                    bump_offsets_recurse(&mut data.features[c.0], c.1, max_value - value);
+                                    bump_offsets_recurse(&mut data.features[c.0], c.1, max_value - value)?;
                                 }
                             }
                             }
@@ -899,7 +908,7 @@ fn calculate_offsets_recurse(features: &mut Vec<Feature>, offset: u8) {
                                         for y in posses {
                                             if y.0 != j && y.2 != name {
                                                 let amount = data.features[j][k].tot_length();
-                                                bump_offsets_recurse(&mut data.features[y.0], y.1, amount);
+                                                bump_offsets_recurse(&mut data.features[y.0], y.1, amount)?;
                                                 flag = true;
                                             }
                                         }    
@@ -944,9 +953,10 @@ fn calculate_offsets_recurse(features: &mut Vec<Feature>, offset: u8) {
         };
         i += 1;
     }
+    Ok(())
 }
 
-fn bump_offsets_recurse(features: &mut Vec<Feature>, start_pos: usize, amount: u8) {
+fn bump_offsets_recurse(features: &mut Vec<Feature>, start_pos: usize, amount: u8) -> std::result::Result<(), ConstructorError> {
     let mut i: usize = start_pos;
     while i < features.len() {
         features[i] = match features[i].clone() {
@@ -954,23 +964,27 @@ fn bump_offsets_recurse(features: &mut Vec<Feature>, start_pos: usize, amount: u
                 data.start_byte += amount;
                 let mut j: usize = 0;
                 while j < data.features.len() {
-                    bump_offsets_recurse(&mut data.features[j], 0, amount);
+                    bump_offsets_recurse(&mut data.features[j], 0, amount)?;
                     j += 1;
                 }
                 Feature::SwitchType(data)
             },
             Feature::FeatureDef(mut data) => {
                 data.start_byte += amount;
+                if data.start_byte + data.length >= 64 {
+                    return Err(ConstructorError::FeatureOverflow(String::from("Couldn't bump feature"), String::from(""), 0, line!()));
+                }
                 Feature::FeatureDef(data)
             },
         };
         i += 1;
     }
+    Ok(())
 }
 
 fn construct_switch_line(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0));
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
     }
 
     let parameter_array: Vec<&str> = line[1].split("(").collect();
@@ -1003,7 +1017,7 @@ fn construct_switch_line(program: &mut Program, line: &Vec<&str>) -> std::result
 
 fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0));
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
     }
 
     if line[1].starts_with("+") {
@@ -1019,7 +1033,7 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result
     } else if line[1].ends_with(")") && line[1].contains("(") {
         let parts: Vec<&str> = line[1].split("(").collect();
         if parts.len() != 2 {
-            panic!("Malformed feature definition on line \"{}\"", line.join(" "));
+            return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
         }
         let name = parts[0];
         let feature_names: Vec<&str> = parts[1].trim_end_matches(")").split(",").collect();
@@ -1040,7 +1054,7 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result
         assign_feature(program, Feature::FeatureDef(temp), line[2])?;
     } else {
         if line.len() != 3 {
-            return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0));
+            return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
         }
     }
     return Ok(());
@@ -1067,7 +1081,7 @@ fn assign_feature_simple(program: &mut Program, feature: Feature, node_name: &st
     let mut add_count: u8 = 0;
     assign_feature_recurse(&mut program.features, &feature, node_name, &mut add_count);
     if add_count == 0 {
-        return Err(ConstructorError::MissingNode(format!("Could not find node {}", node_name), String::from(""), 0));
+        return Err(ConstructorError::MissingNode(format!("Could not find node {}", node_name), String::from(""), 0, line!()));
     }
     Ok(())
 }

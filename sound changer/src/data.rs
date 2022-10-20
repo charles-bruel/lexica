@@ -502,24 +502,34 @@ impl fmt::Display for ApplicationError {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ConstructorError {
-    UnknownCommandError(String, String, u16),
-    HangingSection(String, String, u16),
-    MalformedDefinition(String, String, u16),
-    MissingNode(String, String, u16),
+    UnknownCommandError(String, String, u16, u32),
+    HangingSection(String, String, u16, u32),
+    MalformedDefinition(String, String, u16, u32),
+    MissingNode(String, String, u16, u32),
+    FeatureOverflow(String, String, u16, u32),
+    MissingSymbol(String, String, u16, u32),
+    InvalidFeature(String, String, u16, u32),
+    MissingFeature(String, String, u16, u32),
+    ParseError(String, String, u16, u32)
 }
 
 impl fmt::Display for ConstructorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ConstructorError::UnknownCommandError(a, b, c) => write_constructor_error(f, "UnknownCommandError", a, b, *c).expect("Error formatting error message"),
-            ConstructorError::HangingSection(a, b, c) => write_constructor_error(f, "HangingSection", a, b, *c).expect("Error formatting error message"),
-            ConstructorError::MalformedDefinition(a, b, c) => write_constructor_error(f, "MalformedDefinition", a, b, *c).expect("Error formatting error message"),
-            ConstructorError::MissingNode(a, b, c) => write_constructor_error(f, "MissingNode", a, b, *c).expect("Error formatting error message"),
+            ConstructorError::UnknownCommandError(a, b, c, d) => write_constructor_error(f, "UnknownCommandError", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::HangingSection(a, b, c, d) => write_constructor_error(f, "HangingSection", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::MalformedDefinition(a, b, c, d) => write_constructor_error(f, "MalformedDefinition", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::MissingNode(a, b, c, d) => write_constructor_error(f, "MissingNode", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::FeatureOverflow(a, b, c, d) => write_constructor_error(f, "FeatureOverflow", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::MissingSymbol(a, b, c, d) => write_constructor_error(f, "MissingSymbol", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::InvalidFeature(a, b, c, d) => write_constructor_error(f, "InvalidFeature", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::MissingFeature(a, b, c, d) => write_constructor_error(f, "MissingFeature", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::ParseError(a, b, c, d) => write_constructor_error(f, "ParseError", a, b, *c, *d).expect("Error formatting error message"),
         };
         Ok(())
     }
 }
 
-fn write_constructor_error(formatter: &mut fmt::Formatter, type_message: &'static str, error_message: &String, line_contents: &String, line_number: u16) -> std::result::Result<(), std::fmt::Error>{
-    write!(formatter, "{}({}) on line {}; {}", type_message, error_message, line_number, line_contents)
+fn write_constructor_error(formatter: &mut fmt::Formatter, type_message: &'static str, error_message: &String, line_contents: &String, line_file_number: u16, line_code_number: u32) -> std::result::Result<(), std::fmt::Error>{
+    write!(formatter, "{}({}: Line {}) on line {}; {}", type_message, error_message, line_code_number, line_file_number, line_contents)
 }
