@@ -208,16 +208,14 @@ function populate_headers() {
 
 function handle_blur(element, i, j) {
     last_focused_cell = null;
-    if(underyling_editor_mode) {
-        underyling_editor_mode = false;
-        element.value = eval_value(element.value, { i: i, j:j });
-        set_root_variable("--select-color", "blue");
-        current_spreadsheet_state.underlying_cell_data[i][j] = element.value;//TODO FIXME
-    }
+    underyling_editor_mode = false;
+    element.value = eval_value(element.value, { i: i, j:j });
+    set_root_variable("--select-color", "blue");
+    current_spreadsheet_state.underlying_cell_data[i][j] = element.value;//TODO FIXME
 }
 
-function handle_focus(element, i, j) {
-    if(last_focused_cell == element) {
+function handle_focus(element, i, j, dbl) {
+    if(dbl) {
         //Enter underlying value editor
         underyling_editor_mode = true;
         set_root_variable("--select-color", "green");
@@ -232,7 +230,8 @@ function populate_single_cell(container, i, j) {
     element.style.gridColumnStart = j + 2;
     element.style.gridRowStart = i + 2;
     container.appendChild(element);
-    element.addEventListener("click", function() { handle_focus(element, i, j); });
+    element.addEventListener("click", function() { handle_focus(element, i, j, false); });
+    element.addEventListener("dblclick", function() { handle_focus(element, i, j, true); });
     element.addEventListener("blur", function() { handle_blur(element, i, j); });
 }
 
