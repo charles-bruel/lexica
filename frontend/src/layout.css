@@ -176,3 +176,29 @@ textarea {
     grid-column-start: 14;
     grid-row-start: 2;
 }
+
+#program-menu {    
+    width: 80vw;
+    height: 80vh;
+    right: 10vw;
+    top: 10vh;
+    position: fixed;
+    z-index: 100;
+    overflow: hidden;
+}
+
+#program-textarea {
+    position: absolute;
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
+    padding: 1px;
+}
+
+#textarea-renderer {
+    position: absolute;
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
+    pointer-events: none;
+    z-index: 101;
+    padding: 3px;
+}

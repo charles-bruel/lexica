@@ -211,7 +211,8 @@ function handle_blur(element, i, j) {
     underyling_editor_mode = false;
     element.value = eval_value(element.value, { i: i, j:j });
     set_root_variable("--select-color", "blue");
-    current_spreadsheet_state.underlying_cell_data[i][j] = element.value;//TODO FIXME
+    current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
+    console.table(current_spreadsheet_state.underlying_cell_data);
 }
 
 function handle_focus(element, i, j, dbl) {
@@ -238,7 +239,9 @@ function populate_single_cell(container, i, j) {
 function populate_cells() {
     var container = document.getElementById("spreadsheet-container");
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        current_spreadsheet_state.underlying_cell_data.push([]);
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
+            current_spreadsheet_state.underlying_cell_data[i].push("");
             populate_single_cell(container, i, j);
         }
     }
@@ -372,10 +375,19 @@ function switch_spreadsheet_state(new_index) {
     create_spreadsheet();
 }
 
+function rerun_all() {
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
+            var element = document.getElementById("spreadsheet-" + i + ":" + j);
+            if(element.value != "") eval_value(element.value, { i: i, j:j });
+        }
+    }
+}
+
 create_spreadsheet();
 
 document.body.addEventListener("keyup", function(event) {
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && (document.activeElement.id.startsWith("spreadsheet") || document.activeElement.id.startsWith("lexicon"))) {
         document.activeElement.blur();
     }
 });

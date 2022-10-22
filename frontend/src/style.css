@@ -125,3 +125,29 @@ input:focus {
     border-color: var(--select-color);
     outline: none;
 }
+
+#program-textarea {
+    color: gray !important;
+    background-color: gray !important;
+    caret-color: black;
+}
+
+#program-textarea::-moz-selection {
+    color: white;
+    background: #3399FF;
+}
+  
+#program-textarea::selection {
+    color: white;
+    background: #3399FF;
+}
+
+#textarea-renderer {
+    background: transparent;
+    color: black;
+}
+
+.textarea-content {
+    font-size: 12px;
+    white-space: pre; 
+}

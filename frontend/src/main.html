@@ -28,12 +28,19 @@
             <button class="top-bar-button" id="format-strikethrough"><s>S</s></button>
             <button class="top-bar-button" id="format-bg">BG</button>
             <button class="top-bar-button" id="format-merge">MG</button>
+            <div style="aspect-ratio:1"></div>
+            <div style="aspect-ratio:1"></div>
+            <button class="top-bar-button" id="programs">Programs</button>
             <!-- Gap -->
             <button class="top-bar-button require-connection" id="button-save">Save</button>
             <button class="top-bar-button require-connection" id="button-load">Load</button>
             <input id="save-file-location"/>
             <p id="connection-status-indicator" style="color:red">Not Connected</p>
             <button class="top-bar-button" id="button-connect">Connect</button>
+        </div>
+        <div id="program-menu">
+            <textarea id="program-textarea" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+            <div id="textarea-renderer" class="textarea-content"></div>
         </div>
     </div>
     <script src="eval_engine.js" defer></script>
@@ -42,5 +49,6 @@
     <script src="bottombar.js" defer></script>
     <script src="io.js" defer></script>
     <script src="topbar.js" defer></script>
+    <script src="programs.js" defer></script>
 </body>
 </html>
