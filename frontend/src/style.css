@@ -127,8 +127,8 @@ input:focus {
 }
 
 #program-textarea {
-    color: gray !important;
-    background-color: gray !important;
+    color: #222 !important;
+    background-color: #222 !important;
     caret-color: black;
 }
 
@@ -150,4 +150,33 @@ input:focus {
 .textarea-content {
     font-size: 12px;
     white-space: pre; 
+    color: white;
+}
+
+.synhi-top-level {
+    color: purple;
+}
+
+.synhi-keyword {
+    color: blue;
+}
+
+.synhi-comment {
+    color: green;
+}
+
+.synhi-operator {
+    color: cyan;
+}
+
+.synhi-symbol {
+    color: brown;
+}
+
+.synhi-feature {
+    color: coral;
+}
+
+.synhi-paren {
+    color: fuchsia;
 }

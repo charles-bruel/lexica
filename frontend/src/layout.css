@@ -189,15 +189,15 @@ textarea {
 
 #program-textarea {
     position: absolute;
-    width: calc(100% - 4px);
-    height: calc(100% - 4px);
+    width: calc(100% - 6px);
+    height: calc(100% - 6px);
     padding: 1px;
 }
 
 #textarea-renderer {
     position: absolute;
-    width: calc(100% - 4px);
-    height: calc(100% - 4px);
+    width: calc(100% - 6px);
+    height: calc(100% - 6px);
     pointer-events: none;
     z-index: 101;
     padding: 3px;
