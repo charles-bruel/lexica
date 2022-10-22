@@ -130,6 +130,7 @@ input:focus {
     color: #222 !important;
     background-color: #222 !important;
     caret-color: white;
+    border: none;
 }
 
 #program-textarea::-moz-selection {
@@ -142,15 +143,33 @@ input:focus {
     background: #3399FF;
 }
 
+#program-textarea:focus {
+    border-color: none;
+    outline: none;
+}
+
 #textarea-renderer, #textarea-renderer-container {
     background: transparent;
     color: black;
+    border: none;
 }
 
 .textarea-content {
     font-size: 12px;
     white-space: pre; 
     color: white;
+}
+
+#line-numbers, #line-numbers-container {
+    background-color: #222;
+}
+
+.line-number {
+    text-align: right;
+    color: white;
+    font-size: 12px;
+    padding: 0px 5px;
+    margin: 0px;
 }
 
 .synhi-top-level {

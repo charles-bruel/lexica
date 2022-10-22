@@ -3,11 +3,18 @@ var programs = {};
 function update_textarea() {
     var area = document.getElementById("program-textarea");
     var element = document.getElementById("textarea-renderer-container");
+    var numbers = document.getElementById("line-numbers");
     var temp = area.value.replace("\t", "    ");
     var lines = temp.split("\n");
     element.replaceChildren();
+    numbers.replaceChildren();
     var symbols = [];
     for(var i = 0;i < lines.length;i ++) {
+        var number = document.createElement("p");
+        number.textContent = i + 1 + "";
+        number.className = "line-number unselectable";
+        numbers.appendChild(number);
+
         var type_flag = "";
         var whitespcae_flag = 0;
         var class_flag = "";
@@ -133,7 +140,10 @@ function add_textarea_span(element, content, type) {
 function scroll_textarea() {
     var val = document.getElementById("program-textarea").scrollTop;
     var element = document.getElementById("textarea-renderer-container");
-    element.style.top = (3-val) + "px";
+    element.style.top = (1.5-val) + "px";
+
+    element = document.getElementById("line-numbers");
+    element.style.top = (1.5-val) + "px";
 }
 
 document.getElementById("program-textarea").addEventListener("input", update_textarea);
@@ -198,4 +208,6 @@ document.getElementById('program-textarea').addEventListener('keydown', function
 
         update_textarea()
     }
-  });
+});
+
+update_textarea();

@@ -38,9 +38,12 @@
             <p id="connection-status-indicator" style="color:red">Not Connected</p>
             <button class="top-bar-button" id="button-connect">Connect</button>
         </div>
-        <div id="program-menu">
-            <textarea id="program-textarea" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
-            <div id="textarea-renderer" class="textarea-content"><div id="textarea-renderer-container"></div></div>
+        <div id="program-menu" class="div-top-level">
+            <div id="programming-area">
+                <textarea id="program-textarea" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                <div id="textarea-renderer" class="textarea-content"><div id="textarea-renderer-container"></div></div>
+            </div>
+            <div id="line-numbers-container"><div id="line-numbers"></div></div>
         </div>
     </div>
     <script src="eval_engine.js" defer></script>

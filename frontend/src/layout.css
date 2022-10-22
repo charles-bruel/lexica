@@ -184,29 +184,51 @@ textarea {
     top: 10vh;
     position: fixed;
     z-index: 100;
+    display: grid;
+    grid-template-columns: 30px auto;
+}
+
+#programming-area {
+    grid-column-start: 2;
+    grid-row-start: 1;
 }
 
 #program-textarea {
     position: absolute;
-    width: calc(100% - 6px);
-    height: calc(100% - 6px);
+    width: calc(100% - 32px);
+    height: calc(100% - 2px);
     padding: 1px;
-}
-
-#textarea-renderer {
-    position: absolute;
-    width: calc(100% - 6px);
-    height: calc(100% - 6px);
-    pointer-events: none;
-    z-index: 101;
-    right: 3px;
-    overflow: hidden;
 }
 
 #textarea-renderer-container {
     padding: 0px;
     border: none;
     width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+#textarea-renderer {
+    position: absolute;
+    width: calc(100% - 34px);
+    height: calc(100% - 4px);
+    pointer-events: none;
+    z-index: 101;
+    right: 2px;
+    overflow: hidden;
+}
+
+#line-numbers {
+    grid-column-start: 1;
+    grid-row-start: 1;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+#line-numbers-container {
+    overflow: hidden;
+    width: 30px;
     height: 100%;
     position: absolute;
 }
