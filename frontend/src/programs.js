@@ -2,7 +2,7 @@ var programs = {};
 
 function update_textarea() {
     var area = document.getElementById("program-textarea");
-    var element = document.getElementById("textarea-renderer");
+    var element = document.getElementById("textarea-renderer-container");
     var temp = area.value.replace("\t", "    ");
     var lines = temp.split("\n");
     element.replaceChildren();
@@ -93,7 +93,7 @@ function update_textarea() {
                 class_flag = "";
             }
 
-            if(symbols.includes(temp)) {
+            if(symbols.includes(temp) && type_flag != "rule") {
                 class_flag += " synhi-symbol";
                 add_textarea_span(element, running, class_flag);
                 running = "";
@@ -108,6 +108,10 @@ function update_textarea() {
 
             if(temp === "feature" || temp === "switch") {
                 type_flag = "feature"
+            }
+
+            if(temp === "rule") {
+                type_flag = "rule";
             }
         }
         if(type_flag === "feature") {
@@ -128,9 +132,70 @@ function add_textarea_span(element, content, type) {
 
 function scroll_textarea() {
     var val = document.getElementById("program-textarea").scrollTop;
-    var element = document.getElementById("textarea-renderer");
-    element.style.top = -val + "px";
+    var element = document.getElementById("textarea-renderer-container");
+    element.style.top = (3-val) + "px";
 }
 
 document.getElementById("program-textarea").addEventListener("input", update_textarea);
 document.getElementById("program-textarea").addEventListener("scroll", scroll_textarea);
+
+document.getElementById('program-textarea').addEventListener('keydown', function(e) {
+    if (e.key == 'Tab') {//based on https://stackoverflow.com/questions/6637341/use-tab-to-indent-in-textarea
+        e.preventDefault();
+        var start = this.selectionStart;
+        var end = this.selectionEnd;
+  
+        this.value = this.value.substring(0, start) +
+          "    " + this.value.substring(end);
+  
+        this.selectionStart =
+          this.selectionEnd = start + 4;
+    }
+    if (e.key == 'Enter') {
+        e.preventDefault();
+        var start = this.selectionStart;
+        var end = this.selectionEnd;
+
+        var i = this.selectionStart;
+        for(; i > 0; i --) {
+            if(this.value[i] == "\n") break;
+        }
+        if(i != 0) i++;
+        for(var c = 0; i < this.value.length;i ++, c++) {
+            if(this.value[i] != " ") break;
+        }
+
+        var prev_start = -1;
+        var prev_end = -1;
+        var q = 0;
+
+        var temp = this.value.substring(0, start).split("\n");
+        temp = temp[temp.length-1];
+        var trimmed = temp.trim();
+        if(trimmed == "feature_def") c += 4;
+        if(trimmed == "symbols") c += 4;
+        if(trimmed == "diacritics") c += 4;
+        if(trimmed == "rules") c += 4;
+        if(trimmed == "rule") c += 4;
+        if(trimmed == "end") {
+            q = (c >= 4 ? 4 : c);
+
+            prev_end = start - 3;
+            prev_start = start - 3 - q;
+
+            c -= 4;
+            if(c < 0) c = 0;
+            flag = true;
+        }
+  
+        if(prev_start != -1 && prev_end != -1) this.value = this.value.substring(0, prev_start) + this.value.substring(prev_end);
+
+        this.value = this.value.substring(0, start - q) +
+          "\n" + " ".repeat(c) + this.value.substring(end - q);
+  
+        this.selectionStart =
+          this.selectionEnd = start + 1 + c - q;
+
+        update_textarea()
+    }
+  });
