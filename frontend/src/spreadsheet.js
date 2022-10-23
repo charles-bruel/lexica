@@ -212,7 +212,6 @@ function handle_blur(element, i, j) {
     element.value = eval_value(element.value, { i: i, j:j });
     set_root_variable("--select-color", "blue");
     current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
-    console.table(current_spreadsheet_state.underlying_cell_data);
 }
 
 function handle_focus(element, i, j, dbl) {
