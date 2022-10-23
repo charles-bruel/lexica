@@ -1,6 +1,6 @@
 var programs = {};
 
-function update_textarea() {
+function update_textarea(comp) {
     var area = document.getElementById("program-textarea");
     var element = document.getElementById("textarea-renderer-container");
     var numbers = document.getElementById("line-numbers");
@@ -17,7 +17,7 @@ function update_textarea() {
 
         var type_flag = "";
         var whitespcae_flag = 0;
-        var class_flag = "";
+        var class_flag = (i === current_error_line ? "synhi-err" : "");
         var symbol_flag = false;
         var running = "";
         for(var j = 0;j < lines[i].length;j ++) {
@@ -33,7 +33,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = 0;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
             if(/\s/.test(char)) {//is whitespace?
                 whitespcae_flag = 1;
@@ -55,7 +55,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = 0;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
             if(char === "#"){
                 add_textarea_span(element, lines[i].substring(j), "synhi-comment");
@@ -70,7 +70,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = false;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
             var end_flag =  j == lines[i].length - 1 || /\s/.test(lines[i][j + 1]);
@@ -81,7 +81,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = false;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
             if(temp == "feature" || temp == "switch" || temp == "symbol" || temp == "rule" || temp == "diacritic" || temp == "root" || temp == "all") {
@@ -89,7 +89,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = false;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
             if(temp == "=>" || temp == "/" || temp == "_" || temp == "*" || temp == "$") {
@@ -97,7 +97,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = false;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
             if(symbols.includes(temp) && type_flag != "rule") {
@@ -105,7 +105,7 @@ function update_textarea() {
                 add_textarea_span(element, running, class_flag);
                 running = "";
                 whitespcae_flag = false;
-                class_flag = "";
+                class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
             if(temp === "symbol" || temp === "diacritic") {
@@ -128,6 +128,46 @@ function update_textarea() {
         element.appendChild(document.createElement("br"));
     }
     scroll_textarea();
+
+    if(comp) {
+        current_try_compilation_contents = area.value;
+        current_try_compilation_contents_counter = current_try_compilation_counter + 1;
+        try_try_compile();
+    }
+}
+
+var current_try_compilation_contents = "";
+var current_try_compilation_contents_counter = 0;
+var current_try_compilation_counter = 0;
+var current_try_compilation_response_counter = 0;
+var current_error_line = -1;
+
+function try_try_compile() {
+    if(current_try_compilation_counter === current_try_compilation_response_counter && current_try_compilation_contents_counter > current_try_compilation_counter) {
+        try_compile(current_try_compilation_contents);
+        current_try_compilation_counter++;
+    }
+}
+
+function handle_comp_response(response) {
+    var element = document.getElementById("compilation-status");
+    var prev_error_line = current_error_line;
+    if(response === null) {
+        element.style.color = "green";
+        element.textContent = "Compilation Status: Compilation Success";
+        current_error_line = -1;
+    } else {
+        element.style.color = "red";
+        var str = "Compilation Status: ";
+        for(var prop in response) {
+            str += prop + " - " + response[prop][0] + ", line #" + response[prop][2];
+            current_error_line = response[prop][2] - 1;
+        }
+        element.textContent = str;
+    }
+    if(prev_error_line != current_error_line) update_textarea(false);
+    current_try_compilation_response_counter++;
+    try_try_compile();
 }
 
 function add_textarea_span(element, content, type) {
@@ -146,7 +186,7 @@ function scroll_textarea() {
     element.style.top = (1.5-val) + "px";
 }
 
-document.getElementById("program-textarea").addEventListener("input", update_textarea);
+document.getElementById("program-textarea").addEventListener("input", () => update_textarea(true));
 document.getElementById("program-textarea").addEventListener("scroll", scroll_textarea);
 
 document.getElementById('program-textarea').addEventListener('keydown', function(e) {
@@ -206,8 +246,8 @@ document.getElementById('program-textarea').addEventListener('keydown', function
         this.selectionStart =
           this.selectionEnd = start + 1 + c - q;
 
-        update_textarea()
+        update_textarea(true)
     }
 });
 
-update_textarea();
+update_textarea(true);

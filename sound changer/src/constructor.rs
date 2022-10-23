@@ -12,7 +12,7 @@ enum State {
     RuleAccum,
 }
 
-pub fn construct(input: String) -> std::result::Result<Program, ConstructorError> {
+pub fn construct(input: &String) -> std::result::Result<Program, ConstructorError> {
     use std::time::Instant;
     let now = Instant::now();
 

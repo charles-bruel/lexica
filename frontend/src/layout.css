@@ -185,18 +185,21 @@ textarea {
     position: fixed;
     z-index: 100;
     display: grid;
-    grid-template-columns: 30px auto;
+    grid-template-columns: 30px 2fr 1fr;
+    grid-template-rows: auto 26px;
 }
 
 #programming-area {
     grid-column-start: 2;
+    grid-column-end: 3;
     grid-row-start: 1;
+    grid-row-end: 2;
 }
 
 #program-textarea {
     position: absolute;
     width: calc(100% - 32px);
-    height: calc(100% - 2px);
+    height: calc(100% - 22px);
     padding: 1px;
 }
 
@@ -220,7 +223,9 @@ textarea {
 
 #line-numbers {
     grid-column-start: 1;
+    grid-column-end: 2;
     grid-row-start: 1;
+    grid-row-end: 2;
     width: 100%;
     height: 100%;
     position: absolute;
@@ -231,4 +236,31 @@ textarea {
     width: 30px;
     height: 100%;
     position: absolute;
+}
+
+#compilation-status {
+    width: calc(100%-4px);
+    height: calc(100%-4px);
+    z-index: 105;
+    grid-column-start: 1;
+    grid-column-end: 3;
+    grid-row-start: 2;
+    grid-row-end: 3;
+    top: 6px;
+    padding: 2px;
+    margin: 0px;
+    font-size: 12px;
+}
+
+#program-manager {
+    width: calc(100%-4px);
+    height: calc(100%-4px);
+    z-index: 105;
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 2;
+    grid-row-end: 3;
+    padding: 2px;
+    margin: 0px;
+    font-size: 12px;
 }

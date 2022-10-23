@@ -27,6 +27,8 @@ function create_socket() {
             load_save_state(obj.LoadFileResult.data);
         } else if(Object.hasOwn(obj, 'RunSCResult')) {
             handle_sc_response(obj.RunSCResult.to_convert);
+        } else if(Object.hasOwn(obj, 'CompilationResult')) {
+            handle_comp_response(obj.CompilationResult.result);
         } else if(obj == "RequestOverwrite") {
             if(confirm("Overwrite file?")) {
                 post_message({SaveFile: {file_path: document.getElementById("save-file-location").value, data: get_state_for_save(), overwrite: true}});
@@ -99,6 +101,10 @@ function load_save_state(data) {
 
 function send_sc_request(array, program) {
     post_message({ RunSC: { program_name: program, to_convert: array }});
+}
+
+function try_compile(program) {
+    post_message({ TryCompile: { program: program }});
 }
 
 document.getElementById("button-connect").addEventListener("mousedown", function(e) { if(socket == null) create_socket(); });

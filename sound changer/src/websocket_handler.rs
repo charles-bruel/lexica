@@ -1,4 +1,7 @@
 use serde::{Serialize, Deserialize};
+use crate::constructor::construct;
+use crate::data::ConstructorError;
+
 use super::data::{ThreadContext, to_string, ApplicationError};
 use super::applicator::*;
 use super::io::*;
@@ -8,6 +11,7 @@ pub enum WebSocketMessage {
     SaveFile { file_path: String, data: String, overwrite: bool },
     LoadFile { file_path: String },
     LoadProgram { name: String, contents: String },
+    TryCompile { program: String },
     RunSC { program_name: String, to_convert: Vec<SCConversion> },
     Unknown { error: String },
 }
@@ -18,7 +22,8 @@ pub enum WebSocketResponse {
     Error { message: String },
     RequestOverwrite,
     LoadFileResult { data: String },
-    RunSCResult { to_convert: Vec<SCConversion> }
+    RunSCResult { to_convert: Vec<SCConversion> },
+    CompilationResult { result: Option<ConstructorError> },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +46,7 @@ impl WebSocketMessage {
             WebSocketMessage::SaveFile { file_path, data, overwrite } => handle_save_file(file_path, data, *overwrite),
             WebSocketMessage::LoadFile { file_path } => handle_load_file(file_path),
             WebSocketMessage::LoadProgram { name, contents } => todo!(),
+            WebSocketMessage::TryCompile { program } => handle_try_compilation(program),
             WebSocketMessage::RunSC { program_name, to_convert } => handle_run_sc(program_name, to_convert, context),
             WebSocketMessage::Unknown { error } => WebSocketResponse::Error { message: format!("Unknown message, err: {}", error) },
         } 
@@ -74,6 +80,14 @@ fn handle_load_file(file_path: &String) -> WebSocketResponse {
         Ok(v) => WebSocketResponse::LoadFileResult { data: v },
         Err(v) => v.get_response(),
     }
+}
+
+fn handle_try_compilation(program: &String) -> WebSocketResponse {
+    let result = construct(program);
+    WebSocketResponse::CompilationResult { result: match result {
+        Ok(_) => None,
+        Err(v) => Some(v),
+    }}
 }
 
 fn send_error_response(error: (ApplicationError, usize, String), context: &mut ThreadContext) {

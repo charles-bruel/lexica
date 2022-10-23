@@ -122,7 +122,7 @@ pub fn web_socket_listener() {
             let mut context = create_thread_context();
 
             //Hacky thing for testing
-            let prog = super::constructor::construct(super::io::load_from_file(&String::from("local/sava1.csc"), true).expect(""));
+            let prog = super::constructor::construct(&super::io::load_from_file(&String::from("local/sava1.csc"), true).expect(""));
             context.programs.insert(String::from("sava1"), prog.unwrap());
 
             loop {
@@ -154,11 +154,12 @@ pub fn web_socket_listener() {
 
                 let elapsed = now.elapsed();
                 match message {
-                    WebSocketMessage::SaveFile { file_path:_, data:_, overwrite:_ } => print!("Handled save file message in : {:.2?}\n", elapsed),
-                    WebSocketMessage::LoadFile { file_path:_ } => print!("Handled load file message in : {:.2?}\n", elapsed),
-                    WebSocketMessage::LoadProgram { name:_, contents:_ } => print!("Handled load program message in : {:.2?}\n", elapsed),
-                    WebSocketMessage::RunSC { program_name:_, to_convert:_ } => print!("Handled run sound changer message in : {:.2?}\n", elapsed),
-                    WebSocketMessage::Unknown { error:_ } => print!("Handled unknown message in : {:.2?}\n", elapsed),
+                    WebSocketMessage::SaveFile { file_path:_, data:_, overwrite:_ } => print!("Handled save file message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::LoadFile { file_path:_ } => print!("Handled load file message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::LoadProgram { name:_, contents:_ } => print!("Handled load program message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::TryCompile { program: _ } => print!("Handled try compile message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::RunSC { program_name:_, to_convert:_ } => print!("Handled run sound changer message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::Unknown { error:_ } => print!("Handled unknown message in: {:.2?}\n", elapsed),
                 }
             }
             println!("Thread closed")

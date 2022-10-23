@@ -299,7 +299,7 @@ fn test_restrict_path_4() {
 #[test]
 fn test_unknown_command_error_a() {
     const PROG: &str = "foo";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 1, _))),
@@ -309,7 +309,7 @@ fn test_unknown_command_error_a() {
 #[test]
 fn test_unknown_command_error_b() {
     const PROG: &str = "feature_def\nfoo";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
@@ -319,7 +319,7 @@ fn test_unknown_command_error_b() {
 #[test]
 fn test_unknown_command_error_c() {
     const PROG: &str = "symbols\nfoo";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
@@ -329,7 +329,7 @@ fn test_unknown_command_error_c() {
 #[test]
 fn test_unknown_command_error_d() {
     const PROG: &str = "diacritics\nfoo";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
@@ -339,7 +339,7 @@ fn test_unknown_command_error_d() {
 #[test]
 fn test_unknown_command_error_e() {
     const PROG: &str = "rules\nfoo";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
@@ -349,7 +349,7 @@ fn test_unknown_command_error_e() {
 #[test]
 fn test_hanging_section_error_a() {
     const PROG: &str = "feature_def";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
@@ -359,7 +359,7 @@ fn test_hanging_section_error_a() {
 #[test]
 fn test_hanging_section_error_b() {
     const PROG: &str = "symbols";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
@@ -369,7 +369,7 @@ fn test_hanging_section_error_b() {
 #[test]
 fn test_hanging_section_error_c() {
     const PROG: &str = "diacritics";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
@@ -379,7 +379,7 @@ fn test_hanging_section_error_c() {
 #[test]
 fn test_hanging_section_error_d() {
     const PROG: &str = "rules";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
@@ -389,7 +389,7 @@ fn test_hanging_section_error_d() {
 #[test]
 fn test_hanging_section_error_e() {
     const PROG: &str = "rules\nrule";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 2, _))),
@@ -399,7 +399,7 @@ fn test_hanging_section_error_e() {
 #[test]
 fn test_malformed_feature_def_error_a() {
     const PROG: &str = "feature_def\nswitch a(b, c)";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2, _))),
@@ -409,7 +409,7 @@ fn test_malformed_feature_def_error_a() {
 #[test]
 fn test_malformed_feature_def_error_b() {
     const PROG: &str = "feature_def\nfeature a(b, c)";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2, _))),
@@ -419,7 +419,7 @@ fn test_malformed_feature_def_error_b() {
 #[test]
 fn test_missing_node_error() {
     const PROG: &str = "feature_def\nfeature a(b, c) d";
-    let result = construct(String::from(PROG));
+    let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ConstructorError::MissingNode(_, _, 2, _))),
@@ -435,13 +435,13 @@ fn is_anagram(a: String, b: String) -> bool {
 }
 
 fn create_diacritic_test_program() -> Program {
-    construct(load_from_file(&String::from("test-data/diacritics-test.lsc"), false).expect("Error reading file")).unwrap()
+    construct(&load_from_file(&String::from("test-data/diacritics-test.lsc"), false).expect("Error reading file")).unwrap()
 }
 
 fn create_int_test_1() -> Program {
     let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
     let rules = load_from_file(&String::from("test-data/int-test-1.lsc"), false).expect("Error reading file");
-    construct(format!("{0}\n{1}", defs, rules)).unwrap()
+    construct(&format!("{0}\n{1}", defs, rules)).unwrap()
 }
 
 fn random_letter() -> super::data::Letter {

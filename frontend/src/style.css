@@ -172,6 +172,14 @@ input:focus {
     margin: 0px;
 }
 
+#compilation-status, #program-manager {
+    background-color: #222;
+}
+
+#program-manager>button {
+    float: right;
+}
+
 .synhi-top-level {
     color: purple;
     font-weight: bold;
@@ -200,4 +208,8 @@ input:focus {
 
 .synhi-paren {
     color: fuchsia;
+}
+
+.synhi-err { 
+    background-color: #822;
 }
