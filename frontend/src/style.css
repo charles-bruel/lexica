@@ -127,8 +127,8 @@ input:focus {
 }
 
 #program-textarea {
-    color: #222 !important;
-    background-color: #222 !important;
+    color: rgba(0, 0, 0, 0) !important;
+    background: none !important;
     caret-color: white;
     border: none;
 }
@@ -172,7 +172,7 @@ input:focus {
     margin: 0px;
 }
 
-#compilation-status, #program-manager {
+#compilation-status, #program-manager, #programming-area {
     background-color: #222;
 }
 
@@ -191,6 +191,7 @@ input:focus {
 
 .synhi-comment {
     color: green;
+    font-style: italic;
 }
 
 .synhi-operator {

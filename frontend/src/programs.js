@@ -1,6 +1,6 @@
 var programs = {};
 
-function update_textarea(comp) {
+function update_textarea(comp) {//Syntax highlighter
     var area = document.getElementById("program-textarea");
     var element = document.getElementById("textarea-renderer-container");
     var numbers = document.getElementById("line-numbers");
@@ -179,8 +179,10 @@ function add_textarea_span(element, content, type) {
 
 function scroll_textarea() {
     var val = document.getElementById("program-textarea").scrollTop;
+    var val2 = document.getElementById("program-textarea").scrollLeft;
     var element = document.getElementById("textarea-renderer-container");
     element.style.top = (1.5-val) + "px";
+    element.style.right = (val2-30) + "px";
 
     element = document.getElementById("line-numbers");
     element.style.top = (1.5-val) + "px";

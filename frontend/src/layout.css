@@ -197,9 +197,10 @@ textarea {
 }
 
 #program-textarea {
-    position: absolute;
-    width: calc(100% - 32px);
-    height: calc(100% - 22px);
+    position: static;
+    width: calc(100% - 2px);
+    height: calc(100% - 2px);
+    z-index: 105;
     padding: 1px;
 }
 
@@ -213,7 +214,7 @@ textarea {
 
 #textarea-renderer {
     position: absolute;
-    width: calc(100% - 34px);
+    width: calc(100% - 4px);
     height: calc(100% - 4px);
     pointer-events: none;
     z-index: 101;
@@ -236,12 +237,13 @@ textarea {
     width: 30px;
     height: 100%;
     position: absolute;
+    z-index: 110;
 }
 
 #compilation-status {
     width: calc(100%-4px);
     height: calc(100%-4px);
-    z-index: 105;
+    z-index: 115;
     grid-column-start: 1;
     grid-column-end: 3;
     grid-row-start: 2;
@@ -264,3 +266,10 @@ textarea {
     margin: 0px;
     font-size: 12px;
 }
+
+textarea {
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: scroll;
+}
+  
