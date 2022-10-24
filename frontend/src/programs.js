@@ -188,6 +188,20 @@ function scroll_textarea() {
     element.style.top = (1.5-val) + "px";
 }
 
+function populate_program_dropdown() {
+    var element = document.getElementById("programs-selector");
+    element.replaceChildren();
+
+    var temp = Object.getOwnPropertyNames(programs);
+    for(var i = 0;i < temp.length;i ++){
+        var temp_element = document.createElement("option");
+        temp_element.textContent = temp[i];
+        element.appendChild(temp_element);
+    }
+}
+
+populate_program_dropdown();
+
 document.getElementById("program-textarea").addEventListener("input", () => update_textarea(true));
 document.getElementById("program-textarea").addEventListener("scroll", scroll_textarea);
 

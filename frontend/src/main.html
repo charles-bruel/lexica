@@ -45,7 +45,16 @@
             </div>
             <div id="line-numbers-container"><div id="line-numbers"></div></div>
             <p id="compilation-status">Compilation Status: </p>
-            <div id="program-manager"><label for="programs">Programs: </label><select id="programs"><option>New Program</option></select><button>Save</button><button>Exit</button></div>
+            <div id="program-manager">
+                <label for="programs-selector">Programs: </label>
+                <select id="programs-selector"></select>
+                <input id="program-manager-rename">
+                <button class="program-manager-button" id="program-manager-button-exit">Exit</button>
+                <button class="program-manager-button" id="program-manager-button-comprun">Run</button>
+                <button class="program-manager-button" id="program-manager-button-del">Delete</button>
+                <button class="program-manager-button" id="program-manager-button-save">Save</button>
+            </div>
+            <textarea id="program-manager-test-area"></textarea>
         </div>
     </div>
     <script src="eval_engine.js" defer></script>

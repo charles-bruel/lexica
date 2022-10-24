@@ -265,6 +265,7 @@ textarea {
     padding: 2px;
     margin: 0px;
     font-size: 12px;
+    display: flex;
 }
 
 textarea {
@@ -272,4 +273,16 @@ textarea {
     overflow-wrap: normal;
     overflow-x: scroll;
 }
-  
+
+#program-manager-rename {
+    height: calc(100% - 2px);
+    padding: 0px;
+    flex: 2;
+}
+
+#program-manager-test-area {
+    grid-column-start: 3;
+    grid-column-end: 4;
+    grid-row-start: 1;
+    grid-row-end: 2;
+}

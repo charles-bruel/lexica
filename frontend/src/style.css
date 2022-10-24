@@ -180,6 +180,10 @@ input:focus {
     float: right;
 }
 
+#program-manager-test-area {
+    background-color: #222;
+}
+
 .synhi-top-level {
     color: purple;
     font-weight: bold;
