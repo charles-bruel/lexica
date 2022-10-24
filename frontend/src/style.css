@@ -183,38 +183,3 @@ input:focus {
 #program-manager-test-area {
     background-color: #222;
 }
-
-.synhi-top-level {
-    color: purple;
-    font-weight: bold;
-}
-
-.synhi-keyword {
-    color: blue;
-}
-
-.synhi-comment {
-    color: green;
-    font-style: italic;
-}
-
-.synhi-operator {
-    color: cyan;
-}
-
-.synhi-symbol {
-    color: brown;
-    font-weight: bold;
-}
-
-.synhi-feature {
-    color: coral;
-}
-
-.synhi-paren {
-    color: fuchsia;
-}
-
-.synhi-err { 
-    background-color: #822;
-}
