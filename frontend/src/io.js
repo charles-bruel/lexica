@@ -104,7 +104,12 @@ function send_sc_request(array, program) {
 }
 
 function try_compile(program) {
-    post_message({ TryCompile: { program: program }});
+    try {
+        post_message({ TryCompile: { program: program }});
+        return true;
+    } catch(err) {
+        return false;
+    }
 }
 
 document.getElementById("button-connect").addEventListener("mousedown", function(e) { if(socket == null) create_socket(); });

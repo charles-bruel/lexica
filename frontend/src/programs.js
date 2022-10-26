@@ -144,8 +144,8 @@ var current_error_line = -1;
 
 function try_try_compile() {
     if(current_try_compilation_counter === current_try_compilation_response_counter && current_try_compilation_contents_counter > current_try_compilation_counter) {
-        try_compile(current_try_compilation_contents);
-        current_try_compilation_counter++;
+        if(try_compile(current_try_compilation_contents))
+            current_try_compilation_counter++;
     }
 }
 
@@ -198,6 +198,45 @@ function populate_program_dropdown() {
         temp_element.textContent = temp[i];
         element.appendChild(temp_element);
     }
+}
+
+function add_program_to_dropdown(name) {
+    var element = document.getElementById("programs-selector");
+    var to_add = document.createElement("option");
+    to_add.id = "program-selector-option-" + name;
+    to_add.textContent = name;
+    element.append(to_add);
+    element.value = name;
+}
+
+function get_blank_test_area_content () {
+    return "test";
+}
+
+function handle_program_manager_save() {
+    var element = document.getElementById("program-manager-rename");
+    var name = element.value;
+    if(name != "") {
+        name = name.replace(/\s/g, '_');
+        if(programs[name] === undefined) {
+            add_program_to_dropdown(name);
+        }
+        var program_contents = document.getElementById("program-textarea").value;
+        programs[name] = [program_contents, get_blank_test_area_content()];
+    }
+}
+
+function handle_program_manager_selection_change() {
+    //TODO: Check if prev is unsaved
+
+    var element = document.getElementById("programs-selector");
+    document.getElementById("program-manager-rename").value = element.value;
+
+    var to_load = programs[element.value];
+    document.getElementById("program-textarea").value = to_load[0];
+    document.getElementById("program-manager-test-area").value = to_load[1];
+
+    update_textarea(true);
 }
 
 populate_program_dropdown();
@@ -267,3 +306,15 @@ document.getElementById('program-textarea').addEventListener('keydown', function
 });
 
 update_textarea(true);
+
+document.getElementById("program-manager-button-exit").addEventListener("mousedown", function(e) { 
+    var elem = document.getElementById("program-menu");
+    if(elem.style.display == "") {
+        elem.style.display = "none";
+    } else {
+        elem.style.display = "";
+    }
+});
+
+document.getElementById("program-manager-button-save").addEventListener("mousedown", () => handle_program_manager_save());
+document.getElementById("programs-selector").addEventListener("input", () => handle_program_manager_selection_change());
