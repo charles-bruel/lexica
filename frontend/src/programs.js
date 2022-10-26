@@ -255,6 +255,8 @@ document.getElementById('program-textarea').addEventListener('keydown', function
   
         this.selectionStart =
           this.selectionEnd = start + 4;
+
+        update_textarea(true);
     }
     if (e.key == 'Enter') {
         e.preventDefault();
@@ -301,7 +303,7 @@ document.getElementById('program-textarea').addEventListener('keydown', function
         this.selectionStart =
           this.selectionEnd = start + 1 + c - q;
 
-        update_textarea(true)
+        update_textarea(true);
     }
 });
 
