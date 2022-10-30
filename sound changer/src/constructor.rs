@@ -131,11 +131,11 @@ fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, l
                 ConstructorError::HangingSection(m, _, _, n) => ConstructorError::HangingSection(m, line, line_number, n),
                 ConstructorError::MalformedDefinition(m, _, _, n) => ConstructorError::MalformedDefinition(m, line, line_number, n),
                 ConstructorError::MissingNode(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
-                ConstructorError::FeatureOverflow(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
-                ConstructorError::MissingSymbol(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
-                ConstructorError::InvalidFeature(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
-                ConstructorError::MissingFeature(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
-                ConstructorError::ParseError(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
+                ConstructorError::FeatureOverflow(m, _, _, n) => ConstructorError::FeatureOverflow(m, line, line_number, n),
+                ConstructorError::MissingSymbol(m, _, _, n) => ConstructorError::MissingSymbol(m, line, line_number, n),
+                ConstructorError::InvalidFeature(m, _, _, n) => ConstructorError::InvalidFeature(m, line, line_number, n),
+                ConstructorError::MissingFeature(m, _, _, n) => ConstructorError::MissingFeature(m, line, line_number, n),
+                ConstructorError::ParseError(m, _, _, n) => ConstructorError::ParseError(m, line, line_number, n),
             })
         }
     }
