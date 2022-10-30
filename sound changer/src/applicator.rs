@@ -249,13 +249,10 @@ impl super::data::RuleByte {
         j = 0;
         let mut flag = true;
         while j < self.enviorment.post.len() {
-            if !flag && position_post >= input.len() - 1 {
+            if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
                 if accum < self.enviorment.post[j].min_quant {
                     return false;
                 }
-                break;
-            }
-            if position_post == input.len() {
                 break;
             }
             if flag {
