@@ -255,6 +255,9 @@ impl super::data::RuleByte {
                 }
                 break;
             }
+            if position_post == input.len() {
+                break;
+            }
             if flag {
                 flag = false
             } else {
