@@ -1,6 +1,5 @@
 .synhi-top-level {
     color: purple;
-    font-weight: bold;
 }
 
 .synhi-keyword {
@@ -9,7 +8,6 @@
 
 .synhi-comment {
     color: green;
-    font-style: italic;
 }
 
 .synhi-operator {
@@ -18,7 +16,6 @@
 
 .synhi-symbol {
     color: brown;
-    font-weight: bold;
 }
 
 .synhi-feature {
