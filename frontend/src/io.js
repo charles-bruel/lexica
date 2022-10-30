@@ -67,12 +67,14 @@ function create_socket() {
 function get_state_for_save() {
     save_spreadsheet_state();
     save_lexicon_state();
+    handle_program_manager_save();
 
     var obj = {};
     obj.bottom_bar_state = bottom_bar_state;
     obj.spreadsheet_states = spreadsheet_states;
     obj.lexicon_states = lexicon_states;
     obj.current_index = current_spreadsheet_id;
+    obj.programs = programs;
     return JSON.stringify(obj);
 }
 
@@ -89,6 +91,10 @@ function load_save_state(data) {
 
     current_spreadsheet_state = spreadsheet_states[current_spreadsheet_id];
     current_lexicon_state = lexicon_states[current_lexicon_id];
+
+    programs = obj.programs;
+
+    add_programs_to_dropdown(obj.programs); 
 
     delete_lexicon();
     delete_spreadsheet();

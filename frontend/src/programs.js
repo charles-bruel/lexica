@@ -200,6 +200,17 @@ function populate_program_dropdown() {
     }
 }
 
+function add_programs_to_dropdown(obj) {
+    var keys = Object.keys(obj);
+
+    for (var i = 0; i < keys.length; i++) {
+        add_program_to_dropdown(keys[i]);
+        if(i == 0) {
+            handle_program_manager_selection_change(); 
+        }
+    }
+}
+
 function add_program_to_dropdown(name) {
     var element = document.getElementById("programs-selector");
     var to_add = document.createElement("option");
