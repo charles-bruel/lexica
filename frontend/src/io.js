@@ -1,6 +1,9 @@
 var socket = null;
 
+var last_message;
+
 function post_message(message) {
+    last_message = message;
     socket.send(JSON.stringify(message));
 }
 
@@ -34,7 +37,9 @@ function create_socket() {
                 post_message({SaveFile: {file_path: document.getElementById("save-file-location").value, data: get_state_for_save(), overwrite: true}});
             }
         } else if (obj == "Success") {
-            //Do nothing
+            if(Object.hasOwn(last_message, 'LoadProgram')) { 
+                handle_program_area_compile_success();
+            }
         } else {
             alert(`[message] Unknown data received from server: ${event.data}`);
         }
@@ -97,6 +102,10 @@ function load_save_state(data) {
 
     var endTime = performance.now();
     console.log(`Call to load_save_state took ${endTime - startTime} milliseconds`);
+}
+
+function send_compile_request(name, program) {
+    post_message({ LoadProgram: { name: name, contents: program }});
 }
 
 function send_sc_request(array, program) {

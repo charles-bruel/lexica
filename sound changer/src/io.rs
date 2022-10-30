@@ -121,10 +121,6 @@ pub fn web_socket_listener() {
 
             let mut context = create_thread_context();
 
-            //Hacky thing for testing
-            let prog = super::constructor::construct(&super::io::load_from_file(&String::from("local/sava1.csc"), true).expect(""));
-            context.programs.insert(String::from("sava1"), prog.unwrap());
-
             loop {
                 let temp = websocket.read_message();
                 let msg = match temp {

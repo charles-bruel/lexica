@@ -209,21 +209,48 @@ function add_program_to_dropdown(name) {
     element.value = name;
 }
 
-function get_blank_test_area_content () {
-    return "test";
+function get_test_area_content () {
+    var temp = document.getElementById("program-manager-test-area").value.split("\n");
+    var to_return = [];
+    for(var i = 0;i < temp.length;i ++) {
+        if(temp[i] != "") {
+            to_return.push(temp[i].split("=>")[0].trim());
+        }
+    }
+    return to_return.join("\n");
 }
+
+var send_test_words_flag = "";
 
 function handle_program_manager_save() {
     var element = document.getElementById("program-manager-rename");
     var name = element.value;
+    var reset_test_area  = get_test_area_content();
+    document.getElementById("program-manager-test-area").value = reset_test_area;
+    var program_contents = document.getElementById("program-textarea").value;
     if(name != "") {
         name = name.replace(/\s/g, '_');
         if(programs[name] === undefined) {
             add_program_to_dropdown(name);
         }
-        var program_contents = document.getElementById("program-textarea").value;
-        programs[name] = [program_contents, get_blank_test_area_content()];
+        programs[name] = [program_contents, reset_test_area];
     }
+
+    send_compile_request(name == "" ? "test" : name, program_contents);
+
+    send_test_words_flag = name == "" ? "test" : name;
+}
+
+function handle_program_area_compile_success() {
+    if(send_test_words_flag != "") {
+        var temp = document.getElementById("program-manager-test-area").value.split("\n");
+        for(var i = 0;i < temp.length;i ++) {
+            if(temp[i] != "") {
+                add_program_test_area_conversion(send_test_words_flag, temp[i], i);
+            }
+        }
+    }
+    push_conversions();
 }
 
 function handle_program_manager_selection_change() {

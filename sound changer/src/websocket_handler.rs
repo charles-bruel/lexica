@@ -45,7 +45,7 @@ impl WebSocketMessage {
         match self {
             WebSocketMessage::SaveFile { file_path, data, overwrite } => handle_save_file(file_path, data, *overwrite),
             WebSocketMessage::LoadFile { file_path } => handle_load_file(file_path),
-            WebSocketMessage::LoadProgram { name, contents } => todo!(),
+            WebSocketMessage::LoadProgram { name, contents } => handle_load_program(name, contents, context),
             WebSocketMessage::TryCompile { program } => handle_try_compilation(program),
             WebSocketMessage::RunSC { program_name, to_convert } => handle_run_sc(program_name, to_convert, context),
             WebSocketMessage::Unknown { error } => WebSocketResponse::Error { message: format!("Unknown message, err: {}", error) },
@@ -79,6 +79,20 @@ fn handle_load_file(file_path: &String) -> WebSocketResponse {
     match data {
         Ok(v) => WebSocketResponse::LoadFileResult { data: v },
         Err(v) => v.get_response(),
+    }
+}
+
+fn handle_load_program(name: &String, contents: &String, context: &mut ThreadContext) -> WebSocketResponse {
+    let program = construct(contents);
+    match program {
+        Ok(v) => {
+            if context.programs.contains_key(name) {
+                context.programs.remove(name);
+            }
+            context.programs.insert(name.to_string(), v);
+            WebSocketResponse::Success
+        },
+        Err(_) => WebSocketResponse::Error { message: format!("Error compiling program \"{}\"", name) },//No error message because that should already be there
     }
 }
 
