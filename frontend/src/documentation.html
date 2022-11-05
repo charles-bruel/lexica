@@ -46,6 +46,12 @@
             font-family: 'Fira Code', monospace;
             background-color: black;
         }
+        :link {
+            color: #0000EE;
+        }
+        :visited {
+            color: #884bc0; 
+        }
     </style>
 
     <script src="formatting.js"></script>
@@ -84,12 +90,70 @@ symbols #Begin symbols section
        features in a switch feature. In addition, features can be of a set of values, or they can be boolean. For example, manner of articulation would be of a set, whereas
        voicing would be boolean.</p>
     <h4>Defining Features</h4>
-    <p>Features are defined in the <span class="code">feature_def</span> section</p>
+    <p>Features are defined in the <span class="code">feature_def</span> section. Each feature line has 3 parts - the <span class="code">feature</span> keyword, the feature
+       definition itself, and the parent node. The parent node is used to make features apply only to certain switch type features. If you wish your feature to apply to
+       everything, use either <span class="code">root</span> or <span class="code">all</span>. They are identical. The feature definition itself can take many forms. I will
+       first show the boolean feature.</p>
     <div><pre>
 feature_def
     feature +foo root
 end</pre></div>
+    <p>That code snippet creates a feature named +foo. Every letter will either not have the feature, called the absent value, and marked with -foo, or it will have the value
+       present, marked with +foo. The absent value is the default.</p>
+       <div><pre>
+    feature foo(bar, baz, boo) root</pre></div>
+    <p>That code snippet creates a feature named foo. It can have any of three values, bar, baz, or boo. The first value is selected as the default value.</p>
+    <div><pre>
+    switch foo(bar, baz, boo) root</pre></div>
+    <p>To make a feature into a switch feature, just change the <span class="code">feature</span> keyword into the <span class="code">switch</span> keyword. This also creates a
+       feature called foo with three values, bar, baz, or boo, but this feature can have other features parented to it. Otherwise it works exactly the same.</p>
+    <div><pre>
+feature_def
+    switch foo(bar, baz, boo) root
+    feature +ghost boo
+end</pre></div>
+    <p>In this code snippet, a boolean feature, +ghost, is created but only applies to the boo feature. Notice the second parameter, <span class="code">boo</span>. A bar 
+       feature doesn't have that value, it cannot have that value. In this case our progam has 4 possible symbols: <span class="code">[bar]</span>,
+       <span class="code">[baz]</span>, <span class="code">[boo -ghost]</span>, and <span class="code">[boo +ghost]</span>. (Brackets are used to represent feature matrices.)</p>
+    <div><pre>
+feature_def
+    switch foo(bar, baz, boo) root
+    feature +zombie foo!boo
+end</pre></div>
+    <p>In that code snippet, the +zombie feature applies to every subtype of foo <i>except</i> for boo.</p>
+    <p>Putting it all together, below is a the full default implementation of the IPA features. It's also a good starting point anytime you are making a language.</p>
+    <div><pre>
+feature_def
+    switch type(consonant, vowel) root
+
+    feature +voice consonant
+    switch manner(plosive, nasal, fricative, approximant, affricate, trill, tap) consonant
+    switch place(bilabial, labiodental, dental, alveolar, postalveolar, retroflex, palatal, velar, uvular, pharyngeal, glottal) consonant
+    feature +lateral (fricative, approximant)
+    feature +ejective consonant
+    feature +syllabic consonant
+
+    feature +aspirated consonant!glottal
+    feature +labialized consonant!bilabial
+    feature +velarized consonant!velar
+    feature +palatalized consonant!palatal
+    feature +pharyngealized consonant!pharyngeal
+
+    feature +nasal-release plosive
+
+    feature +round vowel
+    feature closeness(close, close-mid, mid-close, open-mid, open) vowel
+    feature backness(front, mid-back, back) vowel
+    feature +rhoticized vowel
+
+    feature +long all
+    feature +nasal all
+    feature +breathy all
+end</pre></div>
+    <p>Notice how consonant properties (PoA, MoA) only apply to consonants, and same for vowels. Also notice that you can't velarize a velar consonant, etc.</p>
+    <h3>Symbols</h3>
     <h2>Spreadsheet Program</h2>
+    
 
     <script defer>
         format_code_blocks();
