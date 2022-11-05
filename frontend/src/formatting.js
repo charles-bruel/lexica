@@ -71,9 +71,9 @@ function generate_indent_line(element, arr, index) {
     div.style.backgroundColor = "lavender";
     div.style.width = "1px";
     div.style.height = (end - top) + "px";
-    if(element.tagName == "H1") div.style.left = "0.225in";
-    if(element.tagName == "H2") div.style.left = "0.425in";
-    if(element.tagName == "H3") div.style.left = "0.625in";
+    if(element.tagName == "H1") div.style.left = "2.225in";
+    if(element.tagName == "H2") div.style.left = "2.425in";
+    if(element.tagName == "H3") div.style.left = "2.625in";
 
     element.parentNode.appendChild(div);
 }
