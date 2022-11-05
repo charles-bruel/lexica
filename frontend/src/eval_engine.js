@@ -63,19 +63,27 @@ function take_valid_entry_for_sc(array, id) {
     return -1;
 }
 
+function get_sc_result(obj) {
+    if(Object.hasOwn(obj, "Ok")) {
+        return obj.Ok;
+    } else {
+        return JSON.stringify(obj.Err[Object.keys(obj.Err)[0]]);
+    }
+}
+
 function handle_sc_response(entries) {
     console.log(entries);
     for(const entry of entries) {
         var spreadsheet_item = take_valid_entry_for_sc(spreadsheet_references, entry.id);
         if(spreadsheet_item !== -1) {
             var element = document.getElementById("spreadsheet-" + spreadsheet_item.val.i + ":" + spreadsheet_item.val.j);
-            element.value = entry.data.Ok;
+            element.value = get_sc_result(entry.data);
         }
         var test_item = take_valid_entry_for_sc(program_test_references, entry.id);
         if(test_item !== -1) {
             var element = document.getElementById("program-manager-test-area");
             var temp = element.value.split("\n");
-            temp[test_item.val] += " => " + entry.data.Ok;
+            temp[test_item.val] += " => " + get_sc_result(entry.data);
             element.value = temp.join("\n");
         }
     }
