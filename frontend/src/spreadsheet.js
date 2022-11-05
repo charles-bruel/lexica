@@ -249,17 +249,19 @@ function populate_cells() {
 function load_data() {
     if(current_spreadsheet_state.cell_data.length == 0) return;
 
-    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
-        for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
-            var element = document.getElementById("spreadsheet-" + i + ":" + j);
-            element.value = current_spreadsheet_state.cell_data[i][j];
-            element.className = current_spreadsheet_state.cell_style_classes[i][j];
-        }
-    }
-
     for(var i = 0;i < current_spreadsheet_state.cell_merge_data.length;i ++) {
         var merge = current_spreadsheet_state.cell_merge_data[i];
         merge_cells(merge.x1, merge.x2, merge.y1, merge.y2, false);
+    }
+
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
+            var element = document.getElementById("spreadsheet-" + i + ":" + j);
+            if(element != null) {
+                element.value = current_spreadsheet_state.cell_data[i][j];
+                element.className = current_spreadsheet_state.cell_style_classes[i][j];
+            }
+        }
     }
 }
 
