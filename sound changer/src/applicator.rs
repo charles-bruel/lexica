@@ -27,11 +27,16 @@ impl super::data::Program {
 
 impl super::data::Rule {
     pub fn apply(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
-        let mut result = input.clone();
-        for rule in &self.bytes {
-            result = rule.apply(result)?;
+        match self {
+            Rule::TransformationRule { bytes, flags: _, name: _ } => {
+                let mut result = input.clone();
+                for rule in bytes {
+                    result = rule.apply(result)?;
+                }
+                return Ok(result);
+            },
         }
-        return Ok(result);
+        
     }
 }
 

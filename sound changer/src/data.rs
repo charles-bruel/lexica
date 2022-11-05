@@ -193,10 +193,8 @@ pub struct RuleByte {
     pub num_captures: usize,
 }
 
-pub struct Rule {
-    pub bytes: Vec<RuleByte>,
-    pub flags: u16,
-    pub name: String,
+pub enum Rule {
+    TransformationRule { bytes: Vec<RuleByte>, flags: u16, name: String },
 }
 
 pub struct EnviormentPredicate {
@@ -421,8 +419,8 @@ pub fn create_multi_rule_byte(predicate: Vec<(Vec<Box<dyn Predicate>>, Vec<(usiz
     }
 }
 
-pub fn create_rule(name: String, bytes:Vec<RuleByte>, flags: u16) -> Rule {
-    Rule { 
+pub fn create_transformation_rule(name: String, bytes:Vec<RuleByte>, flags: u16) -> Rule {
+    Rule::TransformationRule { 
         bytes: bytes,
         flags: flags,
         name: name,

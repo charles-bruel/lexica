@@ -181,7 +181,7 @@ fn construct_rule(program: &mut Program, line: Vec<&str>) -> std::result::Result
         i += 1;
     }
 
-    let temp = create_rule(name, rule_bytes, flags);
+    let temp = create_transformation_rule(name, rule_bytes, flags);
     program.rules.push(temp);
     Ok(())
 }
