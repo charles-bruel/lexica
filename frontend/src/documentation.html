@@ -37,7 +37,6 @@
         }
         div.code {
             white-space: pre;
-            font-size: 12px;
             margin-left: 0.8in;
             width: fit-content;
             padding: 6px;
@@ -45,6 +44,10 @@
         .code {
             font-family: 'Fira Code', monospace;
             background-color: black;
+            font-size: 14px;
+        }
+        p {
+            font-size: 16px;
         }
         :link {
             color: #0000EE;
@@ -155,7 +158,7 @@ end</pre></div>
     <p>Symbols the translation layer between your program and human readable notation. Symbols are used in two slightly different ways in multiple places. Symbols strictly
        match when converting into sound change languages (i.e. word input or rule results) and less strictly match when using them for checking (predicates and enviorments).
        Symbols also strictly match when outputting into human readable format.</p>
-    <p>Symbols are defined in the <span class="code">symbols</span> section. Each symbol line has 3 parts - the symbol keyword, the symbolitself, and the feature matrix. The
+    <p>Symbols are defined in the <span class="code">symbols</span> section. Each symbol line has 3 parts - the symbol keyword, the symbol itself, and the feature matrix. The
        symbol itself is the actual symbol that will get used in other parts of the code. This is currently just a single character but I plan to increase that. The feature matrix
        defines the symbol. Symbols will always match with what you specify, but for things left as their defaults, they will only matter if the symbol is strictly matching.</p>
     <div><pre>
@@ -263,6 +266,56 @@ symbols
 
     #Not strictly correct but close enough
     symbol w [+voice bilabial approximant]
+end</pre></div>
+    <h3>Diacritics</h3>
+    <p>Diacritics encode a certain transformation, which can then be applied to a symbol to encode more information. This transformation is simpler than the full features of
+       the sound change applier and does not have every feature.</p>
+    <p>Symbols are defined in the <span class="code">diacritics</span> section. Each diacritic line has 3 parts - the diacritic keyword, the diacritic itself, and the
+       transformation</p>
+    <div><pre>
+    diacritic ː [-long] => [+long]</pre></div>
+    <p>This defines a diacritic with the ː character (note this is the IPA long symbol, not a colon), and when this diacritic is applied to a symbol, it takes the symbol and
+       transforms it according to the rule <span class="code">[-long] => [+long]</span>.
+    <div><pre>
+    diacritic ̥◌ [+voice] => [-voice]</pre></div>
+    <p>This line contains two important features of the diacritic system. Firstly, the diacritics system is designed for unicode combining characters. That diacritics is actually
+       two unicode codepoints, U+0325 (combining ring below) and U+25CC (dotted circle). The dotted circle is automatically removed because most combining characters that you can
+       find online come on that dotted circle and it keeps the layout consistent. Secondly, diacritics are not just for encoding optional features, a diacritic can be applied
+       to a symbol that changes a strict property of that symbol. Observe the following code snippet:</p>
+    <div><pre>
+feature_def
+    ...
+    feature +voice root
+    switch manner(..., nasal, ...) consonant
+    switch place(..., alveolar, ...) consonant
+    ...
+end
+
+symbols
+    ...
+    symbol n [+voice alveolar nasal]
+    ...
+end
+
+diacritics
+    ...
+    diacritic ̥◌ [+voice] => [-voice]
+    ...
+end
+    </pre></div>
+    <p>In the above incomplete code snippet of the full IPA implementation, the symbol n is strictly defined as voiced, however the shown diacritic can make it unvoiced. The
+       n̥ symbol would thus represent <span class="code">[-voice alveolar nasal]</span>. Not all browsers display combining characters correctly.</p>
+    <p>The full diacritics definition used by the default IPA implementation is below:</p>
+    <div><pre>
+diacritics
+    diacritic ː [-long] => [+long]
+    diacritic ̥◌ [+voice] => [-voice]
+    diacritic ʰ [-aspirated] => [+aspirated]
+    diacritic ʷ [-labialized] => [+labialized]
+    diacritic ˠ [-velarized] => [+velarized]
+    diacritic ʲ [-palatalized] => [+palatalized]
+    diacritic ˤ [-pharyngealized] => [+pharyngealized]
+    diacritic ⁿ [-nasal-release] => [+nasal-release]
 end</pre></div>
     <h2>Spreadsheet Program</h2>
     
