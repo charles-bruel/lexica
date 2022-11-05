@@ -27,6 +27,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
     let lines: Vec<&str> = input.split("\n").collect();
 
     let mut rule_accum: Vec<&str> = Vec::new();
+    let mut rule_accum_depth: u8 = 0;
 
     let mut line_number: u16 = 0;
 
@@ -41,7 +42,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
             line = temp[0];
         }
         
-        let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
+        let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
         let mut temp = regex.replace_all(line, String::from_utf8(vec![0]).unwrap());
         let words: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
@@ -84,12 +85,15 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 if words[0] == "rule" {
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::Rule);
+                    rule_accum_depth = 1;
                 } else if words[0] == "subx" {
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::SubX);
+                    rule_accum_depth = 1;
                 } else if words[0] == "sub" {
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::Sub);
+                    rule_accum_depth = 1;
                 } else if words[0] == "call" {
                     handle_err(construct_call(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
@@ -99,14 +103,27 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 }
             },
             State::RuleAccum(t) => {
-                if words[0] == "end" {
-                    match t {
-                        RuleBlockType::Rule => handle_err(construct_rule(&mut program, rule_accum), String::from(line_og), line_number)?,
-                        RuleBlockType::Sub => handle_err(construct_sub(&mut program, rule_accum), String::from(line_og), line_number)?,
-                        RuleBlockType::SubX => todo!(),
+                if words[0] == "rule" {
+                    if t == RuleBlockType::Rule {
+                        return Err(ConstructorError::MalformedDefinition(format!("Malformed rule definition; tried to nest rules"), String::from(line_og), line_number, line!()))
+                    } else {
+                        rule_accum_depth += 1;
+                        rule_accum.push(line);
                     }
-                    rule_accum = Vec::new();
-                    current_state = State::Rules;
+                } else if words[0] == "end" {
+                    if rule_accum_depth == 1 {
+                        match t {
+                            RuleBlockType::Rule => handle_err(construct_rule(&mut program, rule_accum), String::from(line_og), line_number)?,
+                            RuleBlockType::Sub => handle_err(construct_sub(&mut program, rule_accum), String::from(line_og), line_number)?,
+                            RuleBlockType::SubX => todo!(),
+                        }
+                        rule_accum = Vec::new();
+                        current_state = State::Rules;
+                        rule_accum_depth = 0;
+                    } else {
+                        rule_accum_depth -= 1;
+                        rule_accum.push(line);
+                    }
                 } else {
                     rule_accum.push(line);
                 }
@@ -199,19 +216,76 @@ fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::
     Ok(())
 }
 
-fn construct_sub(program: &mut Program, line: Vec<&str>) -> std::result::Result<(), ConstructorError> {
-    if line.len() < 2 {
+fn construct_sub(program: &mut Program, lines: Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    if lines.len() < 2 {
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
+    }
+    let line1: Vec<&str> = lines[0].split(" ").collect();
+    if line1.len() != 2 {
         return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
     }
 
-    let temp: Vec<&str> = line[0].split(" ").collect();
-    if temp.len() < 3 || temp[2] != "rule" {
+    let line2: Vec<&str> = lines[1].split(" ").collect();
+
+    if line2.len() != 2 {
         //Single block subroutine
-        let to_add = vec!(construct_rule_simple(program, line)?);
-        program.subroutines.insert(String::from(temp[1]), to_add);
+        let to_add = vec!(construct_rule_simple(program, lines)?);
+        program.subroutines.insert(String::from(line1[1]), to_add);
+    } else if line2[0] == "rule" {
+        //Multi block subroutine
+        let to_add = construct_multi_block_sub(program, lines)?;
+        program.subroutines.insert(String::from(line1[1]), to_add);
+    } else {
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
     }
 
     Ok(())
+}
+
+fn construct_multi_block_sub(program: &mut Program, lines: Vec<&str>) -> std::result::Result<Vec<Rule>, ConstructorError> {
+    let mut state = State::Rules;
+    let mut rule_accum: Vec<&str> = Vec::new();
+
+    let mut flag = true;
+    let mut to_return: Vec<Rule> = Vec::new();
+
+    for f in lines {
+        if flag {//Skip first line
+            flag = false;
+            continue;
+        }
+        let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
+        let mut temp = regex.replace_all(f, String::from_utf8(vec![0]).unwrap());
+        let words: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
+
+        match state {
+            State::None => assert!(false),
+            State::Features => assert!(false),
+            State::Symbols => assert!(false),
+            State::Diacritics => assert!(false),
+            State::Rules => {
+                if words[0] == "rule" {
+                    rule_accum.push(f);
+                    state = State::RuleAccum(RuleBlockType::Rule);
+                } else if words[0] == "end" {
+                    break;//This could cause it to terminate early, except the quantity of ends is tracked when this data is generated
+                } else if words[0] != "" {
+                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(""), 0, line!()));
+                }
+            },
+            State::RuleAccum(_) => {
+                if words[0] == "end" {
+                    to_return.push(construct_rule_simple(program, rule_accum)?);
+                    rule_accum = Vec::new();
+                    state = State::Rules;
+                } else {
+                    rule_accum.push(f);
+                }
+            }
+        }
+    }
+
+    Ok(to_return)
 }
 
 fn construct_rule(program: &mut Program, line: Vec<&str>) -> std::result::Result<(), ConstructorError> {
