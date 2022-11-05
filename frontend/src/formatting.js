@@ -4,7 +4,8 @@ function generate_table_of_contents() {//This is super ugly and scales horribly
     var top_level_list = document.createElement("ul");
     var running_list;
     var running_list_2;
-    var last_element;
+    var last_element_h2;
+    var last_element_h3;
     element.appendChild(top_level_list);
     var prev_element_type = "";
     for(var child of body) {
@@ -17,14 +18,14 @@ function generate_table_of_contents() {//This is super ugly and scales horribly
             temp2.textContent = child.textContent;
             temp.appendChild(temp2);
             top_level_list.appendChild(temp);
-            last_element = temp;
+            last_element_h2 = temp;
 
             prev_element_type = "H2";
         } else if (child.tagName == "H3") {
             if(prev_element_type != "H3") {
                 running_list = document.createElement("ul");
                 running_list.style.marginLeft = "0.0in"
-                last_element.append(running_list);
+                last_element_h2.append(running_list);
             }
             var id = child.textContent.replaceAll(" ", "-").toLowerCase();
             child.id = id;
@@ -34,14 +35,14 @@ function generate_table_of_contents() {//This is super ugly and scales horribly
             temp2.textContent = child.textContent;
             temp.appendChild(temp2);
             running_list.appendChild(temp);
-            last_element = temp;
+            last_element_h3 = temp;
 
             prev_element_type = "H3";
         } else if (child.tagName == "H4") {
             if(prev_element_type != "H4") {
                 running_list_2 = document.createElement("ul");
                 running_list_2.style.marginLeft = "0.0in"
-                last_element.append(running_list_2);
+                last_element_h3.append(running_list_2);
             }
             var id = child.textContent.replaceAll(" ", "-").toLowerCase();
             child.id = id;
@@ -51,7 +52,6 @@ function generate_table_of_contents() {//This is super ugly and scales horribly
             temp2.textContent = child.textContent;
             temp.appendChild(temp2);
             running_list_2.appendChild(temp);
-            last_element = temp;
 
             prev_element_type = "H4";
         }
