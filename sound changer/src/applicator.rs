@@ -293,6 +293,7 @@ impl super::data::RuleByte {
     }
 }
 
+
 pub fn from_string(program: &Program, input: &String) -> std::result::Result<Vec<Letter>, ApplicationError> {
     let mut string = input.clone();
     let mut result: Vec<Letter> = Vec::new();
@@ -300,13 +301,29 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Vec
     for k in program.symbol_to_letter.keys() {
         keys.push(k);
     }
+    keys.sort_unstable_by(|a, b| b.chars().count().cmp(&a.chars().count()));
+
     let mut depth: usize = 0;
+    let mut flag = false;
     while string.len() > 0 {
+        if flag {
+            for d in &program.diacritics {
+                if string.starts_with(&d.diacritic) {
+                    string = String::from(string.strip_prefix(&d.diacritic).unwrap());
+                    let i = result.len() - 1;
+                    if result[i].value & d.mask != d.key {
+                        return Err(ApplicationError::IntoConversionError(format!("Invalid diacritic \"{0}\"", d.diacritic)));
+                    }
+                    result[i].value = (result[i].value & !d.mask) | d.mod_key;
+                }
+            }
+        }
         for k in &keys {
             if string.starts_with(k) {
                 string = String::from(string.strip_prefix(k).unwrap());
                 let (letter, _) = program.symbol_to_letter.get(*k).unwrap();
                 result.push(*letter);
+                flag = true;
             }
         }
         depth += 1;
