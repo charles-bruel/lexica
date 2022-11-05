@@ -152,6 +152,118 @@ feature_def
 end</pre></div>
     <p>Notice how consonant properties (PoA, MoA) only apply to consonants, and same for vowels. Also notice that you can't velarize a velar consonant, etc.</p>
     <h3>Symbols</h3>
+    <p>Symbols the translation layer between your program and human readable notation. Symbols are used in two slightly different ways in multiple places. Symbols strictly
+       match when converting into sound change languages (i.e. word input or rule results) and less strictly match when using them for checking (predicates and enviorments).
+       Symbols also strictly match when outputting into human readable format.</p>
+    <p>Symbols are defined in the <span class="code">symbols</span> section. Each symbol line has 3 parts - the symbol keyword, the symbolitself, and the feature matrix. The
+       symbol itself is the actual symbol that will get used in other parts of the code. This is currently just a single character but I plan to increase that. The feature matrix
+       defines the symbol. Symbols will always match with what you specify, but for things left as their defaults, they will only matter if the symbol is strictly matching.</p>
+    <div><pre>
+symbols
+    symbol i [close front -round]
+end</pre></div>
+    <p>That creates the i symbol and assigns it to be close, front and unrounded. When strictly matching, it will also need to be -long, -nasal, -breathy, etc because those 
+       are the defaults (assuming default IPA implementation). However, when not strictly matching, the length etc. does not matter.</p>
+    <p>Sample symbol definitions for the IPA, designed to work with the above sample IPA feature definitions:</p>
+    <div><pre>
+symbols
+    symbol i [close front -round]
+    symbol y [close front +round]
+    symbol ɨ [close mid-back -round]
+    symbol ʉ [close mid-back +round]
+    symbol ɯ [close back -round]
+    symbol u [close back +round]
+
+    symbol e [close-mid front -round]
+    symbol ø [close-mid front +round]
+    symbol ɘ [close-mid mid-back -round]
+    symbol ɵ [close-mid mid-back +round]
+    symbol ɤ [close-mid back -round]
+    symbol o [close-mid back +round]
+
+    symbol ə [mid-close mid-back]
+
+    symbol ɛ [open-mid front -round]
+    symbol œ [open-mid front +round]
+    symbol ɜ [open-mid mid-back -round]
+    symbol ɞ [open-mid mid-back +round]
+    symbol ʌ [open-mid back -round]
+    symbol ɔ [open-mid back +round]
+
+    symbol a [open front -round]
+    symbol ɶ [open front +round]
+    symbol ɑ [open back -round]
+    symbol ɒ [open back +round]
+
+
+    symbol p [-voice bilabial plosive]
+    symbol b [+voice bilabial plosive]
+    symbol t [-voice alveolar plosive]
+    symbol d [+voice alveolar plosive]
+    symbol ʈ [-voice retroflex plosive]
+    symbol ɖ [+voice retroflex plosive]
+    symbol c [-voice palatal plosive]
+    symbol ɟ [+voice palatal plosive]
+    symbol k [-voice velar plosive]
+    symbol g [+voice velar plosive]
+    symbol q [-voice uvular plosive]
+    symbol ɢ [+voice uvular plosive]
+    symbol ʔ [-voice glottal plosive]
+
+    symbol ɸ [-voice bilabial fricative]
+    symbol β [+voice bilabial fricative]
+    symbol f [-voice labiodental fricative]
+    symbol v [+voice labiodental fricative]
+    symbol θ [-voice dental fricative]
+    symbol ð [+voice dental fricative]
+    symbol s [-voice alveolar fricative]
+    symbol ɬ [-voice alveolar fricative +lateral]
+    symbol z [+voice alveolar fricative]
+    symbol ɮ [+voice alveolar fricative +lateral]
+    symbol ʃ [-voice postalveolar fricative]
+    symbol ʒ [+voice postalveolar fricative]
+    symbol ʂ [-voice retroflex fricative]
+    symbol ʐ [+voice retroflex fricative]
+    symbol ç [-voice palatal fricative]
+    symbol ʝ [+voice palatal fricative]
+    symbol x [-voice velar fricative]
+    symbol ɣ [+voice velar fricative]
+    symbol χ [-voice uvular fricative]
+    symbol ʁ [+voice uvular fricative]
+    symbol ħ [-voice pharyngeal fricative]
+    symbol ʕ [+voice pharyngeal fricative]
+    symbol h [-voice glottal fricative]
+    symbol ɦ [+voice glottal fricative]
+
+    symbol m [+voice bilabial nasal]
+    symbol ɱ [+voice labiodental nasal]
+    symbol n [+voice alveolar nasal]
+    symbol ɳ [+voice retroflex nasal]
+    symbol ɲ [+voice palatal nasal]
+    symbol ŋ [+voice velar nasal]
+    symbol ɴ [+voice uvular nasal]
+
+    symbol ʙ [+voice bilabial trill]
+    symbol r [+voice alveolar trill]
+    symbol ʀ [+voice uvular trill]
+
+    symbol ⱱ [+voice labiodental tap]
+    symbol ɾ [+voice alveolar tap]
+    symbol ɽ [+voice retroflex tap]
+
+    symbol ʋ [+voice labiodental approximant]
+    symbol ɹ [+voice alveolar approximant]
+    symbol l [+voice alveolar approximant +lateral]
+    symbol ɻ [+voice retroflex approximant]
+    symbol ɭ [+voice retroflex approximant +lateral]
+    symbol j [+voice palatal approximant]
+    symbol ʎ [+voice palatal approximant +lateral]
+    symbol ɰ [+voice velar approximant]
+    symbol ʟ [+voice velar approximant +lateral]
+
+    #Not strictly correct but close enough
+    symbol w [+voice bilabial approximant]
+end</pre></div>
     <h2>Spreadsheet Program</h2>
     
 
