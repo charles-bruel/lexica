@@ -271,6 +271,17 @@ function umerge_cells(element) {
     y1 = parseInt(element.style.gridRowStart) - 2;
     y2 = parseInt(element.style.gridRowEnd) - 3;
 
+    console.log({ x1: x1, x2: x2, y1: y1, y2: y2 });
+
+    for(var i = 0;i < current_spreadsheet_state.cell_merge_data.length;i ++) {
+        console.log(current_spreadsheet_state.cell_merge_data[i]);
+    }
+
+    current_spreadsheet_state.cell_merge_data = current_spreadsheet_state.cell_merge_data.filter(function(e) { 
+        var flag = e.x1 == x1 && e.x2 == x2 && e.y1 == y1 && e.y2 == y2;
+        return !flag;
+    });
+
     var contents = element.value;
     element.parentNode.removeChild(element);
 
