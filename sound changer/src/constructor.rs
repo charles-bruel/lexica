@@ -115,7 +115,10 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                         match t {
                             RuleBlockType::Rule => handle_err(construct_rule(&mut program, rule_accum), String::from(line_og), line_number)?,
                             RuleBlockType::Sub => handle_err(construct_sub(&mut program, rule_accum), String::from(line_og), line_number)?,
-                            RuleBlockType::SubX => todo!(),
+                            RuleBlockType::SubX => {
+                                handle_err(construct_sub(&mut program, rule_accum.clone()), String::from(line_og), line_number)?;
+                                construct_call(&mut program, &vec!("call", rule_accum[0].split(" ").collect::<Vec<&str>>()[1]))?;//If it got to this point, bounds are good
+                            },
                         }
                         rule_accum = Vec::new();
                         current_state = State::Rules;
