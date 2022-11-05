@@ -59,14 +59,16 @@ function generate_table_of_contents() {//This is super ugly and scales horribly
 }
 
 function generate_indent_lines() {
+    var element = document.getElementById("indent-lines");
+    element.replaceChildren();
     var arr = Array.from(document.body.children);
     for(var i = 0;i < arr.length;i ++) {
         var tn = arr[i].tagName;
-        if(tn == "H1" || tn == "H2" || tn == "H3") generate_indent_line(arr[i], arr, i);
+        if(tn == "H1" || tn == "H2" || tn == "H3") generate_indent_line(arr[i], arr, i, element);
     }
 }
 
-function generate_indent_line(element, arr, index) {
+function generate_indent_line(element, arr, index, parent_elem) {
     var following_element;
     var flag = true;
     for(var i = index + 1;i < arr.length;i ++) {
@@ -93,7 +95,7 @@ function generate_indent_line(element, arr, index) {
     if(element.tagName == "H2") div.style.left = "2.425in";
     if(element.tagName == "H3") div.style.left = "2.625in";
 
-    element.parentNode.appendChild(div);
+    parent_elem.appendChild(div);
 }
 
 function syntax_highlighter(parent_element, text_content) {

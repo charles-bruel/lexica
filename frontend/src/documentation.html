@@ -267,10 +267,12 @@ end</pre></div>
     <h2>Spreadsheet Program</h2>
     
 
+    <div id="indent-lines"></div>
     <script defer>
         format_code_blocks();
         generate_table_of_contents();
         generate_indent_lines();
+        addEventListener('resize', generate_indent_lines);
     </script>
 </body>
 </html>
