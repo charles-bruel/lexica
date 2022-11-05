@@ -16,23 +16,37 @@
             font-family: 'Nunito', sans-serif;
         }
         h1 {
-            margin-left: 0.2in;
+            margin-left: 0.1in;
         }
         h2 {
-            margin-left: 0.4in;
+            margin-left: 0.3in;
         }
         h3, ol {
-            margin-left: 0.6in;
+            margin-left: 0.5in;
         }
         h4, p {
-            margin-left: 0.8in;
+            margin-left: 0.7in;
+        }
+        ul {
+            margin-left: 0.3in;
         }
         h1, h2, h3, h4 {
             font-family: 'Fira Code', monospace;
         }
+        div.code {
+            white-space: pre;
+            font-size: 12px;
+            margin-left: 0.8in;
+            background-color: black;
+            width: fit-content;
+            padding: 6px;
+        }
+        .code {
+            font-family: 'Fira Code', monospace;
+        }
     </style>
 
-    <script src="formatting.js" defer></script>
+    <script src="formatting.js"></script>
 </head>
 <body>
     <h1>Lexica Documentation</h1>
@@ -40,11 +54,23 @@
     <div id="table-of-contents-container"></div>
     <h2>Sound Change Language</h2>
     <h3>Features</h3>
+    <h4>Technical Details</h4>
     <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Repellat deleniti cupiditate recusandae inventore amet similique voluptatum dignissimos et exercitationem molestias facilis, commodi quas repudiandae velit alias sequi earum tenetur impedit.</p>
     <p>Saepe debitis ipsam, odio temporibus earum est veniam voluptates, fugit quisquam velit quaerat nemo eum! Odit unde sunt nemo natus doloribus sapiente vel, corrupti veniam corporis labore eaque sint reprehenderit.</p>
     <p>Veniam amet eum error voluptatem, commodi voluptatibus facere id quidem quis sint enim. Obcaecati, sit mollitia, deserunt explicabo excepturi iusto aliquid ducimus eos delectus nemo assumenda consequuntur molestias sed repellendus.</p>
     <p>Magni placeat dolore ad sit, facilis minima provident at beatae dolor assumenda quaerat corrupti quidem veritatis, qui quis optio. Error porro harum ducimus numquam odio placeat, enim excepturi dolorum similique.</p>
+    <h4>Types of features</h4>
+    <h4>Defining Features</h4>
+    <div><pre>feature_def
+    feature +foo root
+end</pre></div>
     <h2>Spreadsheet Program</h2>
+
+    <script defer>
+        format_code_blocks();
+        generate_table_of_contents();
+        generate_indent_lines();
+    </script>
 </body>
 </html>
 

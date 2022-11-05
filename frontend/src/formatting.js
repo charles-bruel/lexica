@@ -1,10 +1,10 @@
 function generate_table_of_contents() {
     var body = document.body.children;
     var element = document.getElementById("table-of-contents-container");
-    var top_level_ol = document.createElement("ol");
-    var running_ol;
+    var top_level_list = document.createElement("ul");
+    var running_list;
     var last_element;
-    element.appendChild(top_level_ol);
+    element.appendChild(top_level_list);
     var prev_element_type = "";
     for(var child of body) {
         if(child.tagName == "H2") {
@@ -15,15 +15,15 @@ function generate_table_of_contents() {
             temp2.href = "#" + id;
             temp2.textContent = child.textContent;
             temp.appendChild(temp2);
-            top_level_ol.appendChild(temp);
+            top_level_list.appendChild(temp);
             last_element = temp;
 
             prev_element_type = "H2";
         } else if (child.tagName == "H3") {
             if(prev_element_type != "H3") {
-                running_ol = document.createElement("ol");
-                running_ol.style.marginLeft = "0.0in"
-                last_element.append(running_ol);
+                running_list = document.createElement("ul");
+                running_list.style.marginLeft = "0.0in"
+                last_element.append(running_list);
             }
             var id = child.textContent.replaceAll(" ", "-").toLowerCase();
             child.id = id;
@@ -32,15 +32,13 @@ function generate_table_of_contents() {
             temp2.href = "#" + id;
             temp2.textContent = child.textContent;
             temp.appendChild(temp2);
-            running_ol.appendChild(temp);
+            running_list.appendChild(temp);
             last_element = temp;
 
             prev_element_type = "H3";
         }
     }
 }
-
-generate_table_of_contents();
 
 function generate_indent_lines() {
     var arr = Array.from(document.body.children);
@@ -73,11 +71,149 @@ function generate_indent_line(element, arr, index) {
     div.style.backgroundColor = "lavender";
     div.style.width = "1px";
     div.style.height = (end - top) + "px";
-    if(element.tagName == "H1") div.style.left = "0.325in";
-    if(element.tagName == "H2") div.style.left = "0.525in";
-    if(element.tagName == "H3") div.style.left = "0.725in";
+    if(element.tagName == "H1") div.style.left = "0.225in";
+    if(element.tagName == "H2") div.style.left = "0.425in";
+    if(element.tagName == "H3") div.style.left = "0.625in";
 
     element.parentNode.appendChild(div);
 }
 
-generate_indent_lines();
+function syntax_highlighter(parent_element, text_content) {
+    var temp = text_content.replace("\t", "    ");
+    var lines = temp.split("\n");
+    parent_element.replaceChildren();
+    var symbols = [];
+    for(var i = 0;i < lines.length;i ++) {
+        var type_flag = "";
+        var whitespcae_flag = 0;
+        var class_flag = (i === current_error_line ? "synhi-err" : "");
+        var symbol_flag = false;
+        var running = "";
+        for(var j = 0;j < lines[i].length;j ++) {
+            var char = lines[i][j];
+            if(whitespcae_flag === -1 && /\s/.test(char)) {
+                if(type_flag === "feature") {
+                    class_flag += " synhi-feature";
+                }
+                if(symbol_flag) {
+                    symbols.push(running.trim());
+                    symbol_flag = false;
+                }
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = 0;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+            if(/\s/.test(char)) {//is whitespace?
+                whitespcae_flag = 1;
+            } else {
+                whitespcae_flag = -1;
+            }
+
+            if(char === "#" || char === "(" || char === ")" || char === "[" || char === "]" || char === "{" || char === "}") {
+                if(type_flag === "feature") {
+                    class_flag += " synhi-feature";
+                }
+                if(symbol_flag) {
+                    symbols.push(running.trim());
+                    symbol_flag = false;
+                }
+                if(symbols.includes(running.trim())) {
+                    class_flag += " synhi-symbol";
+                }
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = 0;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+            if(char === "#"){
+                add_textarea_span(parent_element, lines[i].substring(j), "synhi-comment");
+                break;
+            }
+            
+            running += char;
+            var temp = running.trimStart();
+
+            if(temp == "(" || temp == ")" || temp == "[" || temp == "]" || temp == "{" || temp == "}") {
+                class_flag += " synhi-paren";
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = false;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+
+            var end_flag =  j == lines[i].length - 1 || /\s/.test(lines[i][j + 1]);
+            if(!end_flag) continue;
+
+            if(temp == "feature_def" || temp == "symbols" || temp == "rules" || temp == "rule" || temp == "diacritics" || temp == "end") {
+                class_flag += " synhi-top-level";
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = false;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+
+            if(temp == "feature" || temp == "switch" || temp == "symbol" || temp == "rule" || temp == "diacritic" || temp == "root" || temp == "all") {
+                class_flag += " synhi-keyword";
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = false;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+
+            if(temp == "=>" || temp == "/" || temp == "_" || temp == "*" || temp == "$") {
+                class_flag += " synhi-operator";
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = false;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+
+            if(symbols.includes(temp) && type_flag != "rule") {
+                class_flag += " synhi-symbol";
+                add_textarea_span(parent_element, running, class_flag);
+                running = "";
+                whitespcae_flag = false;
+                class_flag = (i === current_error_line ? "synhi-err" : "");
+            }
+
+            if(temp === "symbol" || temp === "diacritic") {
+                class_flag += " synhi-symbol";
+                symbol_flag = true;
+            }
+
+            if(temp === "feature" || temp === "switch") {
+                type_flag = "feature"
+            }
+
+            if(temp === "rule") {
+                type_flag = "rule";
+            }
+        }
+        if(type_flag === "feature") {
+            class_flag += " synhi-feature";
+        }
+        add_textarea_span(parent_element, running, class_flag);
+        parent_element.appendChild(document.createElement("br"));
+    }
+}
+
+current_error_line = -1;
+
+function add_textarea_span(element, content, type) {
+    var temp = document.createElement("span");
+    temp.className = "textarea-content " + type;
+    temp.textContent = content;
+    element.appendChild(temp);
+}
+
+function format_code_blocks() {
+    var blocks = document.getElementsByTagName("pre");
+    for(var i = 0; i < blocks.length; i++) {
+        var temp = document.createElement("div");
+        temp.className = "code";
+        blocks[i].parentNode.prepend(temp);
+        syntax_highlighter(temp, blocks[i].textContent);
+        blocks[i].parentNode.removeChild(blocks[i]);
+    }
+}
