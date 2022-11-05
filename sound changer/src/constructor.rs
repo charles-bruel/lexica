@@ -110,10 +110,10 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
     match current_state {
         State::None => {},
         State::Features => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
-        State::Symbols => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
-        State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
-        State::Rules => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
-        State::RuleAccum => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
+        State::Symbols => return Err(ConstructorError::HangingSection(String::from("Symbols section never finishes"), String::from("EOF"), line_number, line!())),
+        State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Diacritics section never finishes"), String::from("EOF"), line_number, line!())),
+        State::Rules => return Err(ConstructorError::HangingSection(String::from("Rules section never finishes"), String::from("EOF"), line_number, line!())),
+        State::RuleAccum => return Err(ConstructorError::HangingSection(String::from("Rule section never finishes"), String::from("EOF"), line_number, line!())),
     }
 
     let elapsed = now.elapsed();
