@@ -1,8 +1,9 @@
-function generate_table_of_contents() {
+function generate_table_of_contents() {//This is super ugly and scales horribly
     var body = document.body.children;
     var element = document.getElementById("table-of-contents-container");
     var top_level_list = document.createElement("ul");
     var running_list;
+    var running_list_2;
     var last_element;
     element.appendChild(top_level_list);
     var prev_element_type = "";
@@ -36,6 +37,23 @@ function generate_table_of_contents() {
             last_element = temp;
 
             prev_element_type = "H3";
+        } else if (child.tagName == "H4") {
+            if(prev_element_type != "H4") {
+                running_list_2 = document.createElement("ul");
+                running_list_2.style.marginLeft = "0.0in"
+                last_element.append(running_list_2);
+            }
+            var id = child.textContent.replaceAll(" ", "-").toLowerCase();
+            child.id = id;
+            var temp = document.createElement("li");
+            var temp2 = document.createElement("a");
+            temp2.href = "#" + id;
+            temp2.textContent = child.textContent;
+            temp.appendChild(temp2);
+            running_list_2.appendChild(temp);
+            last_element = temp;
+
+            prev_element_type = "H4";
         }
     }
 }
