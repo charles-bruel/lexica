@@ -3,13 +3,18 @@ use std::{collections::*, vec};
 use {data::*, rules::*, applicator::*};
 use super::fancy_regex::Regex;
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+enum RuleBlockType {
+    Rule, Sub, SubX
+}
+
 enum State {
     None,
     Features,
     Symbols,
     Diacritics,
     Rules,
-    RuleAccum,
+    RuleAccum(RuleBlockType),
 }
 
 pub fn construct(input: &String) -> std::result::Result<Program, ConstructorError> {
@@ -78,17 +83,28 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
             State::Rules => {
                 if words[0] == "rule" {
                     rule_accum.push(line);
-                    current_state = State::RuleAccum;
+                    current_state = State::RuleAccum(RuleBlockType::Rule);
+                } else if words[0] == "subx" {
+                    rule_accum.push(line);
+                    current_state = State::RuleAccum(RuleBlockType::SubX);
+                } else if words[0] == "sub" {
+                    rule_accum.push(line);
+                    current_state = State::RuleAccum(RuleBlockType::Sub);
+                } else if words[0] == "call" {
+                    handle_err(construct_call(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
-                    handle_err(end_feature_def(&mut program), String::from(line_og), line_number)?;
                     current_state = State::None;
                 } else if words[0] != "" {
                     return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
                 }
             },
-            State::RuleAccum => {
+            State::RuleAccum(t) => {
                 if words[0] == "end" {
-                    handle_err(construct_rule(&mut program, rule_accum), String::from(line_og), line_number)?;
+                    match t {
+                        RuleBlockType::Rule => handle_err(construct_rule(&mut program, rule_accum), String::from(line_og), line_number)?,
+                        RuleBlockType::Sub => handle_err(construct_sub(&mut program, rule_accum), String::from(line_og), line_number)?,
+                        RuleBlockType::SubX => todo!(),
+                    }
                     rule_accum = Vec::new();
                     current_state = State::Rules;
                 } else {
@@ -113,7 +129,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
         State::Symbols => return Err(ConstructorError::HangingSection(String::from("Symbols section never finishes"), String::from("EOF"), line_number, line!())),
         State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Diacritics section never finishes"), String::from("EOF"), line_number, line!())),
         State::Rules => return Err(ConstructorError::HangingSection(String::from("Rules section never finishes"), String::from("EOF"), line_number, line!())),
-        State::RuleAccum => return Err(ConstructorError::HangingSection(String::from("Rule section never finishes"), String::from("EOF"), line_number, line!())),
+        State::RuleAccum(_) => return Err(ConstructorError::HangingSection(String::from("Rule block never finishes"), String::from("EOF"), line_number, line!())),
     }
 
     let elapsed = now.elapsed();
@@ -136,6 +152,7 @@ fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, l
                 ConstructorError::InvalidFeature(m, _, _, n) => ConstructorError::InvalidFeature(m, line, line_number, n),
                 ConstructorError::MissingFeature(m, _, _, n) => ConstructorError::MissingFeature(m, line, line_number, n),
                 ConstructorError::ParseError(m, _, _, n) => ConstructorError::ParseError(m, line, line_number, n),
+                ConstructorError::MissingSubroutine(m, _, _, n) => ConstructorError::MissingSubroutine(m, line, line_number, n),
             })
         }
     }
@@ -148,6 +165,20 @@ pub fn construct_words(program: &Program, input: String) -> std::result::Result<
         result.push(from_string(&program, &String::from(l.trim()))?);
     }
     return Ok(result);
+}
+
+fn construct_call(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    if line.len() != 2 {
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine call definition"), String::from(""), 0, line!()));
+    }
+
+    if program.subroutines.contains_key(line[1]) {
+        program.rules.push(create_subroutine_call_rule(String::from(line[1])));
+        return Ok(());
+    } else {
+        return Err(ConstructorError::MissingSubroutine(format!("Could not find subroutine \"{}\"", line[1]), String::from(""), 0, line!()));
+    }
+
 }
 
 fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
@@ -168,7 +199,28 @@ fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::
     Ok(())
 }
 
+fn construct_sub(program: &mut Program, line: Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    if line.len() < 2 {
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
+    }
+
+    let temp: Vec<&str> = line[0].split(" ").collect();
+    if temp.len() < 3 || temp[2] != "rule" {
+        //Single block subroutine
+        let to_add = vec!(construct_rule_simple(program, line)?);
+        program.subroutines.insert(String::from(temp[1]), to_add);
+    }
+
+    Ok(())
+}
+
 fn construct_rule(program: &mut Program, line: Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    let temp = construct_rule_simple(program, line)?;
+    program.rules.push(temp);
+    Ok(())
+}
+
+fn construct_rule_simple(program: &mut Program, line: Vec<&str>) -> std::result::Result<Rule, ConstructorError> {
     if line.len() < 2 {
         return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule definition"), String::from(""), 0, line!()));
     }
@@ -181,9 +233,7 @@ fn construct_rule(program: &mut Program, line: Vec<&str>) -> std::result::Result
         i += 1;
     }
 
-    let temp = create_transformation_rule(name, rule_bytes, flags);
-    program.rules.push(temp);
-    Ok(())
+    Ok(create_transformation_rule(name, rule_bytes, flags))
 }
 
 fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<RuleByte, ConstructorError> {

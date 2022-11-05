@@ -173,7 +173,8 @@ function syntax_highlighter(parent_element, text_content) {
                 class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
-            if(temp == "feature" || temp == "switch" || temp == "symbol" || temp == "rule" || temp == "diacritic" || temp == "root" || temp == "all") {
+            if(temp == "feature" || temp == "switch" || temp == "symbol" || temp == "rule" || temp == "diacritic" || temp == "root" || temp == "all" || temp == "sub"
+                || temp == "subx" || temp == "call") {
                 class_flag += " synhi-keyword";
                 add_textarea_span(parent_element, running, class_flag);
                 running = "";

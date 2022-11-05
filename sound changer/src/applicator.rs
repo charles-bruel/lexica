@@ -4,7 +4,7 @@ impl super::data::Program {
     pub fn apply(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
         let mut result = input.clone();
         for rule in &self.rules {
-            result = rule.apply(result)?;
+            result = rule.apply(&self, result)?;
         }
         return Ok(result);
     }
@@ -26,7 +26,7 @@ impl super::data::Program {
 }
 
 impl super::data::Rule {
-    pub fn apply(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    pub fn apply(&self, program: &Program, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
         match self {
             Rule::TransformationRule { bytes, flags: _, name: _ } => {
                 let mut result = input.clone();
@@ -34,6 +34,18 @@ impl super::data::Rule {
                     result = rule.apply(result)?;
                 }
                 return Ok(result);
+            },
+            Rule::CallSubroutine { name } => {
+                if program.subroutines.contains_key(name) {
+                    let temp_subroutine = program.subroutines.get(name).unwrap();
+                    let mut result = input.clone();
+                    for rule in temp_subroutine {
+                        result = rule.apply(program, result)?;
+                    }
+                    return Ok(result);
+                } else {
+                    return Err(ApplicationError::InternalError(format!("Subroutine not found: \"{}\"", name)));
+                }
             },
         }
         

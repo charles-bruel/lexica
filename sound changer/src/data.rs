@@ -9,6 +9,7 @@ pub struct Program {
     pub features: Vec<Feature>,
     pub diacritics: Vec<Diacritic>,
     pub rules: Vec<Rule>,
+    pub subroutines: HashMap<String, Vec<Rule>>,
     pub names_to_idx: HashMap<String, u32>,
     pub idx_to_features: HashMap<u32, Feature>,
     pub features_to_idx: HashMap<String, (u32, usize)>,
@@ -195,6 +196,7 @@ pub struct RuleByte {
 
 pub enum Rule {
     TransformationRule { bytes: Vec<RuleByte>, flags: u16, name: String },
+    CallSubroutine { name: String }
 }
 
 pub struct EnviormentPredicate {
@@ -236,6 +238,7 @@ pub fn create_empty_program() -> Program {
         features: Vec::new(),
         diacritics: Vec::new(),
         rules: Vec::new(),
+        subroutines: HashMap::new(),
         names_to_idx: HashMap::new(),
         idx_to_features: HashMap::new(),
         features_to_idx: HashMap::new(),
@@ -427,6 +430,10 @@ pub fn create_transformation_rule(name: String, bytes:Vec<RuleByte>, flags: u16)
     }
 }
 
+pub fn create_subroutine_call_rule(name: String) -> Rule {
+    Rule::CallSubroutine { name: name }
+}
+
 pub fn create_empty_enviorment() -> Enviorment {
     Enviorment {
         ante: Vec::new(),
@@ -508,7 +515,8 @@ pub enum ConstructorError {
     MissingSymbol(String, String, u16, u32),
     InvalidFeature(String, String, u16, u32),
     MissingFeature(String, String, u16, u32),
-    ParseError(String, String, u16, u32)
+    ParseError(String, String, u16, u32),
+    MissingSubroutine(String, String, u16, u32),
 }
 
 impl fmt::Display for ConstructorError {
@@ -523,6 +531,7 @@ impl fmt::Display for ConstructorError {
             ConstructorError::InvalidFeature(a, b, c, d) => write_constructor_error(f, "InvalidFeature", a, b, *c, *d).expect("Error formatting error message"),
             ConstructorError::MissingFeature(a, b, c, d) => write_constructor_error(f, "MissingFeature", a, b, *c, *d).expect("Error formatting error message"),
             ConstructorError::ParseError(a, b, c, d) => write_constructor_error(f, "ParseError", a, b, *c, *d).expect("Error formatting error message"),
+            ConstructorError::MissingSubroutine(a, b, c, d) => write_constructor_error(f, "MissingSubroutine", a, b, *c, *d).expect("Error formatting error message"),
         };
         Ok(())
     }
