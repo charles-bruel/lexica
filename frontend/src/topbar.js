@@ -14,6 +14,21 @@ function handle_basic_button(e, clazz) {
     }
 }
 
+function handle_align_button(e, clazz) {
+    e.preventDefault();
+
+    var element = document.activeElement;
+    if (element == null) return;
+
+    if(element.id == "") return;
+    if(element.id.startsWith("spreadsheet") || element.id.startsWith("lexicon")) {
+        element.classList.remove("formatting-left");
+        element.classList.remove("formatting-right");
+        element.classList.remove("formatting-center");
+        element.classList.add(clazz);
+    }
+}
+
 function handle_spreadsheet_button(e, clazz) {
     e.preventDefault();
 
@@ -96,6 +111,9 @@ document.getElementById("format-underline").addEventListener("mousedown", functi
 document.getElementById("format-strikethrough").addEventListener("mousedown", function(e) { handle_basic_button(e, "formatting-strikethrough"); });
 document.getElementById("format-bg").addEventListener("mousedown", function(e) { handle_spreadsheet_button(e, "formatting-bg"); });
 document.getElementById("format-merge").addEventListener("mousedown", function(e) { handle_merge(e, document.getElementById("format-merge")); });
+document.getElementById("format-right").addEventListener("mousedown", function(e) { handle_align_button(e, "formatting-right"); });
+document.getElementById("format-center").addEventListener("mousedown", function(e) { handle_align_button(e, "formatting-center"); });
+document.getElementById("format-left").addEventListener("mousedown", function(e) { handle_align_button(e, "formatting-left"); });
 
 attachEvents();
 

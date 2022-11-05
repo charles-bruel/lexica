@@ -103,6 +103,18 @@ th {
     border: none;
 }
 
+.formatting-right {
+    text-align: right;
+}
+
+.formatting-center {
+    text-align: center;
+}
+
+.formatting-left {
+    text-align: left;
+}
+
 .unselectable {
     -moz-user-select: -moz-none;
     -khtml-user-select: none;
