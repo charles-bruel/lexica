@@ -37,12 +37,12 @@
             white-space: pre;
             font-size: 12px;
             margin-left: 0.8in;
-            background-color: black;
             width: fit-content;
             padding: 6px;
         }
         .code {
             font-family: 'Fira Code', monospace;
+            background-color: black;
         }
     </style>
 
@@ -53,15 +53,38 @@
     <h2>Table of Contents</h2>
     <div id="table-of-contents-container"></div>
     <h2>Sound Change Language</h2>
+    <h3>Basics of the language</h3>
+    <p>Comments are declared with a #</p>
+    <div><pre>
+#Hi! I'm a comment.</pre></div>
+    <p>The program is divided into sections, with each section defining a certain thing about the program. Sections begin with a section header, a keyword specifying what section
+       type this will be. Sections end with the <span class="code">end</span> keyword. Sections are typically indented but this is not required; whitespace is not significant.
+    </p>
+    <div><pre>
+feature_def #Begin feature def section
+    ...
+end #End feature def section
+
+symbols #Begin symbols section
+    ...</pre></div>
     <h3>Features</h3>
     <h4>Technical Details</h4>
-    <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Repellat deleniti cupiditate recusandae inventore amet similique voluptatum dignissimos et exercitationem molestias facilis, commodi quas repudiandae velit alias sequi earum tenetur impedit.</p>
-    <p>Saepe debitis ipsam, odio temporibus earum est veniam voluptates, fugit quisquam velit quaerat nemo eum! Odit unde sunt nemo natus doloribus sapiente vel, corrupti veniam corporis labore eaque sint reprehenderit.</p>
-    <p>Veniam amet eum error voluptatem, commodi voluptatibus facere id quidem quis sint enim. Obcaecati, sit mollitia, deserunt explicabo excepturi iusto aliquid ducimus eos delectus nemo assumenda consequuntur molestias sed repellendus.</p>
-    <p>Magni placeat dolore ad sit, facilis minima provident at beatae dolor assumenda quaerat corrupti quidem veritatis, qui quis optio. Error porro harum ducimus numquam odio placeat, enim excepturi dolorum similique.</p>
+    <p>The datatype underlying all of the sound changer's actions is the feature. It is represented as a 64-bit bitmask (u64). Each feature is given an an area in that bitmask 
+       to use. The area generation is automated but not 100% efficient. There are several rules it must follow when laying out features and the brute-force approach I
+       implemented is not 100% efficient at laying things out.</p>
+    <p>The chief difficulty in layout comes from the switch feature type. I implemented this because it felt strange having all features apply to all characters, after all the
+       kinds of features in a vowel and in a consonant are very different. The switch type allows features to have a non-root parent, making features into a tree. Since it is
+       bitmask based, that means that the features must be defined with no ambiguity by the bitmask, and that if the same feature has multiple parents, it lines up the same
+       across all parents. Another issue is overlapping multi features, which requires more adjustment. The ineffiecencies aren't an issue; a fairly deatiled IPA implementation
+       is well within a u64 and if it really became an issue I could move to u128.</p>
     <h4>Types of features</h4>
+    <p>There are two main kinds of features, switch features and regular features. Switch features are similar to regular features except other features can apply only to certain
+       features in a switch feature. In addition, features can be of a set of values, or they can be boolean. For example, manner of articulation would be of a set, whereas
+       voicing would be boolean.</p>
     <h4>Defining Features</h4>
-    <div><pre>feature_def
+    <p>Features are defined in the <span class="code">feature_def</span> section</p>
+    <div><pre>
+feature_def
     feature +foo root
 end</pre></div>
     <h2>Spreadsheet Program</h2>

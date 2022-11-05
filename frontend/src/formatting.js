@@ -215,5 +215,6 @@ function format_code_blocks() {
         blocks[i].parentNode.prepend(temp);
         syntax_highlighter(temp, blocks[i].textContent);
         blocks[i].parentNode.removeChild(blocks[i]);
+        i--;
     }
 }
