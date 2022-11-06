@@ -280,7 +280,7 @@ impl super::data::RuleByte {
 
         while j < self.enviorment.ante.len() {
             if position_ante == 0 {
-                if accum < self.enviorment.ante[j].min_quant {
+                if accum < self.enviorment.ante[j].min_quant || j < self.enviorment.ante.len() - 1 {
                     return self.enviorment.inverted;
                 }
                 break;
@@ -300,6 +300,9 @@ impl super::data::RuleByte {
                 } else {
                     j += 1;
                     accum = 0;
+                    if j < self.enviorment.ante.len() {
+                        position_ante += 1;//Need to check it again, but against the next one
+                    }
                 }
             }
         }
@@ -311,13 +314,13 @@ impl super::data::RuleByte {
         let mut flag = true;
         while j < self.enviorment.post.len() {
             if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
-                if accum < self.enviorment.post[j].min_quant {
+                if accum < self.enviorment.post[j].min_quant || j < self.enviorment.post.len() - 1 {
                     return self.enviorment.inverted;
                 }
                 break;
             }
             if flag {
-                flag = false
+                flag = false;
             } else {
                 position_post += 1;
             }
@@ -335,11 +338,14 @@ impl super::data::RuleByte {
                 } else {
                     j += 1;
                     accum = 0;
+                    if j < self.enviorment.post.len() {
+                        position_post -= 1;//Need to check it again, but against the next one
+                    }
                 }
             }
         }
         if self.enviorment.post_word_boundary {
-            if length == 0{
+            if length == 0 || self.enviorment.post.len() != 0 {
                 if position_post != input.len() - 1 {
                     return self.enviorment.inverted;
                 }

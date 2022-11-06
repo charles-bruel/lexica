@@ -428,12 +428,145 @@ fn test_missing_node_error() {
 
 #[test]
 fn test_infinite_loop_check() {
-    let prog: Program = construct(&(create_ipa() + "\nrules\nlabel a\njmp a\nend")).unwrap();
+    const RULE: &str = "\nrules\nlabel a\njmp a\nend";
+    let prog: Program = construct(&(create_ipa() + RULE)).unwrap();
     let result = prog.apply(from_string(&prog, &String::from("test")).unwrap());
     match result {
         Ok(_) => assert!(false),
         Err(v) => assert!(matches!(v, ApplicationError::InternalError(_)))
     }
+}
+
+#[test]
+fn test_enviorment_post_a() {    
+    const INPUT: &str = "aba";
+    const CONTENT: &str = "a => e / _ $";
+    const EXPECT: &str = "abe";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_b() {    
+    const INPUT: &str = "aba";
+    const CONTENT: &str = "a => e / _ [consonant] [vowel] $";
+    const EXPECT: &str = "eba";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_c() {    
+    const INPUT: &str = "abba";
+    const CONTENT: &str = "a => e / _ [consonant]+ [vowel] $";
+    const EXPECT: &str = "ebba";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_d() {    
+    const INPUT: &str = "abbaa";
+    const CONTENT: &str = "a => e / _ [consonant]* [vowel]+ $";
+    const EXPECT: &str = "ebbea";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_e() {    
+    const INPUT: &str = "aaaaaaaa";
+    const CONTENT: &str = "a => e / _ [vowel]<2:2> $";
+    const EXPECT: &str = "aaaaaeaa";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_f() {    
+    const INPUT: &str = "aaaaaaaa";
+    const CONTENT: &str = "a => e / _ [vowel]<2:5> $";
+    const EXPECT: &str = "aaeeeeaa";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_g() {    
+    const INPUT: &str = "apataptapaat";
+    const CONTENT: &str = "a => e / _ p [vowel]? t";
+    const EXPECT: &str = "epateptapaat";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_h() {    
+    const INPUT: &str = "aba";
+    const CONTENT: &str = "a => e / $ _";
+    const EXPECT: &str = "eba";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_i() {    
+    const INPUT: &str = "aba";
+    const CONTENT: &str = "a => e / $ [vowel] [consonant] _";
+    const EXPECT: &str = "abe";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_j() {    
+    const INPUT: &str = "abba";
+    const CONTENT: &str = "a => e / $ [vowel] [consonant]+ _";
+    const EXPECT: &str = "abbe";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_k() {    
+    const INPUT: &str = "aabba";
+    const CONTENT: &str = "a => e / $ [vowel]+ [consonant]* _";
+    const EXPECT: &str = "aebbe";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_l() {    
+    const INPUT: &str = "aaaaaaaa";
+    const CONTENT: &str = "a => e / $ [vowel]<2:2> _";
+    const EXPECT: &str = "aaeaaaaa";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_m() {    
+    const INPUT: &str = "aaaaaaaa";
+    const CONTENT: &str = "a => e / $ [vowel]<2:5> _";
+    const EXPECT: &str = "aaeeeeaa";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_enviorment_post_n() {    
+    const INPUT: &str = "taapatpatapa";
+    const CONTENT: &str = "a => e / t [vowel]? p _";
+    const EXPECT: &str = "taapatpetape";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+fn simple_test_helper(rule: &str, input: &str) -> String {
+    let prog: Program = construct(&(create_ipa() + rule)).unwrap();
+    let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();
+    return result;
 }
 
 fn is_anagram(a: String, b: String) -> bool {
