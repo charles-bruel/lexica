@@ -210,7 +210,23 @@ fn construct_jump(program: &mut Program, line: &Vec<&str>) -> std::result::Resul
         return Ok(())
     }
     if line.len() == 3 {
-        todo!()
+        let mut cond = line[2];
+        let flag = if cond.starts_with("!") {
+            cond = cond.strip_prefix("!").unwrap();
+            true
+        } else {
+            false
+        };
+
+        if cond == "mod" {
+            program.rules.push(create_jump_rule(String::from(line[1]), JumpCondition::PrevMod, flag));
+        } else if cond == "flag" {
+            program.rules.push(create_jump_rule(String::from(line[1]), JumpCondition::Flag, flag));
+        } else {
+            return Err(ConstructorError::UnknownCommandError(format!("Unknown jump condition \"{}\"", cond), String::from(""), 0, line!()));
+        }
+        
+        return Ok(())
     }
 
     return Err(ConstructorError::MalformedDefinition(String::from("Malformed jump definition"), String::from(""), 0, line!()));

@@ -11,8 +11,6 @@ impl super::data::Program {
                 context.instruction_ptr += 1;
             }
             context.jump_flag = false;
-            context.flag_flag = false;
-            context.mod_flag = false;
             instruction_count += 1;
 
             if instruction_count == u16::MAX {
@@ -43,13 +41,21 @@ impl super::data::Rule {
     pub fn apply(&self, program: &Program, context: &mut ExecutionContext) -> std::result::Result<(), ApplicationError> {
         match self {
             Rule::TransformationRule { bytes, flags: _, name: _ } => {
+                context.flag_flag = false;
+                context.mod_flag = false;    
+
                 for rule in bytes {
-                    context.result = rule.apply(std::mem::replace(&mut context.result, vec!()))?;
+                    let mut mod_flag: bool = false;
+                    context.result = rule.apply(std::mem::replace(&mut context.result, vec!()), &mut mod_flag)?;
+                    context.mod_flag = mod_flag;
                     //Replaces with an empty struct to avoid ownership issues. I think this is faster than clone.
                 }
                 return Ok(());
             },
             Rule::CallSubroutine { name } => {
+                context.flag_flag = false;
+                context.mod_flag = false;
+    
                 if program.subroutines.contains_key(name) {
                     let temp_subroutine = program.subroutines.get(name).unwrap();
                     for rule in temp_subroutine {
@@ -62,10 +68,13 @@ impl super::data::Rule {
             },
             Rule::JumpSubRoutine { name, condition, inverted } => {
                 let flag = match condition {
-                    JumpCondition::PrevMod => todo!(),
-                    JumpCondition::Flag => todo!(),
+                    JumpCondition::PrevMod => context.mod_flag != *inverted,
+                    JumpCondition::Flag => context.flag_flag != *inverted,
                     JumpCondition::Unconditional => true,
                 };
+
+                context.flag_flag = false;
+                context.mod_flag = false;    
 
                 if flag {
                     if program.labels.contains_key(name) {
@@ -79,27 +88,26 @@ impl super::data::Rule {
                 return Ok(())
             },
         }
-        
     }
 }
 
 impl super::data::RuleByte {
-    pub fn apply(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    pub fn apply(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
         match self.transformations.len() == 1 {
-            true => Ok(self.apply_single(input)?),
-            false => Ok(self.apply_multi(input)?),
+            true => Ok(self.apply_single(input, mod_flag)?),
+            false => Ok(self.apply_multi(input, mod_flag)?),
         }
     }
 
-    fn apply_single(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_single(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
         if self.transformations[0].predicate.len() == 0 {
-            return Ok(self.apply_empty_predicate(input)?);
+            return Ok(self.apply_empty_predicate(input, mod_flag)?);
         } else {
-            return Ok(self.apply_single_simple(input)?);
+            return Ok(self.apply_single_simple(input, mod_flag)?);
         }
     }
 
-    fn apply_empty_predicate(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_empty_predicate(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
         while i < result.len() {
@@ -111,6 +119,7 @@ impl super::data::RuleByte {
                     None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
                 };
                 result.insert(i + 1, temp);
+                *mod_flag = true;
                 i += 1;
             }
 
@@ -120,7 +129,7 @@ impl super::data::RuleByte {
         return Ok(result);
     }
 
-    fn apply_single_simple(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_single_simple(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
         while i < result.len() {
@@ -163,11 +172,13 @@ impl super::data::RuleByte {
                         for x in &self.transformations[0].result_captures {
                             val.value = (val.value & !masks[*x]) | captures[*x];
                         }
-                        result[i] = val
+                        result[i] = val;
+                        *mod_flag = true;
                     },
                     None => {
                         result.remove((i as i32 + i_adjustment) as usize);
                         i_adjustment -= 1;
+                        *mod_flag = true;
                     },
                 }
             }
@@ -178,7 +189,7 @@ impl super::data::RuleByte {
         return Ok(result);
     }
 
-    fn apply_multi(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_multi(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
         let num = self.transformations.len();
 
         let mut result = input;
@@ -235,10 +246,12 @@ impl super::data::RuleByte {
                             for x in &self.transformations[k].result_captures {
                                 val.value = (val.value & !masks[*x]) | captures[*x];
                             }
-                            result[((i + k) as i32 + i_adjustment) as usize] = val
+                            result[((i + k) as i32 + i_adjustment) as usize] = val;
+                            *mod_flag = true;
                         },
                         None => {
                             result.remove(((i + k) as i32 + i_adjustment) as usize);
+                            *mod_flag = true;
                             if num > result.len() {
                                 return Ok(result);
                             }                    
