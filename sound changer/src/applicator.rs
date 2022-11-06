@@ -110,8 +110,23 @@ impl super::data::RuleByte {
     fn apply_empty_predicate(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
+
+        {//Insert as very first character? Code duplication which is unideal
+            let flag = self.check_enviorment_for_initial(&result);
+            if flag {
+                let rule = self.transformations[0].result[0].as_ref();
+                let temp = match rule.transform(&Letter { value: 0 }) {//Dummy input; there are better ways to do this
+                    Some(v) => v,
+                    None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
+                };
+                result.insert(0, temp);
+                *mod_flag = true;
+                i += 1;
+            }
+        }
+        
         while i < result.len() {
-            let flag = self.check_enviorment(&result, i, 0);
+            let flag = self.check_enviorment(&result, i + 1, 0);
             if flag {
                 let rule = self.transformations[0].result[0].as_ref();
                 let temp = match rule.transform(&Letter { value: 0 }) {//Dummy input; there are better ways to do this
@@ -268,15 +283,62 @@ impl super::data::RuleByte {
         return Ok(result);
     }
 
+    fn check_enviorment_for_initial(&self, input: &Vec<Letter>) -> bool {
+        if self.enviorment.ante.len() != 0 {
+            return self.enviorment.inverted;
+        }
+
+        let mut position_post = 0;
+        let mut accum: u8 = 0;
+
+        let mut j: usize = 0;
+        let mut flag = true;
+        while j < self.enviorment.post.len() {
+            if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
+                if accum < self.enviorment.post[j].min_quant || j < self.enviorment.post.len() - 1 {
+                    return self.enviorment.inverted;
+                }
+                break;
+            }
+            if flag {
+                flag = false;
+            } else {
+                position_post += 1;
+            }
+
+            let temp = self.enviorment.post[j].predicate.validate(input, position_post);
+            accum += if temp {1} else {0};
+            if temp {
+                if accum == self.enviorment.post[j].max_quant {
+                    j += 1;
+                    accum = 0;
+                }
+            } else {
+                if accum < self.enviorment.post[j].min_quant {
+                    return self.enviorment.inverted;
+                } else {
+                    j += 1;
+                    accum = 0;
+                    if j < self.enviorment.post.len() {
+                        position_post -= 1;//Need to check it again, but against the next one
+                    }
+                }
+            }
+        }
+        if self.enviorment.post_word_boundary {
+            if position_post != input.len() - 1 {
+                return self.enviorment.inverted;
+            }
+        }
+
+        return !self.enviorment.inverted;
+    }
+
     fn check_enviorment(&self, input: &Vec<Letter>, start_position: usize, length: usize) -> bool {
         let mut j: usize = 0;
         let mut position_ante = start_position;
         let mut position_post = start_position + length;
         let mut accum: u8 = 0;
-
-        if length == 0 {
-            position_ante += 1;//Not sure why this is nessecary and that's worrying
-        }
 
         while j < self.enviorment.ante.len() {
             if position_ante == 0 {
