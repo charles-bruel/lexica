@@ -10,6 +10,7 @@ pub struct Program {
     pub diacritics: Vec<Diacritic>,
     pub rules: Vec<Rule>,
     pub subroutines: HashMap<String, Vec<Rule>>,
+    pub labels: HashMap<String, usize>,
     pub names_to_idx: HashMap<String, u32>,
     pub idx_to_features: HashMap<u32, Feature>,
     pub features_to_idx: HashMap<String, (u32, usize)>,
@@ -194,9 +195,15 @@ pub struct RuleByte {
     pub num_captures: usize,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum JumpCondition {
+    PrevMod, Flag, Unconditional
+}
+
 pub enum Rule {
     TransformationRule { bytes: Vec<RuleByte>, flags: u16, name: String },
-    CallSubroutine { name: String }
+    CallSubroutine { name: String },
+    JumpSubRoutine { name: String, condition: JumpCondition, inverted: bool},
 }
 
 pub struct EnviormentPredicate {
@@ -239,6 +246,7 @@ pub fn create_empty_program() -> Program {
         diacritics: Vec::new(),
         rules: Vec::new(),
         subroutines: HashMap::new(),
+        labels: HashMap::new(),
         names_to_idx: HashMap::new(),
         idx_to_features: HashMap::new(),
         features_to_idx: HashMap::new(),
@@ -434,6 +442,10 @@ pub fn create_subroutine_call_rule(name: String) -> Rule {
     Rule::CallSubroutine { name: name }
 }
 
+pub fn create_jump_rule(name: String, condition: JumpCondition, inverted: bool) -> Rule {
+    Rule::JumpSubRoutine { name: name, condition: condition, inverted: inverted }
+}
+
 pub fn create_empty_enviorment() -> Enviorment {
     Enviorment {
         ante: Vec::new(),
@@ -474,6 +486,24 @@ pub fn to_string(program: &Program, word: Vec<Letter>) -> std::result::Result<St
         result += &l.get_symbol(&program)?;
     }
     return Ok(result);
+}
+
+pub struct ExecutionContext {
+    pub instruction_ptr: usize,
+    pub result: Vec<Letter>,
+    pub mod_flag: bool,
+    pub flag_flag: bool,
+    pub jump_flag: bool,
+}
+
+pub fn create_execution_context(result: &Vec<Letter>) -> ExecutionContext {
+    ExecutionContext {
+        instruction_ptr: 0,
+        result: result.clone(),
+        mod_flag: false,
+        flag_flag: false,
+        jump_flag: false,
+    }
 }
 
 pub struct ThreadContext {

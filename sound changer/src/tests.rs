@@ -426,6 +426,16 @@ fn test_missing_node_error() {
     }
 }
 
+#[test]
+fn test_infinite_loop_check() {
+    let prog: Program = construct(&(create_ipa() + "\nrules\nlabel a\njmp a\nend")).unwrap();
+    let result = prog.apply(from_string(&prog, &String::from("test")).unwrap());
+    match result {
+        Ok(_) => assert!(false),
+        Err(v) => assert!(matches!(v, ApplicationError::InternalError(_)))
+    }
+}
+
 fn is_anagram(a: String, b: String) -> bool {
     let mut avec: Vec<char> = a.chars().collect();
     avec.sort();
@@ -442,6 +452,10 @@ fn create_int_test_1() -> Program {
     let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
     let rules = load_from_file(&String::from("test-data/int-test-1.lsc"), false).expect("Error reading file");
     construct(&format!("{0}\n{1}", defs, rules)).unwrap()
+}
+
+fn create_ipa() -> String {
+    load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")
 }
 
 fn random_letter() -> super::data::Letter {

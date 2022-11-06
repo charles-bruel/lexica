@@ -174,7 +174,7 @@ function syntax_highlighter(parent_element, text_content) {
             }
 
             if(temp == "feature" || temp == "switch" || temp == "symbol" || temp == "rule" || temp == "diacritic" || temp == "root" || temp == "all" || temp == "sub"
-                || temp == "subx" || temp == "call") {
+                || temp == "subx" || temp == "call" || temp == "label" || temp == "jmp") {
                 class_flag += " synhi-keyword";
                 add_textarea_span(parent_element, running, class_flag);
                 running = "";

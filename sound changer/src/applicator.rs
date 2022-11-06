@@ -2,11 +2,25 @@ use super::data::*;
 
 impl super::data::Program {
     pub fn apply(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
-        let mut result = input.clone();
-        for rule in &self.rules {
-            result = rule.apply(&self, result)?;
+        let mut context: ExecutionContext = create_execution_context(&input);
+        let mut instruction_count: u16 = 0;
+        while context.instruction_ptr < self.rules.len() {
+            self.rules[context.instruction_ptr].apply(&self, &mut context)?;
+
+            if !context.jump_flag {
+                context.instruction_ptr += 1;
+            }
+            context.jump_flag = false;
+            context.flag_flag = false;
+            context.mod_flag = false;
+            instruction_count += 1;
+
+            if instruction_count == u16::MAX {
+                return Err(ApplicationError::InternalError(String::from("Infinite loop detected; executed u16::MAX instructions without ending")));
+            }
         }
-        return Ok(result);
+
+        return Ok(context.result);
     }
 
     pub fn apply_vec(&self, input: Vec<Vec<Letter>>) -> std::result::Result<Vec<Vec<Letter>>, ApplicationError> {
@@ -26,26 +40,43 @@ impl super::data::Program {
 }
 
 impl super::data::Rule {
-    pub fn apply(&self, program: &Program, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    pub fn apply(&self, program: &Program, context: &mut ExecutionContext) -> std::result::Result<(), ApplicationError> {
         match self {
             Rule::TransformationRule { bytes, flags: _, name: _ } => {
-                let mut result = input.clone();
                 for rule in bytes {
-                    result = rule.apply(result)?;
+                    context.result = rule.apply(std::mem::replace(&mut context.result, vec!()))?;
+                    //Replaces with an empty struct to avoid ownership issues. I think this is faster than clone.
                 }
-                return Ok(result);
+                return Ok(());
             },
             Rule::CallSubroutine { name } => {
                 if program.subroutines.contains_key(name) {
                     let temp_subroutine = program.subroutines.get(name).unwrap();
-                    let mut result = input.clone();
                     for rule in temp_subroutine {
-                        result = rule.apply(program, result)?;
+                        rule.apply(program, context)?;
                     }
-                    return Ok(result);
+                    return Ok(());
                 } else {
                     return Err(ApplicationError::InternalError(format!("Subroutine not found: \"{}\"", name)));
                 }
+            },
+            Rule::JumpSubRoutine { name, condition, inverted } => {
+                let flag = match condition {
+                    JumpCondition::PrevMod => todo!(),
+                    JumpCondition::Flag => todo!(),
+                    JumpCondition::Unconditional => true,
+                };
+
+                if flag {
+                    if program.labels.contains_key(name) {
+                        context.instruction_ptr = *program.labels.get(name).unwrap();
+                        context.jump_flag = true;
+                    } else {
+                        return Err(ApplicationError::InternalError(format!("Could not find label \"{}\"", name)));
+                    }
+                }
+
+                return Ok(())
             },
         }
         
@@ -69,7 +100,7 @@ impl super::data::RuleByte {
     }
 
     fn apply_empty_predicate(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
-        let mut result = input.clone();
+        let mut result = input;
         let mut i: usize = 0;
         while i < result.len() {
             let flag = self.check_enviorment(&result, i, 0);
@@ -90,7 +121,7 @@ impl super::data::RuleByte {
     }
 
     fn apply_single_simple(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
-        let mut result = input.clone();
+        let mut result = input;
         let mut i: usize = 0;
         while i < result.len() {
             let mut flag = false;
@@ -150,9 +181,9 @@ impl super::data::RuleByte {
     fn apply_multi(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
         let num = self.transformations.len();
 
-        let mut result = input.clone();
+        let mut result = input;
         if num > result.len() {
-            return Ok(input);
+            return Ok(result);
         }
         let mut i = 0;
 

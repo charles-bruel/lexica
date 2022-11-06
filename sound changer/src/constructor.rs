@@ -8,6 +8,7 @@ enum RuleBlockType {
     Rule, Sub, SubX
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum State {
     None,
     Features,
@@ -40,7 +41,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
 
         if line.contains("#") {
             let temp: Vec<&str> = line.split("#").collect();
-            line = temp[0];
+            line = temp[0].trim();
         }
         
         let mut temp = regex.replace_all(line, String::from_utf8(vec![0]).unwrap());
@@ -96,6 +97,10 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                     rule_accum_depth = 1;
                 } else if words[0] == "call" {
                     handle_err(construct_call(&mut program, &words), String::from(line_og), line_number)?;
+                } else if words[0] == "label" {
+                    handle_err(construct_label(&mut program, &words), String::from(line_og), line_number)?;
+                } else if words[0] == "jmp" {
+                    handle_err(construct_jump(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
@@ -185,6 +190,30 @@ pub fn construct_words(program: &Program, input: String) -> std::result::Result<
         result.push(from_string(&program, &String::from(l.trim()))?);
     }
     return Ok(result);
+}
+
+fn construct_label(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    if line.len() != 2 {
+        return Err(ConstructorError::MalformedDefinition(String::from("Malformed label definition"), String::from(""), 0, line!()));
+    }
+
+    program.labels.insert(String::from(line[1]), program.rules.len());
+
+    Ok(())
+}
+
+fn construct_jump(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    //Cannot explicitly check if the jump exists, as jumping forward is supported
+    //TODO: Make a checker for this after rules completion so it's still a compile error not a runtime error
+    if line.len() == 2 {
+        program.rules.push(create_jump_rule(String::from(line[1]), JumpCondition::Unconditional, false));
+        return Ok(())
+    }
+    if line.len() == 3 {
+        todo!()
+    }
+
+    return Err(ConstructorError::MalformedDefinition(String::from("Malformed jump definition"), String::from(""), 0, line!()));
 }
 
 fn construct_call(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
