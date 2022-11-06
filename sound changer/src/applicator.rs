@@ -281,7 +281,7 @@ impl super::data::RuleByte {
         while j < self.enviorment.ante.len() {
             if position_ante == 0 {
                 if accum < self.enviorment.ante[j].min_quant {
-                    return false;
+                    return self.enviorment.inverted;
                 }
                 break;
             }
@@ -296,7 +296,7 @@ impl super::data::RuleByte {
                 }
             } else {
                 if accum < self.enviorment.ante[j].min_quant {
-                    return false;
+                    return self.enviorment.inverted;
                 } else {
                     j += 1;
                     accum = 0;
@@ -304,7 +304,7 @@ impl super::data::RuleByte {
             }
         }
         if self.enviorment.ante_word_boundary && position_ante != 0 {
-            return false;
+            return self.enviorment.inverted;
         }
 
         j = 0;
@@ -312,7 +312,7 @@ impl super::data::RuleByte {
         while j < self.enviorment.post.len() {
             if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
                 if accum < self.enviorment.post[j].min_quant {
-                    return false;
+                    return self.enviorment.inverted;
                 }
                 break;
             }
@@ -331,7 +331,7 @@ impl super::data::RuleByte {
                 }
             } else {
                 if accum < self.enviorment.post[j].min_quant {
-                    return false;
+                    return self.enviorment.inverted;
                 } else {
                     j += 1;
                     accum = 0;
@@ -341,16 +341,16 @@ impl super::data::RuleByte {
         if self.enviorment.post_word_boundary {
             if length == 0{
                 if position_post != input.len() - 1 {
-                    return false;
+                    return self.enviorment.inverted;
                 }
             } else {
                 if position_post != input.len() {
-                    return false;
+                    return self.enviorment.inverted;
                 }
             }
         }
 
-        return true;
+        return !self.enviorment.inverted;
     }
 }
 

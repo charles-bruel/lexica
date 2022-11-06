@@ -217,6 +217,7 @@ pub struct Enviorment {
     pub post: Vec<EnviormentPredicate>,
     pub ante_word_boundary: bool,
     pub post_word_boundary: bool,
+    pub inverted: bool,
 }
 
 pub struct Diacritic {
@@ -452,15 +453,17 @@ pub fn create_empty_enviorment() -> Enviorment {
         post: Vec::new(),
         ante_word_boundary: false,
         post_word_boundary: false,
+        inverted: false,
     }
 }
 
-pub fn create_enviorment(ante: Vec<EnviormentPredicate>, post: Vec<EnviormentPredicate>, ante_word_boundary: bool, post_word_boundary: bool) -> Enviorment {
+pub fn create_enviorment(ante: Vec<EnviormentPredicate>, post: Vec<EnviormentPredicate>, ante_word_boundary: bool, post_word_boundary: bool, inverted: bool) -> Enviorment {
     Enviorment {
         ante: ante,
         post: post,
         ante_word_boundary: ante_word_boundary,
         post_word_boundary: post_word_boundary,
+        inverted: inverted,
     }
 }
 

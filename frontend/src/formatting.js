@@ -182,7 +182,7 @@ function syntax_highlighter(parent_element, text_content, symbols) {
                 class_flag = (i === current_error_line ? "synhi-err" : "");
             }
 
-            if(temp == "=>" || temp == "/" || temp == "_" || temp == "*" || temp == "$") {
+            if(temp == "=>" || temp == "/" || temp == "//" || temp == "_" || temp == "*" || temp == "$") {
                 class_flag += " synhi-operator";
                 add_textarea_span(parent_element, running, class_flag);
                 running = "";

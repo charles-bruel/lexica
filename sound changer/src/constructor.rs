@@ -365,14 +365,12 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Rul
     }
 
     let split2: Vec<&str> = split1[1].split("/").collect();
-    if split2.len() > 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!()));
-    }
 
     let predicate = split1[0].trim();
-    let (result, enviorment) = match split2.len() {
-        1 => { (split2[0].trim(), "") }
-        2 => { (split2[0].trim(), split2[1].trim()) }
+    let (result, enviorment, inverted) = match split2.len() {
+        1 => { (split2[0].trim(), "", false) }
+        2 => { (split2[0].trim(), split2[1].trim(), false) }
+        3 => { (split2[0].trim(), split2[2].trim(), true) }//a double slash will split it into 3 sections.
         _ => {         return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!())); }
     };
 
@@ -395,9 +393,9 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Rul
             results.push(construct_result(program, result_split[i])?);
             i += 1;
         }
-        return Ok(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment)?));
+        return Ok(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment, inverted)?));
     } else {
-        return Ok(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment)?));
+        return Ok(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment, inverted)?));
     }
 }
 
@@ -618,7 +616,7 @@ fn parse_features_simple(program: &Program, features: &str) -> std::result::Resu
     return Ok((mask, key));
 }
 
-fn construct_enviorment(program: &Program, enviorment: &str) -> std::result::Result<Enviorment, ConstructorError> {
+fn construct_enviorment(program: &Program, enviorment: &str, inverted: bool) -> std::result::Result<Enviorment, ConstructorError> {
     if enviorment == "" {
         return Ok(create_empty_enviorment());
     }
@@ -634,7 +632,7 @@ fn construct_enviorment(program: &Program, enviorment: &str) -> std::result::Res
     let (ante_wing, ante_boundary) = construct_enviorment_wing(program, enviorment_wings[0], Ordering::Reverse)?;
     let (post_wing, post_boundary) = construct_enviorment_wing(program, enviorment_wings[1], Ordering::Forward)?;
 
-    return Ok(create_enviorment(ante_wing, post_wing, ante_boundary, post_boundary));
+    return Ok(create_enviorment(ante_wing, post_wing, ante_boundary, post_boundary, inverted));
 }
 
 fn construct_enviorment_wing(program: &Program, enviorment: &str, direction: Ordering) -> std::result::Result<(Vec<EnviormentPredicate>, bool), ConstructorError> {
