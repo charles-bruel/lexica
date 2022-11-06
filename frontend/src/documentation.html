@@ -64,6 +64,7 @@
     <h2>Table of Contents</h2>
     <div id="table-of-contents-container"></div>
     <h2>Sound Change Language</h2>
+    <p style="margin-left:0.5in">This assumes basic knowledge of the IPA. <a href="https://www.ipachart.com/">Here</a> is a good resource to learn.</p>
     <h3>Basics of the language</h3>
     <p>Comments are declared with a #</p>
     <div><pre>
@@ -270,7 +271,7 @@ end</pre></div>
     <h3>Diacritics</h3>
     <p>Diacritics encode a certain transformation, which can then be applied to a symbol to encode more information. This transformation is simpler than the full features of
        the sound change applier and does not have every feature.</p>
-    <p>Symbols are defined in the <span class="code">diacritics</span> section. Each diacritic line has 3 parts - the diacritic keyword, the diacritic itself, and the
+    <p>Diacritics are defined in the <span class="code">diacritics</span> section. Each diacritic line has 3 parts - the diacritic keyword, the diacritic itself, and the
        transformation</p>
     <div><pre>
     diacritic ː [-long] => [+long]</pre></div>
@@ -301,8 +302,7 @@ diacritics
     ...
     diacritic ̥◌ [+voice] => [-voice]
     ...
-end
-    </pre></div>
+end</pre></div>
     <p>In the above incomplete code snippet of the full IPA implementation, the symbol n is strictly defined as voiced, however the shown diacritic can make it unvoiced. The
        n̥ symbol would thus represent <span class="code">[-voice alveolar nasal]</span>. Not all browsers display combining characters correctly.</p>
     <p>The full diacritics definition used by the default IPA implementation is below:</p>
@@ -317,6 +317,143 @@ diacritics
     diacritic ˤ [-pharyngealized] => [+pharyngealized]
     diacritic ⁿ [-nasal-release] => [+nasal-release]
 end</pre></div>
+    <h3>Basic Rules</h3>
+    <p>Rules are the meat and potatoes of this program. They contain instructions which define the changes to sounds over time. Rules are defined in the 
+       <span class="code">rules</span> section.</p>
+    <h4>Basic syntax</h4>
+    <p>A basic rule is defined as follows:</p>
+    <div><pre class="q k">
+...
+rules
+    rule uvular-plosive-to-velar
+        q => k
+    end
+end</pre></div>
+    <p>The above rule turns every q in the program into a k.</p>
+    <div><pre class="q k χ x">
+...
+rules
+    rule uvulars-to-velar
+        q => k
+        χ => x
+    end
+end</pre></div>
+    <p>Rules can have multiple steps. Each step is executed in series.</p>
+    <div><pre class="e i">
+...
+rules
+    rule raise-vowel
+        e => i
+    end
+end</pre></div>
+    <p>With regards to symbols, symbols weakly match in the first part (called the predicate) and strictly match in the second part (called the result). That is any e, 
+       regardless of length, nasality, etc. will match that e, but it will be turned into an i exactly. Some inputs and outputs are below:</p>
+    <div><pre>
+e => i
+eː => i</pre></div>
+    <p>The * symbol can be used to delete a character. The following code deletes all glottals.</p>
+    <div><pre>
+...
+rules
+    rule glottal-loss
+        [glottal] => *
+    end
+end</pre></div>
+    <h4>Feature matrices</h4>
+    <p>A key part of what makes this program more sophisticated than a simple find and replace is features. You can specify features for both inputs and outputs. Output feature
+       matrices will modify only what is nessecary. For example, the uvular example from above can be rewritten as follows:</p>
+    <div><pre>
+...
+rules
+    rule uvulars-to-velar
+        [uvular] => [velar]
+    end
+end</pre></div>
+    <p>The above code will turn everything which matches the uvular feature into a velar, while preserving all other properties.</p>
+    <div><pre>
+    rule lengthen-back
+        [back] => [+long]
+    end</pre></div>
+    <p>The features effected don't have to be the same either. The above code makes every back vowel long.</p>
+    <p>You can also invert features, for example <span class="code">[!back]</span> is a valid feature matrix. Be careful, that matches everything that isn't back, including all
+       consonants. Instead, you should probably use <span class="code">[vowel !back]</span>.</p>
+    <h4>Multiple transformations</h4>
+    <p>There are various ways to make the same rule do multiple things. Using curly brackets <span class="code">{}</span> gives multiple sets of inputs and outputs. For example
+       a complex lenition rule could be written as follows:</p>
+    <div><pre class="p b t d k g β ð ɣ">
+    rule lenition
+        {p b t d k g} => {b β d ð g ɣ}
+    end</pre></div>
+    <p>The above rule turns p into b, b into β, etc.</p>
+    <p>If you wish to modify two or more letters at once, there is also an option for that.</p>
+    <div><pre class="z v s r">
+    rule zv-change
+        z v => s r
+    end</pre></div>
+    <p>This changes all zv clusters into sr clusters.</p>
+    <p>This can be combined with the sets of inputs and outputs.</p>
+    <div><pre class="k g i c ɟ e">
+    rule palatalization
+        {k g} i => {c ɟ} e
+    end</pre></div>
+    <p>The above rule implements rudimentry palatalization, turning every ki and gi cluster into ce and ɟe clusters.</p>
+    <p>Of course it's probably more sensible to implement palatalization with features, like so:</p>
+    <div><pre class="i e">
+    rule palatalization
+        [velar] i => [palatal] e
+    end</pre></div>
+    <h3>Enviorment rules</h3>
+    <p>All the rules are depedent entirely on the content of the rules to execute. You could make them depend on their enviorment by doing a multiple predicate and not modifying
+       the output, but there is a simpler solution: enviorments. The enviorment comes after the result and is signified with a <span class="code">/</span>.</p>
+    <h4>Basic enviorments</h4>
+    <p>The enviorment system matches the enviorment around the letter. The position of the letter is marked with a <span class="code">_</span>.</p>
+    <div><pre class="i">
+    rule palatalization
+        [velar] => [palatal] / _ i
+    end</pre></div>
+    <p>The above code is the palatalization from before, except the i doesn't change to an e.</p>
+    <p>Of course enviorments can also use features. The following code rounds all vowels after uvulars:</p>
+    <div><pre>
+    rule uvulars-round
+        [vowel] => [+round] / [uvular] _
+    end</pre></div>
+    <p>Notice how the underscore has moved to after the condition.</p>
+    <p>Finally, enviorments can be inverted with a <span class="code">//</span>. The following code deletes h except before plosives:</p>
+    <div><pre class="h">
+    rule delete-h-except-plosives
+        h => * // _ [plosive]
+    end</pre></div>
+    <h4>Word boundaries</h4>
+    <p>Rules often care about word boundaries, for example French loses most word final consonants. A <span class="code">$</span> symbol indicates a word boundary in
+       enviorments.</p>
+    <div><pre>
+    rule word-final-consonant-loss
+        [consonant] => * / _ $
+    end</pre></div>
+    <p>The above code unconditionally removes word final consonants.</p>
+    <h4>Variable quantaties</h4>
+    <p>In enviorments, variable quantities of matches can be set. A <span class="code">?</span> after the condition matches either 0 or 1. Likewise, a
+       <span class="code">*</span> matches any number, including 0, whereas a <span class="code">+</span> requires at least one.</p>
+    <div><pre>
+    rule stress-ultimate
+        [vowel] => [+stress] / _ [consonant]* $
+    end</pre></div>
+    <p>The above rule stressed the final syllable.</p>
+    <h4>Letter insertion</h4>
+    <p>Similar to how you can specify none in the result, you can specify none in the input. Previous, this wasn't too useful becasue it would insert characters everywhere, but
+       with enviorments, we can specify the insertion point to make it useful.</p>
+    <div><pre class="e">
+    rule breakup-plosive-clusters
+        * => e / [plosive] _ [plosive]
+    end</pre></div>
+    <p>The above code breaks up all plosive clusters with an e.</p>
+    <h3>Captures in Rules</h3>
+    <h4>Basic captures</h4>
+    <h4>Feature captures</h4>
+    <h3>Examples</h3>
+    <h3>Control flow</h3>
+    <h4>Jumps</h4>
+    <h4>Subroutines</h4>
     <h2>Spreadsheet Program</h2>
     
 
