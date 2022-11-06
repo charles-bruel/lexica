@@ -30,6 +30,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
     let mut rule_accum_depth: u8 = 0;
 
     let mut line_number: u16 = 0;
+    let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
 
     for f in lines {
         line_number += 1;
@@ -42,7 +43,6 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
             line = temp[0];
         }
         
-        let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
         let mut temp = regex.replace_all(line, String::from_utf8(vec![0]).unwrap());
         let words: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
@@ -251,13 +251,13 @@ fn construct_multi_block_sub(program: &mut Program, lines: Vec<&str>) -> std::re
 
     let mut flag = true;
     let mut to_return: Vec<Rule> = Vec::new();
+    let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
 
     for f in lines {
         if flag {//Skip first line
             flag = false;
             continue;
         }
-        let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
         let mut temp = regex.replace_all(f, String::from_utf8(vec![0]).unwrap());
         let words: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
