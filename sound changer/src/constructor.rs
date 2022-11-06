@@ -696,7 +696,7 @@ fn construct_enviorment_predicate(program: &Program, predicate: &str) -> std::re
         return Ok(create_enviorment_predicate(predicate_instance, quant_min_value, quant_max_value));
     }
 
-    let predicate_features = predicate.trim_end_matches(&['+', '*', '+']);
+    let predicate_features = predicate.trim_end_matches(&['+', '*', '?']);
     let predicate_instance = construct_simple_predicate(program, predicate_features)?;
     if predicate.ends_with("?") {
         return Ok(create_enviorment_predicate(predicate_instance, 0, 1));
