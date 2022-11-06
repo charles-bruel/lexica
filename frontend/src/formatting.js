@@ -98,11 +98,10 @@ function generate_indent_line(element, arr, index, parent_elem) {
     parent_elem.appendChild(div);
 }
 
-function syntax_highlighter(parent_element, text_content) {
+function syntax_highlighter(parent_element, text_content, symbols) {
     var temp = text_content.replace("\t", "    ");
     var lines = temp.split("\n");
     parent_element.replaceChildren();
-    var symbols = [];
     for(var i = 0;i < lines.length;i ++) {
         var type_flag = "";
         var whitespcae_flag = 0;
@@ -235,7 +234,7 @@ function format_code_blocks() {
         var temp = document.createElement("div");
         temp.className = "code";
         blocks[i].parentNode.prepend(temp);
-        syntax_highlighter(temp, blocks[i].textContent);
+        syntax_highlighter(temp, blocks[i].textContent, blocks[i].className.split(" "));
         blocks[i].parentNode.removeChild(blocks[i]);
         i--;
     }

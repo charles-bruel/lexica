@@ -7,7 +7,7 @@ function update_textarea(comp) {//Syntax highlighter
     var lines = area.value.split("\n");
     element.replaceChildren();
     numbers.replaceChildren();
-    syntax_highlighter(element, area.value);
+    syntax_highlighter(element, area.value, []);
 
 
     for(var i = 0;i < lines.length;i ++) {
