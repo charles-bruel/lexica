@@ -215,7 +215,7 @@ impl super::data::RuleByte {
 
         while i <= result.len() - num {
             let mut idx: Vec<usize> = Vec::new();
-            let mut captures: Vec<u64> = vec![0; self.num_captures];
+            let mut captures: Vec<Option<u64>> = vec![None; self.num_captures];
             let mut masks: Vec<u64> = vec![0; self.num_captures];
 
             let mut j: usize = 0;
@@ -232,8 +232,18 @@ impl super::data::RuleByte {
                         while l < self.transformations[j].predicate_captures.len() {
                             let x = self.transformations[j].predicate_captures[l].0;
                             let m = self.transformations[j].predicate_captures[l].1;
-                            captures[x] = &result[i + j].value & m;
-                            masks[x] = m;
+                            match captures[x] {
+                                Some(v) => {//If this capture ID has already been used, now it needs to detect sameness
+                                    if result[i + j].value & m != v {
+                                        flag = false;//Sike this actually isn't ok
+                                    }
+                                    //It matches; move on
+                                },
+                                None => {//New capture
+                                    captures[x] = Some(&result[i + j].value & m);
+                                    masks[x] = m; 
+                                },
+                            }
 
                             l += 1;
                         }
@@ -259,7 +269,11 @@ impl super::data::RuleByte {
                     match temp {
                         Some(mut val) => {
                             for x in &self.transformations[k].result_captures {
-                                val.value = (val.value & !masks[*x]) | captures[*x];
+                                match captures[*x] {
+                                    Some(v) => val.value = (val.value & !masks[*x]) | v,
+                                    None => return Err(ApplicationError::InternalError(format!("Did receive captured value for capture id \"{}\"", x))),
+                                }
+                                
                             }
                             result[((i + k) as i32 + i_adjustment) as usize] = val;
                             *mod_flag = true;
