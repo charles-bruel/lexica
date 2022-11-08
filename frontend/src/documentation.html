@@ -347,7 +347,8 @@ rules
     end
 end</pre></div>
     <p>With regards to symbols, symbols weakly match in the first part (called the predicate) and strictly match in the second part (called the result). That is any e, 
-       regardless of length, nasality, etc. will match that e, but it will be turned into an i exactly. Some inputs and outputs are below:</p>
+       regardless of length, nasality, etc. will match that e, but it will be turned into an i exactly. It is, however, worth noting that symbols match strictly when using a
+       diacritic in the definition. Some inputs and outputs are below:</p>
     <div><pre>
 e => i
 eː => i</pre></div>
@@ -448,9 +449,59 @@ end</pre></div>
     end</pre></div>
     <p>The above code breaks up all plosive clusters with an e.</p>
     <h3>Captures in Rules</h3>
+    <p>A capture allows an part of a predicate to affect a result. For example, a rule could capture character of a predicate, and set another character to it, creating
+       assimilation. Captures can be used to detect geminates, perform metathesis, or create assimilation rules.</p>
     <h4>Basic captures</h4>
+    <p>Captures are performed with the <span class="code">$</span> operator, followed by a number. The number is the capture ID. Captures are captured in the predicate and used
+       in the result. Captures are placed after the symbol or feature matrix. Right now, they cannot stand on their own so if you wish to have a bare capture, just use a empty
+       feature matrix, like so: <span class="code">[]$1</span>. I believe an example would illuminate things.</p>
+    <div><pre class="h">
+    rule h-change
+        h []$1 => []$1 []
+    end</pre></div>
+    <p>The above rule turns every h into a copy of what follows it. When checking the predicate, it saves the value into the capture, which can then be referenced in the result.</p>
+    <p>If in the prediacte the program finds a capture it's already assigned to, then it checks if the capture matches the predicate. If not, it fails the test. That way you can
+       test for gemination or reduplication.</p>
+    <div><pre>
+    rule degemination
+        []$1 []$1 => []$1 *
+    end</pre></div>
+    <p>The above rule unconditionally degeminates everything.</p>
     <h4>Feature captures</h4>
+    <p>Captures are not limited to capturing all the features of a letter. You can specify a capture to capture a set of features. Only specify features on the first instance
+       of the capture in the predicate, if applicable.
+    </p>
+    <div><pre>
+    rule nasal-assimilation
+        [nasal] [consonant !nasal]$1(place) => []$1 []
+    end</pre></div>
+    <p>The above rule applies nasal assimilation, that is it takes a nasal before another consonant and matches it's place of articulation to consonant. Notice in english 
+       in + possible = i<b>m</b>possible.</p>
+    <h4>Examples using captures</h4>
+    <p>Geminate consonants with a following h:</p>
+    <div><pre class="h">
+    rule h-triggered-gemination
+        []$1 h => [] []$1
+    end</pre></div>
+    <p>Degeminates all consonants:</p>
+    <div><pre>
+    #The consonant in the predicate is unnessecary 
+    #because it has to match to begin with
+    rule degemination
+        [consonant]$1 []$1 => []$1 * #
+    end</pre></div>
+    <p>Degeminates plosives:</p>
+    <div><pre>
+    rule degemination
+        [plosive]$1 []$1 => []$1 *
+    end</pre></div>
+    <p>Nasal assimilation:</p>
+    <div><pre>
+    rule nasal-assimilation
+        [nasal] [consonant !nasal]$1(place) => []$1 []
+    end</pre></div>
     <h3>Examples</h3>
+    <h2>Complex language topics</h2>
     <h3>Control flow</h3>
     <h4>Jumps</h4>
     <h4>Subroutines</h4>
