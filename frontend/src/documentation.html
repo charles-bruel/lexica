@@ -501,6 +501,106 @@ end</pre></div>
         [nasal] [consonant !nasal]$1(place) => []$1 []
     end</pre></div>
     <h3>Examples</h3>
+    <p>This is a list of example complete programs (excluding definitions if they are the standard IPA ones) for your reference.</p>
+    <p>Latin -> Vulgar Latin:</p>
+    <div><pre class="h m n i w b β r j w e o ɟ g ɣ u̯ k s tʲ eː oː eː' oː'">
+feature_def
+    ...
+    feature +non-syllabic all
+    feature +stress vowel
+end
+...
+diacritics
+    ...
+    diacritic ' [-stress] => [+stress]
+    diacritic ◌̯ [-non-syllabic] => [+non-syllabic]
+end    
+...
+#This program implements the sound changes from latin into vulgar latin/proto romance
+#As described in https://en.wikipedia.org/wiki/Phonological_changes_from_Classical_Latin_to_Proto-Romance
+#Only the general changes are used here
+rules
+    rule h-loss
+        [vowel]$1(backness closeness round) h []$1 => [+long] h *
+        h => *
+    end
+
+    rule final-m-loss
+        m => n / $ [consonant]* [vowel] _ $ #First handle the except where it surives as n monosyllabically
+        m => * / _ $
+    end
+
+    rule n-fricative-loss
+        [vowel] n => [+long] * / _ [fricative]
+    end
+
+    rule duplicated-i-removal
+        i i => [+long] *
+    end
+
+    #Ignoring rural dipthong change
+    #Ignoring changing of vowel qualities
+
+    rule w-loss
+        w => β
+        b => β / [vowel] _ [vowel]
+        b => β / _ r
+        β => * / [vowel +round] _ [vowel]
+        β => * / [vowel] _ [vowel +round]
+    end
+
+    rule hiatus-semivowels
+        [front -stress] => j / _ [vowel]
+        [back -stress] => w / _ [vowel]
+        [front +stress] [vowel] => j [+stress] / _ [consonant]* [vowel] [consonant]* $
+        [back +stress] [vowel] => w [+stress]  / _ [consonant]* [vowel] [consonant]* $
+        [consonant]$1 []$1 w => [] [] *
+        w => * / _ [back -stress]
+        [+labialized] => [-labialized] / _ [back]
+        j e => * [+long]
+        w o => * [+long]
+        [+labialized] => [-labialized] / _ j
+        [consonant] j => [+palatalized] * // $ _
+    end
+
+    rule j-fortion
+        j => ɟ / [vowel] _ [vowel]
+        j => ɟ / $ _
+    end
+
+    #Ignoring changing of vowel qualities
+
+    rule g-spirantize
+        g => ɣ / _ n
+    end
+
+    rule g-vocalize
+        g => u̯ / _ m
+    end
+
+    rule ks-simplification
+        k s => * s / _ [consonant]
+        k s => * s / [consonant] _
+        k s => * s / _ $
+    end
+
+    rule sC-word-initial-breakup
+        * => i / $ _ s [consonant]
+    end
+
+    rule e-o-raise
+        eː => [close] / _ s tʲ
+        oː => [close] / _ s tʲ
+        eː' => [close] / _ s tʲ #It matches strictly now
+        oː' => [close] / _ s tʲ
+    end
+
+    rule epenthetic-final-e
+        * => e / $ [consonant]* [vowel] [consonant]+ _ $
+    end
+
+    #Vowel length distinction collapse is not modeled
+end</pre></div>
     <h2>Complex language topics</h2>
     <h3>Control flow</h3>
     <h4>Jumps</h4>

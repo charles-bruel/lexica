@@ -248,19 +248,6 @@ fn test_0_feature_d() {
 }
 
 #[test]
-fn test_int_1() {
-    let program = create_int_test_1();
-    let words = load_from_file(&String::from("test-data/int-test-1.words.txt"), false).unwrap();
-    let lines: Vec<&str> = words.split("\n").collect();
-    for l in lines {
-        let parts: Vec<&str> = l.split(":").collect();
-        let word = from_string(&program, &String::from(parts[0].trim())).unwrap();
-        let result = to_string(&program, program.apply(word).unwrap());
-        assert_eq!(result.unwrap(), parts[1].trim());
-    }
-}
-
-#[test]
 fn test_restrict_path_1() {
     let result = load_from_file(&String::from("C:/foo"), true);
     match result {
@@ -599,6 +586,32 @@ fn test_captures_d() {
     assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
 }
 
+#[test]
+fn test_int_1() {
+    let program = create_int_test_1();
+    let words = load_from_file(&String::from("test-data/int-test-1.words.txt"), false).unwrap();
+    let lines: Vec<&str> = words.split("\n").collect();
+    for l in lines {
+        let parts: Vec<&str> = l.split(":").collect();
+        let word = from_string(&program, &String::from(parts[0].trim())).unwrap();
+        let result = to_string(&program, program.apply(word).unwrap());
+        assert_eq!(result.unwrap(), parts[1].trim());
+    }
+}
+
+#[test]
+fn test_int_2() {
+    let program = create_int_test_2();
+    let words = load_from_file(&String::from("test-data/int-test-2.words.txt"), false).unwrap();
+    let lines: Vec<&str> = words.split("\n").collect();
+    for l in lines {
+        let parts: Vec<&str> = l.split(":").collect();
+        let word = from_string(&program, &String::from(parts[0].trim())).unwrap();
+        let result = to_string(&program, program.apply(word).unwrap());
+        assert_eq!(result.unwrap(), parts[1].trim());
+    }
+}
+
 fn simple_test_helper(rule: &str, input: &str) -> String {
     let prog: Program = construct(&(create_ipa() + rule)).unwrap();
     let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();
@@ -621,6 +634,11 @@ fn create_int_test_1() -> Program {
     let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
     let rules = load_from_file(&String::from("test-data/int-test-1.lsc"), false).expect("Error reading file");
     construct(&format!("{0}\n{1}", defs, rules)).unwrap()
+}
+
+fn create_int_test_2() -> Program {
+    let prog = load_from_file(&String::from("test-data/int-test-2.lsc"), false).expect("Error reading file");
+    construct(&prog).unwrap()
 }
 
 fn create_ipa() -> String {
