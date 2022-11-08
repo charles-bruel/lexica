@@ -393,6 +393,30 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Rul
             results.push(construct_result(program, result_split[i])?);
             i += 1;
         }
+
+        //Make same captures have matching masks.
+        //Avoids tedious rewriting
+        i = 0;
+        while i < predicates.len() {
+            if i == 0 { i += 1; continue; }
+            let mut j = 0;
+            while j < predicates[i].1.len() {
+                let mut k = 0;
+                while k < i {
+                    let mut l = 0;
+                    while l < predicates[k].1.len() {
+                        if predicates[k].1[l].0 == predicates[k].1[j].0 { //Matching predicates
+                            predicates[i].1[j].1 = predicates[k].1[l].1;
+                        }
+                        l += 1;
+                    }
+                    k += 1;
+                }
+                j += 1;
+            }
+            i += 1;
+        }
+
         return Ok(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment, inverted)?));
     } else {
         return Ok(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment, inverted)?));
@@ -460,17 +484,24 @@ fn construct_capture(program: &Program, capture: &str) -> std::result::Result<(u
 
         let split: Vec<&str> = capture.split("(").collect();
 
-        let id = program.names_to_idx.get(split[1].trim_end_matches(")"));
+        let features = split[1].trim_end_matches(")");
+        let feature_names: Vec<&str> = features.split(" ").collect();
+        let mut mask: u64 = 0;
 
-        let feature = match id {
-            Some(val) => {
-                program.idx_to_features.get(val).unwrap()
-            },
-            None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", split[1].trim_end_matches(")")), String::from(""), 0, line!())); },
-        };
+        for x in feature_names {
+            let id = program.names_to_idx.get(x);
 
-        let offset = 64 - feature.start_byte() - feature.length();
-        let mask = ((2 << feature.length() - 1) - 1) << offset;
+            let feature = match id {
+                Some(val) => {
+                    program.idx_to_features.get(val).unwrap()
+                },
+                None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", x), String::from(""), 0, line!())); },
+            };
+    
+            let offset = 64 - feature.start_byte() - feature.length();
+            let single_mask = ((2 << feature.length() - 1) - 1) << offset;
+            mask |= single_mask;
+        }
 
         let temp = split[0].parse::<usize>();
         match temp {

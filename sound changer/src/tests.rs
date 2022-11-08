@@ -563,6 +563,42 @@ fn test_enviorment_post_n() {
     assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
 }
 
+#[test]
+fn test_captures_a() {    
+    const INPUT: &str = "asha";
+    const CONTENT: &str = "[]$1 h => [] []$1";
+    const EXPECT: &str = "assa";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_captures_b() {    
+    const INPUT: &str = "assappa";
+    const CONTENT: &str = "[plosive]$1 []$1 => []$1 *";
+    const EXPECT: &str = "assapa";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_captures_c() {    
+    const INPUT: &str = "amt";
+    const CONTENT: &str = "[nasal] [consonant !nasal]$1(place) => []$1 []";
+    const EXPECT: &str = "ant";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
+#[test]
+fn test_captures_d() {    
+    const INPUT: &str = "koːorte";
+    const CONTENT: &str = "[vowel]$1(backness closeness round) []$1 => [+long] *";
+    const EXPECT: &str = "koːrte";
+    const RULE: &str = const_format::concatcp!("\nrules\nrule t\n",CONTENT,"\nend\nend");
+    assert_eq!(simple_test_helper(RULE, INPUT), EXPECT);
+}
+
 fn simple_test_helper(rule: &str, input: &str) -> String {
     let prog: Program = construct(&(create_ipa() + rule)).unwrap();
     let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();
