@@ -543,10 +543,10 @@ pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> 
     match temp {
         Ok(v) => {
             if v.len() != 1 {
-                return Err(ConstructorError::MalformedDefinition(String::from("Multiple character result"), String::from(""), 0, line!()));
+                return Err(ConstructorError::MalformedDefinition(String::from("Multiple character predicate"), String::from(""), 0, line!()));
             }
-            let result = create_simple_predicate(v[0].value, 0xFFFFFFFFFFFFFFFF);
-            return Ok(Box::new(result));
+            let predicate = create_simple_predicate(v[0].value, 0xFFFFFFFFFFFFFFFF);
+            return Ok(Box::new(predicate));
         },
         Err(v) => return Err(ConstructorError::MissingSymbol(v.to_string(), String::from(""), 0, line!())),
     }
