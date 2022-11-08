@@ -538,7 +538,18 @@ pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> 
         let predicate = create_simple_predicate(letter.value, *mask);
         return Ok(Box::new(predicate));
     }
-    return Err(ConstructorError::MissingSymbol(String::from("Could not find symbol"), String::from(""), 0, line!()));
+
+    let temp = from_string(program, &String::from(predicate));
+    match temp {
+        Ok(v) => {
+            if v.len() != 1 {
+                return Err(ConstructorError::MalformedDefinition(String::from("Multiple character result"), String::from(""), 0, line!()));
+            }
+            let result = create_simple_predicate(v[0].value, 0xFFFFFFFFFFFFFFFF);
+            return Ok(Box::new(result));
+        },
+        Err(v) => return Err(ConstructorError::MissingSymbol(v.to_string(), String::from(""), 0, line!())),
+    }
 }
 
 fn construct_result(program: &Program, result: &str) -> std::result::Result<(Vec<Box<dyn Result>>, Vec<usize>), ConstructorError> {
