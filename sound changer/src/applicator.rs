@@ -421,7 +421,7 @@ impl super::data::RuleByte {
             }
         }
         if self.enviorment.post_word_boundary {
-            if length == 0 || self.enviorment.post.len() != 0 {
+            if self.enviorment.post.len() != 0 {
                 if position_post != input.len() - 1 {
                     return self.enviorment.inverted;
                 }
