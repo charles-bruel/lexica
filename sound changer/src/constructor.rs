@@ -603,12 +603,17 @@ fn construct_single_result(program: &Program, result: &str) -> std::result::Resu
         return Ok(Box::new(create_delete_result()));
     }
 
-    if program.symbol_to_letter.contains_key(result) {
-        let (letter, _) = program.symbol_to_letter.get(result).unwrap();
-        let result = create_simple_result(letter.clone());
-        return Ok(Box::new(result));
+    let temp = from_string(program, &String::from(result));
+    match temp {
+        Ok(v) => {
+            if v.len() != 1 {
+                return Err(ConstructorError::MalformedDefinition(String::from("Multiple character result"), String::from(""), 0, line!()));
+            }
+            let result = create_simple_result(v[0]);
+            return Ok(Box::new(result));
+        },
+        Err(v) => return Err(ConstructorError::MissingSymbol(v.to_string(), String::from(""), 0, line!())),
     }
-    return Err(ConstructorError::MissingSymbol(String::from("Could not find symbol"), String::from(""), 0, line!()));
 }
 
 fn parse_features_simple(program: &Program, features: &str) -> std::result::Result<(u64, u64), ConstructorError> {
