@@ -637,8 +637,9 @@ fn create_int_test_1() -> Program {
 }
 
 fn create_int_test_2() -> Program {
-    let prog = load_from_file(&String::from("test-data/int-test-2.lsc"), false).expect("Error reading file");
-    construct(&prog).unwrap()
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let rules = load_from_file(&String::from("test-data/int-test-2.lsc"), false).expect("Error reading file");
+    construct(&format!("{0}\n{1}", defs, rules)).unwrap()
 }
 
 fn create_ipa() -> String {

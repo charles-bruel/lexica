@@ -153,6 +153,9 @@ feature_def
     feature +long all
     feature +nasal all
     feature +breathy all
+
+    feature +non-syllabic all
+    feature +stress vowel
 end</pre></div>
     <p>Notice how consonant properties (PoA, MoA) only apply to consonants, and same for vowels. Also notice that you can't velarize a velar consonant, etc.</p>
     <h3>Symbols</h3>
@@ -316,6 +319,8 @@ diacritics
     diacritic ʲ [-palatalized] => [+palatalized]
     diacritic ˤ [-pharyngealized] => [+pharyngealized]
     diacritic ⁿ [-nasal-release] => [+nasal-release]
+    diacritic ' [-stress] => [+stress]
+    diacritic ◌̯ [-non-syllabic] => [+non-syllabic]
 end</pre></div>
     <h3>Basic Rules</h3>
     <p>Rules are the meat and potatoes of this program. They contain instructions which define the changes to sounds over time. Rules are defined in the 
@@ -504,18 +509,6 @@ end</pre></div>
     <p>This is a list of example complete programs (excluding definitions if they are the standard IPA ones) for your reference.</p>
     <p>Latin -> Vulgar Latin:</p>
     <div><pre class="h m n i w b β r j w e o ɟ g ɣ u̯ k s tʲ eː oː eː' oː'">
-feature_def
-    ...
-    feature +non-syllabic all
-    feature +stress vowel
-end
-...
-diacritics
-    ...
-    diacritic ' [-stress] => [+stress]
-    diacritic ◌̯ [-non-syllabic] => [+non-syllabic]
-end    
-...
 #This program implements the sound changes from latin into vulgar latin/proto romance
 #As described in https://en.wikipedia.org/wiki/Phonological_changes_from_Classical_Latin_to_Proto-Romance
 #Only the general changes are used here

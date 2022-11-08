@@ -24,6 +24,9 @@ feature_def
     feature +long all
     feature +nasal all
     feature +breathy all
+
+    feature +non-syllabic all
+    feature +stress vowel
 end
 
 symbols
@@ -134,4 +137,6 @@ diacritics
     diacritic ʲ [-palatalized] => [+palatalized]
     diacritic ˤ [-pharyngealized] => [+pharyngealized]
     diacritic ⁿ [-nasal-release] => [+nasal-release]
+    diacritic ' [-stress] => [+stress]
+    diacritic ◌̯ [-non-syllabic] => [+non-syllabic]
 end
