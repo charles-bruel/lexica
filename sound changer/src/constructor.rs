@@ -351,14 +351,18 @@ fn construct_rule_simple(program: &mut Program, line: Vec<&str>) -> std::result:
     let mut i: usize = 1;
     let mut rule_bytes: Vec<RuleByte> = Vec::new();
     while i < line.len() {
-        rule_bytes.push(construct_rule_byte(program, line[i])?);
+        match construct_rule_byte(program, line[i])? {
+            Some(v) => rule_bytes.push(v),
+            None => {},
+        }
         i += 1;
     }
 
     Ok(create_transformation_rule(name, rule_bytes, flags))
 }
 
-fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<RuleByte, ConstructorError> {
+fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Option<RuleByte>, ConstructorError> {
+    if data == "" { return Ok(None); }
     let split1: Vec<&str> = data.split("=>").collect();
     if split1.len() != 2 {
         return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!()));
@@ -417,9 +421,9 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Rul
             i += 1;
         }
 
-        return Ok(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment, inverted)?));
+        return Ok(Some(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment, inverted)?)));
     } else {
-        return Ok(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment, inverted)?));
+        return Ok(Some(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment, inverted)?)));
     }
 }
 
