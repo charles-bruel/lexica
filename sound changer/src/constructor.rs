@@ -335,16 +335,18 @@ fn construct_multi_block_sub(program: &mut Program, lines: Vec<&str>) -> std::re
     let mut rule_accum: Vec<&str> = Vec::new();
 
     let mut flag = true;
+    let mut line_number: i8 = 0;
     let mut to_return: Vec<Rule> = Vec::new();
     let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
 
-    for f in lines {
+    for f in &lines {
         if flag {//Skip first line
             flag = false;
             continue;
         }
         let mut temp = regex.replace_all(f, String::from_utf8(vec![0]).unwrap());
         let words: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
+        line_number += 1;
 
         match state {
             State::None => assert!(false),
@@ -358,12 +360,27 @@ fn construct_multi_block_sub(program: &mut Program, lines: Vec<&str>) -> std::re
                 } else if words[0] == "end" {
                     break;//This could cause it to terminate early, except the quantity of ends is tracked when this data is generated
                 } else if words[0] != "" {
-                    error!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError);
+                    let offset: i8 = line_number - (lines.len() as i8);
+                    let mut temp = create_constructor_error_empty(format!("Unknown command \"{}\"", words[0]), line!(), ConstructorErrorType::UnknownCommandError);
+                    temp.line_number_user_program = LineNumberInformation::Offset(offset);
+                    return Err(temp);
                 }
             },
             State::RuleAccum(_) => {
                 if words[0] == "end" {
-                    to_return.push(construct_rule_simple(program, rule_accum)?);
+                    let to_push = match construct_rule_simple(program, rule_accum) {
+                        Ok(v) => v,
+                        Err(mut v) => {
+                            let offset: i8 = line_number - (lines.len() as i8);
+                            v.line_number_user_program = match v.line_number_user_program {
+                                LineNumberInformation::Undetermined => LineNumberInformation::Offset(offset),
+                                LineNumberInformation::Offset(old_offset) => LineNumberInformation::Offset(old_offset + offset),
+                                LineNumberInformation::Raw(_) => unreachable!(),//Nothing can give an already completely determined error
+                            };
+                            return Err(v);
+                        },
+                    };
+                    to_return.push(to_push);
                     rule_accum = Vec::new();
                     state = State::Rules;
                 } else {
@@ -386,14 +403,30 @@ fn construct_rule_simple(program: &mut Program, line: Vec<&str>) -> std::result:
     if line.len() < 2 {
         error!("Malformed rule definition", ConstructorErrorType::MalformedDefinition);
     }
-    let (name, flags) = construct_rule_header(line[0])?;
+    let (name, flags) = match construct_rule_header(line[0]) {
+        Ok(v) => v,
+        Err(mut v) => {
+            let offset: i8 = -(line.len() as i8);
+            v.line_number_user_program = LineNumberInformation::Offset(offset);
+            return Err(v);
+        },
+    };
 
     let mut i: usize = 1;
     let mut rule_bytes: Vec<RuleByte> = Vec::new();
     while i < line.len() {
-        match construct_rule_byte(program, line[i])? {
-            Some(v) => rule_bytes.push(v),
-            None => {},
+        match construct_rule_byte(program, line[i]) {
+            Ok(v1) => match v1 {
+                Some(v2) => rule_bytes.push(v2),
+                None => {},
+            },
+            Err(mut v) => {
+                //The error message is attributed to the end of the statement by default, that is the end statement.
+                //This injects an offset to attribute it to the correct line.
+                let offset: i8 = (i as i8) - (line.len() as i8);
+                v.line_number_user_program = LineNumberInformation::Offset(offset);
+                return Err(v);
+            },
         }
         i += 1;
     }
