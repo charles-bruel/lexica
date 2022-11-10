@@ -50,10 +50,10 @@ function handle_comp_response(response) {
     } else {
         element.style.color = "red";
         var str = "Compilation Status: ";
-        for(var prop in response) {
-            str += prop + " - " + response[prop][0] + ", line #" + response[prop][2];
-            current_error_line = response[prop][2] - 1;
-        }
+        console.log(response);
+        str += response.error_type + " - " + response.error_message + ", line #" + response.line_number_user_program.Raw;
+        current_error_line = response.line_number_user_program.Raw - 1;
+        
         element.textContent = str;
     }
     if(prev_error_line != current_error_line) update_textarea(false);
