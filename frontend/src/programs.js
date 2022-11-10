@@ -50,7 +50,6 @@ function handle_comp_response(response) {
     } else {
         element.style.color = "red";
         var str = "Compilation Status: ";
-        console.log(response);
         str += response.error_type + " - " + response.error_message + ", line #" + response.line_number_user_program.Raw;
         current_error_line = response.line_number_user_program.Raw - 1;
         
