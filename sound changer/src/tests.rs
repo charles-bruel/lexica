@@ -289,7 +289,7 @@ fn test_unknown_command_error_a() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 1, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::UnknownCommandError && v.line_number_user_program == LineNumberInformation::Raw(1)),
     }
 }
 
@@ -299,7 +299,7 @@ fn test_unknown_command_error_b() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::UnknownCommandError && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -309,7 +309,7 @@ fn test_unknown_command_error_c() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::UnknownCommandError && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -319,7 +319,7 @@ fn test_unknown_command_error_d() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::UnknownCommandError && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -329,7 +329,7 @@ fn test_unknown_command_error_e() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::UnknownCommandError(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::UnknownCommandError && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -339,7 +339,7 @@ fn test_hanging_section_error_a() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::HangingSection && v.line_number_user_program == LineNumberInformation::Raw(1)),
     }
 }
 
@@ -349,7 +349,7 @@ fn test_hanging_section_error_b() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::HangingSection && v.line_number_user_program == LineNumberInformation::Raw(1)),
     }
 }
 
@@ -359,7 +359,7 @@ fn test_hanging_section_error_c() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::HangingSection && v.line_number_user_program == LineNumberInformation::Raw(1)),
     }
 }
 
@@ -369,7 +369,7 @@ fn test_hanging_section_error_d() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 1, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::HangingSection && v.line_number_user_program == LineNumberInformation::Raw(1)),
     }
 }
 
@@ -379,7 +379,7 @@ fn test_hanging_section_error_e() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::HangingSection(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::HangingSection && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -389,7 +389,7 @@ fn test_malformed_feature_def_error_a() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::MalformedDefinition && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -399,7 +399,7 @@ fn test_malformed_feature_def_error_b() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::MalformedDefinition(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::MalformedDefinition && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 
@@ -409,7 +409,7 @@ fn test_missing_node_error() {
     let result = construct(&String::from(PROG));
     match result {
         Ok(_) => assert!(false),
-        Err(v) => assert!(matches!(v, ConstructorError::MissingNode(_, _, 2, _))),
+        Err(v) => assert!(v.error_type == ConstructorErrorType::MissingNode && v.line_number_user_program == LineNumberInformation::Raw(2)),
     }
 }
 

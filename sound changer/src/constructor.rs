@@ -3,6 +3,19 @@ use std::{collections::*, vec};
 use {data::*, rules::*, applicator::*};
 use super::fancy_regex::Regex;
 
+macro_rules! error {
+    ($name:expr, $error_type:expr) => {
+        return Err(create_constructor_error_empty($name, line!(), $error_type))
+    };
+}
+
+macro_rules! error_detail {
+    ($name:expr, $error_type:expr, $line_number_user_program:expr, $line_contents:expr) => {
+        return Err(create_constructor_error($name, $line_contents, $line_number_user_program, line!(), $error_type))
+    };
+}
+
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum RuleBlockType {
     Rule, Sub, SubX
@@ -30,7 +43,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
     let mut rule_accum: Vec<&str> = Vec::new();
     let mut rule_accum_depth: u8 = 0;
 
-    let mut line_number: u16 = 0;
+    let mut line_number: u32 = 0;
     let regex: Regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])").unwrap();
 
     for f in lines {
@@ -58,7 +71,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 } else if words[0] == "diacritics" {
                     current_state = State::Diacritics;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
+                    error_detail!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError, line_number, String::from(line_og));
                 }
             },
             State::Features => {
@@ -70,7 +83,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                     handle_err(end_feature_def(&mut program), String::from(line_og), line_number)?;
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
+                    error_detail!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError, line_number, String::from(line_og));
                 }
             },
             State::Symbols => {
@@ -79,7 +92,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
+                    error_detail!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError, line_number, String::from(line_og));
                 }
             },
             State::Rules => {
@@ -104,13 +117,13 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
+                    error_detail!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError, line_number, String::from(line_og));
                 }
             },
             State::RuleAccum(t) => {
                 if words[0] == "rule" {
                     if t == RuleBlockType::Rule {
-                        return Err(ConstructorError::MalformedDefinition(format!("Malformed rule definition; tried to nest rules"), String::from(line_og), line_number, line!()))
+                        error_detail!("Malformed rule definition; tried to nest rules", ConstructorErrorType::MalformedDefinition, line_number, String::from(line_og));
                     } else {
                         rule_accum_depth += 1;
                         rule_accum.push(line);
@@ -142,7 +155,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 } else if words[0] == "end" {
                     current_state = State::None;
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(line_og), line_number, line!()))
+                    error_detail!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError, line_number, String::from(line_og));
                 }
             },
         }
@@ -150,11 +163,11 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
 
     match current_state {
         State::None => {},
-        State::Features => return Err(ConstructorError::HangingSection(String::from("Features section never finishes"), String::from("EOF"), line_number, line!())),
-        State::Symbols => return Err(ConstructorError::HangingSection(String::from("Symbols section never finishes"), String::from("EOF"), line_number, line!())),
-        State::Diacritics => return Err(ConstructorError::HangingSection(String::from("Diacritics section never finishes"), String::from("EOF"), line_number, line!())),
-        State::Rules => return Err(ConstructorError::HangingSection(String::from("Rules section never finishes"), String::from("EOF"), line_number, line!())),
-        State::RuleAccum(_) => return Err(ConstructorError::HangingSection(String::from("Rule block never finishes"), String::from("EOF"), line_number, line!())),
+        State::Features =>      error_detail!("Features section never finishes",    ConstructorErrorType::HangingSection, line_number, String::from("EOF")),
+        State::Symbols =>       error_detail!("Symbols section never finishes",     ConstructorErrorType::HangingSection, line_number, String::from("EOF")),
+        State::Diacritics =>    error_detail!("Diacritics section never finishes",  ConstructorErrorType::HangingSection, line_number, String::from("EOF")),
+        State::Rules =>         error_detail!("Rules section never finishes",       ConstructorErrorType::HangingSection, line_number, String::from("EOF")),
+        State::RuleAccum(_) =>  error_detail!("Rule section never finishes",        ConstructorErrorType::HangingSection, line_number, String::from("EOF")),
     }
 
     let elapsed = now.elapsed();
@@ -163,23 +176,19 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
     return Ok(program);
 }
 
-fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, line_number: u16) -> std::result::Result<(), ConstructorError> {
+/// This function injects more context into the error messages if there is an error, otherwise passes
+fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, line_number: u32) -> std::result::Result<(), ConstructorError> {
     match result {
         Ok(_) => Ok(()),
-        Err(v) => {
-            Err(match v {
-                ConstructorError::UnknownCommandError(m, _, _, n) => ConstructorError::UnknownCommandError(m, line, line_number, n),
-                ConstructorError::HangingSection(m, _, _, n) => ConstructorError::HangingSection(m, line, line_number, n),
-                ConstructorError::MalformedDefinition(m, _, _, n) => ConstructorError::MalformedDefinition(m, line, line_number, n),
-                ConstructorError::MissingNode(m, _, _, n) => ConstructorError::MissingNode(m, line, line_number, n),
-                ConstructorError::FeatureOverflow(m, _, _, n) => ConstructorError::FeatureOverflow(m, line, line_number, n),
-                ConstructorError::MissingSymbol(m, _, _, n) => ConstructorError::MissingSymbol(m, line, line_number, n),
-                ConstructorError::InvalidFeature(m, _, _, n) => ConstructorError::InvalidFeature(m, line, line_number, n),
-                ConstructorError::MissingFeature(m, _, _, n) => ConstructorError::MissingFeature(m, line, line_number, n),
-                ConstructorError::ParseError(m, _, _, n) => ConstructorError::ParseError(m, line, line_number, n),
-                ConstructorError::MissingSubroutine(m, _, _, n) => ConstructorError::MissingSubroutine(m, line, line_number, n),
-            })
-        }
+        Err(mut v) => {
+            v.line_contents = line;
+            v.line_number_user_program = match v.line_number_user_program {
+                LineNumberInformation::Undetermined => LineNumberInformation::Raw(line_number),
+                LineNumberInformation::Offset(v) => LineNumberInformation::Raw(((line_number as i32) + (v as i32)) as u32),
+                LineNumberInformation::Raw(_) => unreachable!(),//Should be unreached; that information is injected here
+            };
+            Err(v)
+        },
     }
 }
 
@@ -194,7 +203,7 @@ pub fn construct_words(program: &Program, input: String) -> std::result::Result<
 
 fn construct_label(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed label definition"), String::from(""), 0, line!()));
+        error!("Malformed label definition", ConstructorErrorType::MalformedDefinition);
     }
 
     program.labels.insert(String::from(line[1]), program.rules.len());
@@ -223,32 +232,31 @@ fn construct_jump(program: &mut Program, line: &Vec<&str>) -> std::result::Resul
         } else if cond == "flag" {
             program.rules.push(create_jump_rule(String::from(line[1]), JumpCondition::Flag, flag));
         } else {
-            return Err(ConstructorError::UnknownCommandError(format!("Unknown jump condition \"{}\"", cond), String::from(""), 0, line!()));
+            error!(format!("Unknown jump condition \"{}\"", cond), ConstructorErrorType::UnknownCommandError);
         }
         
         return Ok(())
     }
-
-    return Err(ConstructorError::MalformedDefinition(String::from("Malformed jump definition"), String::from(""), 0, line!()));
+    error!("Malformed jump definition", ConstructorErrorType::MalformedDefinition);
 }
 
 fn construct_call(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine call definition"), String::from(""), 0, line!()));
+        error!("Malformed subroutine call definition", ConstructorErrorType::MalformedDefinition);
     }
 
     if program.subroutines.contains_key(line[1]) {
         program.rules.push(create_subroutine_call_rule(String::from(line[1])));
         return Ok(());
     } else {
-        return Err(ConstructorError::MissingSubroutine(format!("Could not find subroutine \"{}\"", line[1]), String::from(""), 0, line!()));
+        error!(format!("Could not find subroutine \"{}\"", line[1]), ConstructorErrorType::MissingSubroutine);
     }
 
 }
 
 fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 5 || line[3] != "=>" {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed diacritic definition"), String::from(""), 0, line!()));
+        error!("Malformed diacritic definition", ConstructorErrorType::MalformedDefinition);
     }
     let mut symbol = String::from(line[1]);
     symbol.remove_matches("◌");
@@ -256,7 +264,7 @@ fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::
     let (mod_mask, mod_key) = parse_features_simple(program, line[4])?;
 
     if mask != mod_mask {
-        return Err(ConstructorError::MalformedDefinition(String::from("Features don't have the same mask for diacritic"), String::from(""), 0, line!()));
+        error!("Features don't have the same mask for diacritic", ConstructorErrorType::MalformedDefinition);
     }
 
     let diacritic = create_diacritic(symbol, mask, key, mod_key);
@@ -266,11 +274,11 @@ fn construct_diacritic(program: &mut Program, line: &Vec<&str>) -> std::result::
 
 fn construct_sub(program: &mut Program, lines: Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if lines.len() < 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
+        error!("Malformed subroutine definition", ConstructorErrorType::MalformedDefinition);
     }
     let line1: Vec<&str> = lines[0].split(" ").collect();
     if line1.len() != 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
+        error!("Malformed subroutine definition", ConstructorErrorType::MalformedDefinition);
     }
 
     let line2: Vec<&str> = lines[1].split(" ").collect();
@@ -284,7 +292,7 @@ fn construct_sub(program: &mut Program, lines: Vec<&str>) -> std::result::Result
         let to_add = construct_multi_block_sub(program, lines)?;
         program.subroutines.insert(String::from(line1[1]), to_add);
     } else {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed subroutine definition"), String::from(""), 0, line!()));
+        error!("Malformed subroutine definition", ConstructorErrorType::MalformedDefinition);
     }
 
     Ok(())
@@ -318,7 +326,7 @@ fn construct_multi_block_sub(program: &mut Program, lines: Vec<&str>) -> std::re
                 } else if words[0] == "end" {
                     break;//This could cause it to terminate early, except the quantity of ends is tracked when this data is generated
                 } else if words[0] != "" {
-                    return Err(ConstructorError::UnknownCommandError(format!("Unknown command \"{}\"", words[0]), String::from(""), 0, line!()));
+                    error!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError);
                 }
             },
             State::RuleAccum(_) => {
@@ -344,7 +352,7 @@ fn construct_rule(program: &mut Program, line: Vec<&str>) -> std::result::Result
 
 fn construct_rule_simple(program: &mut Program, line: Vec<&str>) -> std::result::Result<Rule, ConstructorError> {
     if line.len() < 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule definition"), String::from(""), 0, line!()));
+        error!("Malformed rule definition", ConstructorErrorType::MalformedDefinition);
     }
     let (name, flags) = construct_rule_header(line[0])?;
 
@@ -365,7 +373,7 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Opt
     if data == "" { return Ok(None); }
     let split1: Vec<&str> = data.split("=>").collect();
     if split1.len() != 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!()));
+        error!("Malformed rule byte definition", ConstructorErrorType::MalformedDefinition);
     }
 
     let split2: Vec<&str> = split1[1].split("/").collect();
@@ -375,7 +383,8 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Opt
         1 => { (split2[0].trim(), "", false) }
         2 => { (split2[0].trim(), split2[1].trim(), false) }
         3 => { (split2[0].trim(), split2[2].trim(), true) }//a double slash will split it into 3 sections.
-        _ => {         return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule byte definition"), String::from(""), 0, line!())); }
+        _ => { error!("Malformed rule byte definition", ConstructorErrorType::MalformedDefinition);
+    }
     };
 
     let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])(?![^\{]*\})").unwrap();
@@ -385,7 +394,7 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Opt
     let result_split: Vec<&str> = temp.to_mut().split('\u{0000}').collect();
 
     if predicate_split.len() != result_split.len() {
-        return Err(ConstructorError::MalformedDefinition(String::from("Predicate and result have a different number of elements on rule"), String::from(""), 0, line!()));
+        error!("Predicate and result have a different number of elements on rule", ConstructorErrorType::MalformedDefinition)
     }
 
     if predicate_split.len() > 1 {
@@ -451,7 +460,7 @@ fn construct_predicate(program: &Program, predicate: &str) -> std::result::Resul
         return Ok((results, captures));
     }
     if input.contains("{") || input.contains("}") {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed predicate definition"), String::from(""), 0, line!()));
+        error!("Malformed predicate definition", ConstructorErrorType::MalformedDefinition);
     }
     if input.starts_with("(") && input.ends_with(")") {
         input = input.trim_end_matches(")").trim_start_matches("(");
@@ -460,7 +469,7 @@ fn construct_predicate(program: &Program, predicate: &str) -> std::result::Resul
         return Ok((vec!(Box::new(multi_predicate)), captures));
     }
     if input.contains("(") || input.contains(")") {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed predicate definition"), String::from(""), 0, line!()));
+        error!("Malformed predicate definition", ConstructorErrorType::MalformedDefinition);
     }
 
     return Ok((vec!(construct_simple_predicate(program, input)?), captures));
@@ -483,7 +492,7 @@ fn construct_predicates(program: &Program, input: &str) -> std::result::Result<V
 fn construct_capture(program: &Program, capture: &str) -> std::result::Result<(usize, u64), ConstructorError> {
     if capture.contains("(") {
         if !capture.ends_with(")") {
-            return Err(ConstructorError::MalformedDefinition(String::from("Malformed capture definition"), String::from(""), 0, line!()));
+            error!("Malformed capture definition", ConstructorErrorType::MalformedDefinition);
         }
 
         let split: Vec<&str> = capture.split("(").collect();
@@ -499,7 +508,7 @@ fn construct_capture(program: &Program, capture: &str) -> std::result::Result<(u
                 Some(val) => {
                     program.idx_to_features.get(val).unwrap()
                 },
-                None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", x), String::from(""), 0, line!())); },
+                None => { error!(format!("Could not find feature {}", x), ConstructorErrorType::MissingFeature);},
             };
     
             let offset = 64 - feature.start_byte() - feature.length();
@@ -510,13 +519,13 @@ fn construct_capture(program: &Program, capture: &str) -> std::result::Result<(u
         let temp = split[0].parse::<usize>();
         match temp {
             Ok(val) => return Ok((val, mask)),
-            Err(_) => { return Err(ConstructorError::ParseError(format!("Could not read capture id {}", split[0]), String::from(""), 0, line!())); },
+            Err(_) => { error!(format!("Could not read capture id {}", split[0]), ConstructorErrorType::ParseError); },
         }
     } else {
         let temp = capture.parse::<usize>();
         match temp {
             Ok(val) => return Ok((val, 0xFFFFFFFFFFFFFFFF)),
-            Err(_) => { return Err(ConstructorError::ParseError(format!("Could not read capture id {}", capture), String::from(""), 0, line!())); },
+            Err(_) => { error!(format!("Could not read capture id {}", capture), ConstructorErrorType::ParseError); },
         }
     }
 }
@@ -534,7 +543,7 @@ pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> 
         }
     }
     if predicate.contains("[") || predicate.contains("]") {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed predicate"), String::from(""), 0, line!()));
+        error!("Malformed predicate definition", ConstructorErrorType::MalformedDefinition);
     }
 
     if program.symbol_to_letter.contains_key(predicate) {
@@ -547,12 +556,12 @@ pub(crate) fn construct_simple_predicate(program: &Program, predicate: &str) -> 
     match temp {
         Ok(v) => {
             if v.len() != 1 {
-                return Err(ConstructorError::MalformedDefinition(String::from("Multiple character predicate"), String::from(""), 0, line!()));
+                error!("Multiple character predicate", ConstructorErrorType::MalformedDefinition);
             }
             let predicate = create_simple_predicate(v[0].value, 0xFFFFFFFFFFFFFFFF);
             return Ok(Box::new(predicate));
         },
-        Err(v) => return Err(ConstructorError::MissingSymbol(v.to_string(), String::from(""), 0, line!())),
+        Err(v) => error!(format!("Missing symbol : {}", v.to_string()), ConstructorErrorType::MissingSymbol),
     }
 }
 
@@ -577,7 +586,7 @@ fn construct_result(program: &Program, result: &str) -> std::result::Result<(Vec
         return Ok((results, captures));
     }
     if input.contains("{") || input.contains("}") {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed result"), String::from(""), 0, line!()));
+        error!("Malformed result definition", ConstructorErrorType::MalformedDefinition);
     }
 
     return Ok((vec!(construct_single_result(program, input)?), captures));
@@ -611,7 +620,7 @@ fn construct_single_result(program: &Program, result: &str) -> std::result::Resu
         }
     }
     if result.contains(">") || result.contains("[") || result.contains("]") {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed result definition"), String::from(""), 0, line!()));
+        error!("Malformed result definition", ConstructorErrorType::MalformedDefinition);
     }
 
     if result == "*" {
@@ -622,12 +631,12 @@ fn construct_single_result(program: &Program, result: &str) -> std::result::Resu
     match temp {
         Ok(v) => {
             if v.len() != 1 {
-                return Err(ConstructorError::MalformedDefinition(String::from("Multiple character result"), String::from(""), 0, line!()));
+                error!("Multiple character result", ConstructorErrorType::MalformedDefinition);
             }
             let result = create_simple_result(v[0]);
             return Ok(Box::new(result));
         },
-        Err(v) => return Err(ConstructorError::MissingSymbol(v.to_string(), String::from(""), 0, line!())),
+        Err(v) => error!(format!("Couldn't find symbol: {}", v.to_string()), ConstructorErrorType::MissingSymbol),
     }
 }
 
@@ -652,7 +661,7 @@ fn parse_features_simple(program: &Program, features: &str) -> std::result::Resu
         let temp = program.features_to_idx.get(p);
         let (idx, index) = match temp {
             Some(data) => data,
-            None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", params[i]), String::from(""), 0, line!())); },
+            None => { error!(format!("Could not find feature {}", params[i]), ConstructorErrorType::MissingFeature); },
         };
         
         let feature = program.idx_to_features.get(idx).unwrap();
@@ -672,12 +681,12 @@ fn construct_enviorment(program: &Program, enviorment: &str, inverted: bool) -> 
         return Ok(create_empty_enviorment());
     }
     if !enviorment.contains("_") {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed enviorment definition"), String::from(""), 0, line!()));
+        error!("Malformed enviorment definition", ConstructorErrorType::MalformedDefinition);
     }
 
     let enviorment_wings: Vec<&str> = enviorment.split("_").collect();
     if enviorment_wings.len() != 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed enviorment definition"), String::from(""), 0, line!()));
+        error!("Malformed enviorment definition", ConstructorErrorType::MalformedDefinition);
     }
 
     let (ante_wing, ante_boundary) = construct_enviorment_wing(program, enviorment_wings[0], Ordering::Reverse)?;
@@ -709,7 +718,7 @@ fn construct_enviorment_wing(program: &Program, enviorment: &str, direction: Ord
             flag = true;
         } else {
             if flag {
-                return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule definition: Word boundary condition in middle of enviorment"), String::from(""), 0, line!()));
+                error!("Malformed rule definition: Word boundary condition in middle of enviorment", ConstructorErrorType::MalformedDefinition);
             }
             result.push(construct_enviorment_predicate(program, c)?);
         }
@@ -722,14 +731,14 @@ fn construct_enviorment_predicate(program: &Program, predicate: &str) -> std::re
     if predicate.contains("<") {
         let predicate_split: Vec<&str> = predicate.split("<").collect();
         if predicate_split.len() != 2 {
-            return Err(ConstructorError::MalformedDefinition(String::from("Malformed enviorment predicate definition"), String::from(""), 0, line!()));
+            error!("Malformed enviorment predicate definition", ConstructorErrorType::MalformedDefinition);
         }
         let predicate_instance = construct_simple_predicate(program, predicate_split[0])?;
 
         let quantity_spec = predicate_split[1].trim_end_matches(">");
         let quantities: Vec<&str> = quantity_spec.split(":").collect();
         if quantities.len() != 2 {
-            return Err(ConstructorError::MalformedDefinition(String::from("Malformed quantity specifier definition"), String::from(""), 0, line!()));
+            error!("Malformed quantity specifier definition", ConstructorErrorType::MalformedDefinition);
         }
 
         let quant_min = quantities[0].parse::<u8>();
@@ -737,11 +746,11 @@ fn construct_enviorment_predicate(program: &Program, predicate: &str) -> std::re
 
         let quant_min_value = match quant_min {
             Ok(val) => val,
-            Err(_) => { return Err(ConstructorError::MalformedDefinition(String::from("Malformed quantity specifier definition"), String::from(""), 0, line!())); },
+            Err(_) => { error!("Malformed quantity specifier definition", ConstructorErrorType::MalformedDefinition); },
         };
         let quant_max_value = match quant_max {
             Ok(val) => val,
-            Err(_) => { return Err(ConstructorError::MalformedDefinition(String::from("Malformed quantity specifier definition"), String::from(""), 0, line!())); },
+            Err(_) => { error!("Malformed quantity specifier definition", ConstructorErrorType::MalformedDefinition); },
         };
 
         return Ok(create_enviorment_predicate(predicate_instance, quant_min_value, quant_max_value));
@@ -765,13 +774,13 @@ fn construct_rule_header(data: &str) -> std::result::Result<(String, u16), Const
     let words: Vec<&str> = data.split_whitespace().collect();
 
     if words.len() < 2 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed rule header definition"), String::from(""), 0, line!()));
+        error!("Malformed rule header definition", ConstructorErrorType::MalformedDefinition); 
     }
 
     let name = String::from(words[1]);
 
     if name.contains(&['(', ')', '+', '!', '"', ',']) {
-        return Err(ConstructorError::MalformedDefinition(String::from("Invald characters in rule"), String::from(""), 0, line!()));
+        error!("Invald characters in rule", ConstructorErrorType::MalformedDefinition); 
     }
 
     return Ok((name, 0));//TODO add flags
@@ -779,12 +788,12 @@ fn construct_rule_header(data: &str) -> std::result::Result<(String, u16), Const
 
 fn construct_symbol(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed symbol definition"), String::from(""), 0, line!()));
+        error!("Malformed symbol definition", ConstructorErrorType::MalformedDefinition); 
     }
 
     let symbol = line[1];
     if symbol.contains(&['(', ')', '+', '!', '"', ',']) {
-        return Err(ConstructorError::MalformedDefinition(String::from("Invald characters in symbol"), String::from(""), 0, line!()));
+        error!("Invald characters in symbol", ConstructorErrorType::MalformedDefinition); 
     }
 
     let (mask, value) =  parse_features(&program, line[2])?;
@@ -821,7 +830,7 @@ fn parse_features_negative(program: &Program, features: &str) -> std::result::Re
         let temp = program.features_to_idx.get(p);
         let (idx, index) = match temp {
             Some(data) => data,
-            None =>  { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", p), String::from(""), 0, line!())); },
+            None =>  { error!(format!("Could not find feature {}", p), ConstructorErrorType::MissingFeature); },
         };
         
         let feature = program.idx_to_features.get(idx).unwrap();
@@ -853,7 +862,7 @@ fn parse_features_negative(program: &Program, features: &str) -> std::result::Re
         let feature = program.idx_to_features.get(idx).unwrap();
 
         if (validation_key & feature.validation_mask()) ^ feature.validation_key() != 0 {
-            return Err(ConstructorError::MalformedDefinition(String::from("Incompatible feature combination"), String::from(""), 0, line!()));
+            error!("Incompatible feature combination", ConstructorErrorType::InvalidFeature); 
         }
 
         i += 1;
@@ -885,7 +894,7 @@ pub(crate) fn parse_features(program: &Program, features: &str) -> std::result::
         let temp = program.features_to_idx.get(p);
         let (idx, index) = match temp {
             Some(data) => data,
-            None => { return Err(ConstructorError::MissingFeature(format!("Could not find feature {}", p), String::from(""), 0, line!())); },
+            None => { error!(format!("Could not find feature {}", p), ConstructorErrorType::MissingFeature); },
         };
         
         let feature = program.idx_to_features.get(idx).unwrap();
@@ -911,7 +920,7 @@ pub(crate) fn parse_features(program: &Program, features: &str) -> std::result::
         let feature = program.idx_to_features.get(idx).unwrap();
 
         if (validation_key & feature.validation_mask()) ^ feature.validation_key() != 0 {
-            return Err(ConstructorError::InvalidFeature(String::from("Incompatible feature combination"), String::from(""), 0, line!()));
+            error!("Incompatible feature combination", ConstructorErrorType::InvalidFeature); 
         }
 
         i += 1;
@@ -1193,7 +1202,7 @@ fn bump_offsets_recurse(features: &mut Vec<Feature>, start_pos: usize, amount: u
             Feature::FeatureDef(mut data) => {
                 data.start_byte += amount;
                 if data.start_byte + data.length >= 64 {
-                    return Err(ConstructorError::FeatureOverflow(String::from("Couldn't bump feature"), String::from(""), 0, line!()));
+                    error!("Couldn't bump feature", ConstructorErrorType::FeatureOverflow); 
                 }
                 Feature::FeatureDef(data)
             },
@@ -1205,7 +1214,7 @@ fn bump_offsets_recurse(features: &mut Vec<Feature>, start_pos: usize, amount: u
 
 fn construct_switch_line(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
+        error!("Malformed feature definition", ConstructorErrorType::MalformedDefinition); 
     }
 
     let parameter_array: Vec<&str> = line[1].split("(").collect();
@@ -1238,7 +1247,7 @@ fn construct_switch_line(program: &mut Program, line: &Vec<&str>) -> std::result
 
 fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
     if line.len() != 3 {
-        return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
+        error!("Malformed feature definition", ConstructorErrorType::MalformedDefinition); 
     }
 
     if line[1].starts_with("+") {
@@ -1254,7 +1263,7 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result
     } else if line[1].ends_with(")") && line[1].contains("(") {
         let parts: Vec<&str> = line[1].split("(").collect();
         if parts.len() != 2 {
-            return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
+            error!("Malformed feature definition", ConstructorErrorType::MalformedDefinition); 
         }
         let name = parts[0];
         let feature_names: Vec<&str> = parts[1].trim_end_matches(")").split(",").collect();
@@ -1275,7 +1284,7 @@ fn construct_feature_def(program: &mut Program, line: &Vec<&str>) -> std::result
         assign_feature(program, Feature::FeatureDef(temp), line[2])?;
     } else {
         if line.len() != 3 {
-            return Err(ConstructorError::MalformedDefinition(String::from("Malformed feature definition"), String::from(""), 0, line!()));
+            error!("Malformed feature definition", ConstructorErrorType::MalformedDefinition); 
         }
     }
     return Ok(());
@@ -1302,7 +1311,7 @@ fn assign_feature_simple(program: &mut Program, feature: Feature, node_name: &st
     let mut add_count: u8 = 0;
     assign_feature_recurse(&mut program.features, &feature, node_name, &mut add_count);
     if add_count == 0 {
-        return Err(ConstructorError::MissingNode(format!("Could not find node {}", node_name), String::from(""), 0, line!()));
+        error!(format!("Could not find node {}", node_name), ConstructorErrorType::MissingNode); 
     }
     Ok(())
 }
