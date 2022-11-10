@@ -38,6 +38,7 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
 
     let mut current_state = State::None;
     let mut program = create_empty_program();
+    let mut context = create_program_creation_context();
     let lines: Vec<&str> = input.split("\n").collect();
 
     let mut rule_accum: Vec<&str> = Vec::new();
@@ -97,24 +98,31 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
             },
             State::Rules => {
                 if words[0] == "rule" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::Rule);
                     rule_accum_depth = 1;
                 } else if words[0] == "subx" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::SubX);
                     rule_accum_depth = 1;
                 } else if words[0] == "sub" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::Sub);
                     rule_accum_depth = 1;
                 } else if words[0] == "call" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_call(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "label" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_label(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "jmp" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_jump(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
+                    check_jumps(&program, &context)?;
                     current_state = State::None;
                 } else if words[0] != "" {
                     error_detail!(format!("Unknown command \"{}\"", words[0]), ConstructorErrorType::UnknownCommandError, line_number, String::from(line_og));
@@ -211,9 +219,33 @@ fn construct_label(program: &mut Program, line: &Vec<&str>) -> std::result::Resu
     Ok(())
 }
 
+fn check_jumps(program: &Program, context: &ProgramCreationContext) -> std::result::Result<(), ConstructorError> {
+    //Cannot check if the jump exists on creation, as jumping forward is supported
+    //This is called after the rules section to check all the jumps
+    let mut i: usize = 0;
+    while i < program.rules.len() {
+        let rule = &program.rules[i];
+        match rule {
+            Rule::JumpSubRoutine { name, condition: _, inverted: _ } => {
+                if !program.labels.contains_key(name) {
+                    let line_number = match context.rule_line_defs.get(&i) {
+                        Some(v) => v,
+                        None => &0u32,
+                    };
+                    //Manually guess at line contents instead of finding the actual line contents.
+                    //Not proper but much easier
+                    //TODO: Fixme
+                    error_detail!(format!("Could not find label \"{}\"", name), ConstructorErrorType::MissingLabel, *line_number, format!("jump {}", name));
+                }
+            },
+            _ => { },
+        }
+        i += 1;
+    }
+    Ok(())
+}
+
 fn construct_jump(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
-    //Cannot explicitly check if the jump exists, as jumping forward is supported
-    //TODO: Make a checker for this after rules completion so it's still a compile error not a runtime error
     if line.len() == 2 {
         program.rules.push(create_jump_rule(String::from(line[1]), JumpCondition::Unconditional, false));
         return Ok(())

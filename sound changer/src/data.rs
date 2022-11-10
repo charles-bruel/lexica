@@ -18,6 +18,10 @@ pub struct Program {
     pub letter_to_symbol: HashMap<Letter, String>,
 }
 
+pub struct ProgramCreationContext { 
+    pub rule_line_defs: HashMap<usize, u32>,
+}
+
 #[derive(Clone)]
 pub enum Feature {
     SwitchType(SwitchType),
@@ -253,6 +257,12 @@ pub fn create_empty_program() -> Program {
         features_to_idx: HashMap::new(),
         letter_to_symbol: HashMap::new(),
         symbol_to_letter: HashMap::new(),
+    }
+}
+
+pub fn create_program_creation_context() -> ProgramCreationContext {
+    ProgramCreationContext { 
+        rule_line_defs: HashMap::new(),
     }
 }
 
@@ -589,6 +599,7 @@ pub enum ConstructorErrorType {
     MissingFeature,
     ParseError,
     MissingSubroutine,
+    MissingLabel,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -611,6 +622,7 @@ impl fmt::Display for ConstructorError {
             ConstructorErrorType::MissingFeature        => "MissingFeature",
             ConstructorErrorType::ParseError            => "ParseError",
             ConstructorErrorType::MissingSubroutine     => "MissingSubroutine",
+            ConstructorErrorType::MissingLabel          => "MissingLabel",
         };
         write_constructor_error(f, error_type_name, &self.error_message, &self.line_contents, self.line_number_user_program, self.line_number_code).expect("Error formatting error message");
         Ok(())
