@@ -97,32 +97,28 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 }
             },
             State::Rules => {
-                if words[0] == "rule" {
+                if words[0] != "end" {
                     context.rule_line_defs.insert(program.rules.len(), line_number);
+                }
+                if words[0] == "rule" {
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::Rule);
                     rule_accum_depth = 1;
                 } else if words[0] == "subx" {
-                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::SubX);
                     rule_accum_depth = 1;
                 } else if words[0] == "sub" {
-                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     rule_accum.push(line);
                     current_state = State::RuleAccum(RuleBlockType::Sub);
                     rule_accum_depth = 1;
                 } else if words[0] == "call" {
-                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_call(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "detect" {
-                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_detect(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "label" {
-                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_label(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "jmp" {
-                    context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_jump(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "end" {
                     check_jumps(&program, &context)?;
