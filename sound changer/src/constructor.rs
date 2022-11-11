@@ -115,6 +115,9 @@ pub fn construct(input: &String) -> std::result::Result<Program, ConstructorErro
                 } else if words[0] == "call" {
                     context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_call(&mut program, &words), String::from(line_og), line_number)?;
+                } else if words[0] == "detect" {
+                    context.rule_line_defs.insert(program.rules.len(), line_number);
+                    handle_err(construct_detect(&mut program, &words), String::from(line_og), line_number)?;
                 } else if words[0] == "label" {
                     context.rule_line_defs.insert(program.rules.len(), line_number);
                     handle_err(construct_label(&mut program, &words), String::from(line_og), line_number)?;
@@ -207,6 +210,30 @@ pub fn construct_words(program: &Program, input: String) -> std::result::Result<
         result.push(from_string(&program, &String::from(l.trim()))?);
     }
     return Ok(result);
+}
+
+fn construct_detect(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
+    if line.len() < 2 {
+        error!("Malformed detect definition", ConstructorErrorType::MalformedDefinition);
+    }
+
+    let joined = line.join(" ");
+    let rule = joined.trim_start_matches("detect ");
+    let split: Vec<&str> = rule.split("/").collect();
+    let (predicate, enviorment, inverted) = match split.len() {
+        1 => { (split[0].trim(), "", false) }
+        2 => { (split[0].trim(), split[1].trim(), false) }
+        3 => { assert_eq!(split[1].trim(), ""); (split[0].trim(), split[2].trim(), true) }//a double slash will split it into 3 sections.
+        _ => { error!("Malformed rule byte definition", ConstructorErrorType::MalformedDefinition); }
+    };
+
+    let (predicate_object, _) = construct_predicate(program, predicate)?;
+    let enviorment_object = construct_enviorment(program, enviorment, inverted)?;
+
+    let to_push = create_detect_rule(predicate_object, enviorment_object);
+    program.rules.push(to_push);
+
+    Ok(())
 }
 
 fn construct_label(program: &mut Program, line: &Vec<&str>) -> std::result::Result<(), ConstructorError> {
@@ -447,9 +474,8 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Opt
     let (result, enviorment, inverted) = match split2.len() {
         1 => { (split2[0].trim(), "", false) }
         2 => { (split2[0].trim(), split2[1].trim(), false) }
-        3 => { (split2[0].trim(), split2[2].trim(), true) }//a double slash will split it into 3 sections.
-        _ => { error!("Malformed rule byte definition", ConstructorErrorType::MalformedDefinition);
-    }
+        3 => { assert_eq!(split2[1].trim(), ""); (split2[0].trim(), split2[2].trim(), true) }//a double slash will split it into 3 sections.
+        _ => { error!("Malformed rule byte definition", ConstructorErrorType::MalformedDefinition); }
     };
 
     let regex = Regex::new(r" (?![^(]*\))(?![^\[]*\])(?![^\{]*\})").unwrap();

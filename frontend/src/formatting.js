@@ -173,7 +173,8 @@ function syntax_highlighter(parent_element, text_content, symbols) {
             }
 
             if(temp == "feature" || temp == "switch" || temp == "symbol" || temp == "rule" || temp == "diacritic" || temp == "root" || temp == "all" || temp == "sub"
-                || temp == "subx" || temp == "call" || temp == "label" || temp == "jmp" || temp == "mod" || temp == "flag" || temp == "!mod" || temp == "!flag") {
+                || temp == "subx" || temp == "call" || temp == "label" || temp == "jmp" || temp == "mod" || temp == "flag" || temp == "!mod" || temp == "!flag"
+                || temp == "detect") {
                     //There is nothing wrong with this please send help
                 class_flag += " synhi-keyword";
                 add_textarea_span(parent_element, running, class_flag);

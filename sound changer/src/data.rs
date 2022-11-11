@@ -208,6 +208,7 @@ pub enum Rule {
     TransformationRule { bytes: Vec<RuleByte>, flags: u16, name: String },
     CallSubroutine { name: String },
     JumpSubRoutine { name: String, condition: JumpCondition, inverted: bool},
+    Detect { predicate: Vec<Box<dyn Predicate>>, enviorment: Enviorment },
 }
 
 pub struct EnviormentPredicate {
@@ -455,6 +456,10 @@ pub fn create_subroutine_call_rule(name: String) -> Rule {
 
 pub fn create_jump_rule(name: String, condition: JumpCondition, inverted: bool) -> Rule {
     Rule::JumpSubRoutine { name: name, condition: condition, inverted: inverted }
+}
+
+pub fn create_detect_rule(predicate: Vec<Box<dyn Predicate>>, enviorment: Enviorment) -> Rule {
+    Rule::Detect { predicate: predicate, enviorment: enviorment }
 }
 
 pub fn create_empty_enviorment() -> Enviorment {

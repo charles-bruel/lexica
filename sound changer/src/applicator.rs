@@ -85,7 +85,34 @@ impl super::data::Rule {
                     }
                 }
 
-                return Ok(())
+                return Ok(());
+            },
+            Rule::Detect { predicate, enviorment } => {
+                let num = predicate.len();
+
+                if num > context.result.len() {
+                    context.flag_flag = false;
+                    return Ok(());
+                }
+                let mut i = 0;
+
+                while i <= context.result.len() - num {
+                    let mut j: usize = 0;
+                    let mut flag = true;
+                    while j < predicate.len() {
+                        if !predicate[j].validate(&context.result, i + j) { 
+                            flag = false;
+                        }
+                        j += 1;
+                    }        
+                    if flag {
+                        context.flag_flag = enviorment.check_enviorment(&context.result, i, num);
+                        return Ok(());
+                    }
+                    i += 1;
+                }
+                context.flag_flag = false;
+                return Ok(());
             },
         }
     }
@@ -112,7 +139,7 @@ impl super::data::RuleByte {
         let mut i: usize = 0;
 
         {//Insert as very first character? Code duplication which is unideal
-            let flag = self.check_enviorment_for_initial(&result);
+            let flag = self.enviorment.check_enviorment_for_initial(&result);
             if flag {
                 let rule = self.transformations[0].result[0].as_ref();
                 let temp = match rule.transform(&Letter { value: 0 }) {//Dummy input; there are better ways to do this
@@ -126,7 +153,7 @@ impl super::data::RuleByte {
         }
         
         while i < result.len() {
-            let flag = self.check_enviorment(&result, i + 1, 0);
+            let flag = self.enviorment.check_enviorment(&result, i + 1, 0);
             if flag {
                 let rule = self.transformations[0].result[0].as_ref();
                 let temp = match rule.transform(&Letter { value: 0 }) {//Dummy input; there are better ways to do this
@@ -175,7 +202,7 @@ impl super::data::RuleByte {
 
             let mut i_adjustment: i32 = 0;
 
-            if flag && self.check_enviorment(&result, (i as i32 + i_adjustment) as usize, 1) {
+            if flag && self.enviorment.check_enviorment(&result, (i as i32 + i_adjustment) as usize, 1) {
                 
                 let rule = match self.transformations[0].result.len() {
                     1 => self.transformations[0].result[0].as_ref(),
@@ -258,7 +285,7 @@ impl super::data::RuleByte {
 
             let mut i_adjustment: i32 = 0;
 
-            if flag2 && self.check_enviorment(&result, i, num) {
+            if flag2 && self.enviorment.check_enviorment(&result, i, num) {
                 let mut k: usize = 0;
                 while k < self.transformations.len() {
                     let rule = match self.transformations[k].result.len() {
@@ -296,10 +323,99 @@ impl super::data::RuleByte {
         }
         return Ok(result);
     }
+}
+
+impl super::data::Enviorment {
+    fn check_enviorment(&self, input: &Vec<Letter>, start_position: usize, length: usize) -> bool {
+        let mut j: usize = 0;
+        let mut position_ante = start_position;
+        let mut position_post = start_position + length;
+        let mut accum: u8 = 0;
+
+        while j < self.ante.len() {
+            if position_ante == 0 {
+                if accum < self.ante[j].min_quant || j < self.ante.len() - 1 {
+                    return self.inverted;
+                }
+                break;
+            }
+            position_ante -= 1;
+
+            let temp = self.ante[j].predicate.validate(input, position_ante);
+            accum += if temp {1} else {0};
+            if temp {
+                if accum == self.ante[j].max_quant {
+                    j += 1;
+                    accum = 0;
+                }
+            } else {
+                if accum < self.ante[j].min_quant {
+                    return self.inverted;
+                } else {
+                    j += 1;
+                    accum = 0;
+                    if j < self.ante.len() {
+                        position_ante += 1;//Need to check it again, but against the next one
+                    }
+                }
+            }
+        }
+        if self.ante_word_boundary && position_ante != 0 {
+            return self.inverted;
+        }
+
+        j = 0;
+        let mut flag = true;
+        while j < self.post.len() {
+            if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
+                if accum < self.post[j].min_quant || j < self.post.len() - 1 {
+                    return self.inverted;
+                }
+                break;
+            }
+            if flag {
+                flag = false;
+            } else {
+                position_post += 1;
+            }
+
+            let temp = self.post[j].predicate.validate(input, position_post);
+            accum += if temp {1} else {0};
+            if temp {
+                if accum == self.post[j].max_quant {
+                    j += 1;
+                    accum = 0;
+                }
+            } else {
+                if accum < self.post[j].min_quant {
+                    return self.inverted;
+                } else {
+                    j += 1;
+                    accum = 0;
+                    if j < self.post.len() {
+                        position_post -= 1;//Need to check it again, but against the next one
+                    }
+                }
+            }
+        }
+        if self.post_word_boundary {
+            if self.post.len() != 0 {
+                if position_post != input.len() - 1 {
+                    return self.inverted;
+                }
+            } else {
+                if position_post != input.len() {
+                    return self.inverted;
+                }
+            }
+        }
+
+        return !self.inverted;
+    }
 
     fn check_enviorment_for_initial(&self, input: &Vec<Letter>) -> bool {
-        if self.enviorment.ante.len() != 0 {
-            return self.enviorment.inverted;
+        if self.ante.len() != 0 {
+            return self.inverted;
         }
 
         let mut position_post = 0;
@@ -307,10 +423,10 @@ impl super::data::RuleByte {
 
         let mut j: usize = 0;
         let mut flag = true;
-        while j < self.enviorment.post.len() {
+        while j < self.post.len() {
             if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
-                if accum < self.enviorment.post[j].min_quant || j < self.enviorment.post.len() - 1 {
-                    return self.enviorment.inverted;
+                if accum < self.post[j].min_quant || j < self.post.len() - 1 {
+                    return self.inverted;
                 }
                 break;
             }
@@ -320,119 +436,32 @@ impl super::data::RuleByte {
                 position_post += 1;
             }
 
-            let temp = self.enviorment.post[j].predicate.validate(input, position_post);
+            let temp = self.post[j].predicate.validate(input, position_post);
             accum += if temp {1} else {0};
             if temp {
-                if accum == self.enviorment.post[j].max_quant {
+                if accum == self.post[j].max_quant {
                     j += 1;
                     accum = 0;
                 }
             } else {
-                if accum < self.enviorment.post[j].min_quant {
-                    return self.enviorment.inverted;
+                if accum < self.post[j].min_quant {
+                    return self.inverted;
                 } else {
                     j += 1;
                     accum = 0;
-                    if j < self.enviorment.post.len() {
+                    if j < self.post.len() {
                         position_post -= 1;//Need to check it again, but against the next one
                     }
                 }
             }
         }
-        if self.enviorment.post_word_boundary {
+        if self.post_word_boundary {
             if position_post != input.len() - 1 {
-                return self.enviorment.inverted;
+                return self.inverted;
             }
         }
 
-        return !self.enviorment.inverted;
-    }
-
-    fn check_enviorment(&self, input: &Vec<Letter>, start_position: usize, length: usize) -> bool {
-        let mut j: usize = 0;
-        let mut position_ante = start_position;
-        let mut position_post = start_position + length;
-        let mut accum: u8 = 0;
-
-        while j < self.enviorment.ante.len() {
-            if position_ante == 0 {
-                if accum < self.enviorment.ante[j].min_quant || j < self.enviorment.ante.len() - 1 {
-                    return self.enviorment.inverted;
-                }
-                break;
-            }
-            position_ante -= 1;
-
-            let temp = self.enviorment.ante[j].predicate.validate(input, position_ante);
-            accum += if temp {1} else {0};
-            if temp {
-                if accum == self.enviorment.ante[j].max_quant {
-                    j += 1;
-                    accum = 0;
-                }
-            } else {
-                if accum < self.enviorment.ante[j].min_quant {
-                    return self.enviorment.inverted;
-                } else {
-                    j += 1;
-                    accum = 0;
-                    if j < self.enviorment.ante.len() {
-                        position_ante += 1;//Need to check it again, but against the next one
-                    }
-                }
-            }
-        }
-        if self.enviorment.ante_word_boundary && position_ante != 0 {
-            return self.enviorment.inverted;
-        }
-
-        j = 0;
-        let mut flag = true;
-        while j < self.enviorment.post.len() {
-            if (!flag && position_post >= input.len() - 1) || position_post == input.len() {
-                if accum < self.enviorment.post[j].min_quant || j < self.enviorment.post.len() - 1 {
-                    return self.enviorment.inverted;
-                }
-                break;
-            }
-            if flag {
-                flag = false;
-            } else {
-                position_post += 1;
-            }
-
-            let temp = self.enviorment.post[j].predicate.validate(input, position_post);
-            accum += if temp {1} else {0};
-            if temp {
-                if accum == self.enviorment.post[j].max_quant {
-                    j += 1;
-                    accum = 0;
-                }
-            } else {
-                if accum < self.enviorment.post[j].min_quant {
-                    return self.enviorment.inverted;
-                } else {
-                    j += 1;
-                    accum = 0;
-                    if j < self.enviorment.post.len() {
-                        position_post -= 1;//Need to check it again, but against the next one
-                    }
-                }
-            }
-        }
-        if self.enviorment.post_word_boundary {
-            if self.enviorment.post.len() != 0 {
-                if position_post != input.len() - 1 {
-                    return self.enviorment.inverted;
-                }
-            } else {
-                if position_post != input.len() {
-                    return self.enviorment.inverted;
-                }
-            }
-        }
-
-        return !self.enviorment.inverted;
+        return !self.inverted;
     }
 }
 
