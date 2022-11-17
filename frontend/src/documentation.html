@@ -595,11 +595,66 @@ rules
     #Vowel length distinction collapse is not modeled
 end</pre></div>
     <h2>Complex language topics</h2>
+    <p>These topics are more complex and generally not required for writing most sound changes. They may be useful if you try to use this for something unusual.</p>
     <h3>Control flow</h3>
+    <p>By default rules are executed top to bottom, however you can change that. This is not typically very useful but does make it turing complete (probably) so it's a neat 
+       feature. This may also be useful for writing actual sound changs. It's mostly just for fun though.</p>
     <h4>Jumps</h4>
-    <h4>Subroutines</h4>
-    <h2>Spreadsheet Program</h2>
+    <p>The most fundemental part of control flow is the jump. Jumps can be conditional or unconditional. Unconditional jumps are not typically useful without being paired with
+       conditional jumps. Both kinds of jumps are marked with the <span class="code">jmp</span> keyword, following by the label. Labels are where the program jumps to and are 
+       defined by the <span class="code">label</span> keyword. An example may be helpful:</p>
+    <div><pre class="e i o u">
+rules
+    rule e-to-i#this executes normally
+        e => i
+    end
+
+    jmp skip
+
+    rule o-to-u #this gets skipped
+        o => u
+    end
+
+    label skip
+end</pre></div>
+    <p>A conditional jump is marked by putting the name of the flag you wish to control the jump with after the label name. If you wish to invert this condition use the 
+        <span class="code">!</span> symbol before it, i.e. <span class="code">jmp foo !flag</span>. The flags are described in the following section.</p>
+    <h4>Flags</h4>
+    <p>Lexica currently has two kinds of flag; the the modify <span class="code">mod</span> flag and <span class="code">flag</span> flag (I am open to better names for that). The 
+       modify flag is set if the word is modified; the following code removes every uvular, and if the word contained a uvular, making the first consonant a uvular.</p>
+    <div><pre>
+rules
+    rule remove-uvular
+        [uvular] => [velar]
+    end
+
+    jmp skip !mod
+
+    rule make-first-uvular
+        [consonant] => [uvular] / $ _
+    end
+
+    label skip
+end</pre></div>
+    <p>In the above code snippet, the jump skips the relevant rule if the word was not modified by the previous rule.</p>
+    <p>The flag flag is set by the detect keyword. It allows you to create custom conditions for your jumps. The detect keyword takes a predicate and enviorment exactly as you
+       would expect when writing a regular rule. Keep in mind, in a regular rule it's <span class="code">{predicate} => {result} / {enviorment}</span> (or 
+       <span class="code">//</span>); in a detect it's <span class="code">{predicate} / {enviorment}</span>, likewise with the slashes. For example, the following code changes s
+       to ʃ if and only if there is an h anywhere in the string (not exactly naturalistic but let's not go there).</p>
+    <div><pre class="h s ʃ">
+rules
+    detect h
+
+    jmp skip flag
     
+    rule s-change
+        s => ʃ
+    end
+
+    label skip
+end</pre></div>
+    <h4>Subroutines</h4>
+    <h2>Spreadsheet Program</h2>   
 
     <div id="indent-lines"></div>
     <script defer>
