@@ -654,6 +654,31 @@ rules
     label skip
 end</pre></div>
     <h4>Subroutines</h4>
+    <p>Subroutines allow you to reuse code. A subroutine is either a single rule or multiple rules that can be triggered within the program, multiple times. For example, if your
+       language undergoes nasal assimilation, vowel merges, etc. multiple times, this allows you to do that without code duplication. Subroutines must be forward declared.</p>
+    <p>Subroutines are defined with either the <span class="code">sub</span> keyword or the <span class="code">subx</span> keyword. The <span class="code">sub</span> keyword just 
+       defines a subroutine, whereas the <span class="code">subx</span> keyword defines a subroutine and immediately executes it. Those keywords can be a drop in replacement for
+       the rule keyword.</p>
+    <div><pre>
+    sub nasal-assimilation
+        [nasal] [consonant !nasal]$1(place) => []$1 [] 
+    end</pre></div>
+    <p>The above code defines nasal assimilation as a subroutine, but does not execute it. If the <span class="code">subx</span> keyword was used instead, it would also be
+       executed. To call a subroutine, use the call keyword with the name of the subroutine, like so:</p>
+    <div><pre>
+    call nasal-assimilation</pre></div>
+    <p>A subroutine can consist of multiple rules (but not other subroutines). Just add a full rule definition(s) within the subroutine.</p>
+    <div><pre>
+    sub nasal-changes
+        rule metathesis
+            [consonant]$1 [nasal]$2 => []$2 []$1
+        end
+    
+        rule assimilation
+            [nasal] [consonant !nasal]$1(place) => []$1 []
+         end
+    end</pre></div>
+    <p>The above subroutine performs nasal metathesis then nasal assimilation.</p>
     <h2>Spreadsheet Program</h2>   
 
     <div id="indent-lines"></div>
