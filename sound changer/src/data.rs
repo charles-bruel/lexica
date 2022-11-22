@@ -358,7 +358,7 @@ fn print_structure_recurse(features: &Vec<Feature>, level: u8){
     }
 }
 
-pub fn create_rule_byte(predicate: (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>), result: (Vec<Box<dyn Result>>, Vec<usize>), enviorment: Enviorment) -> RuleByte {
+pub fn create_rule_byte(predicate: (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>), result: (Vec<Box<dyn Result>>, Vec<usize>), enviorment: Enviorment) -> std::result::Result<RuleByte, ConstructorError> {
     let mut num_captures: usize = 0;
 
     for x in &predicate.1 {
@@ -369,11 +369,11 @@ pub fn create_rule_byte(predicate: (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>),
 
     for x in &result.1 {
         if *x > num_captures {
-            panic!("More output captures than input captures");
+            return Err(create_constructor_error_empty("More output captures than input captures", line!(), ConstructorErrorType::MalformedDefinition));
         }
     }
 
-    RuleByte {
+    Ok(RuleByte {
         transformations: vec![
             Transformation {
                 predicate: predicate.0,
@@ -384,11 +384,13 @@ pub fn create_rule_byte(predicate: (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>),
         ],
         enviorment: enviorment,
         num_captures: num_captures + 1,
-    }
+    })
 }
 
-pub fn create_multi_rule_byte(predicate: Vec<(Vec<Box<dyn Predicate>>, Vec<(usize, u64)>)>, result: Vec<(Vec<Box<dyn Result>>, Vec<usize>)>, enviorment: Enviorment) -> RuleByte {
-    assert_eq!(predicate.len(), result.len());
+pub fn create_multi_rule_byte(predicate: Vec<(Vec<Box<dyn Predicate>>, Vec<(usize, u64)>)>, result: Vec<(Vec<Box<dyn Result>>, Vec<usize>)>, enviorment: Enviorment) -> std::result::Result<RuleByte, ConstructorError> {
+    if predicate.len() != result.len() {
+        return Err(create_constructor_error_empty("Predicate and result have different lengths", line!(), ConstructorErrorType::MalformedDefinition));
+    }
     let mut transformations: Vec<Transformation> = Vec::new();
 
     let mut i: usize = 0;
@@ -426,7 +428,7 @@ pub fn create_multi_rule_byte(predicate: Vec<(Vec<Box<dyn Predicate>>, Vec<(usiz
 
         for x in &r.1 {
             if *x > num_captures {
-                panic!("More output captures than input captures");
+                return Err(create_constructor_error_empty("More output captures than input captures", line!(), ConstructorErrorType::MalformedDefinition));
             }
         }
         transformations[i].result_captures = r.1;
@@ -435,11 +437,11 @@ pub fn create_multi_rule_byte(predicate: Vec<(Vec<Box<dyn Predicate>>, Vec<(usiz
     }
 
     
-    RuleByte {
+    Ok(RuleByte {
         transformations: transformations,
         enviorment: enviorment,
         num_captures: num_captures + 1,
-    }
+    })
 }
 
 pub fn create_transformation_rule(name: String, bytes:Vec<RuleByte>, flags: u16) -> Rule {

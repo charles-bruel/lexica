@@ -517,9 +517,9 @@ fn construct_rule_byte(program: &Program, data: &str) -> std::result::Result<Opt
             i += 1;
         }
 
-        return Ok(Some(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment, inverted)?)));
+        return Ok(Some(create_multi_rule_byte(predicates, results, construct_enviorment(program, enviorment, inverted)?)?));
     } else {
-        return Ok(Some(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment, inverted)?)));
+        return Ok(Some(create_rule_byte(construct_predicate(program, predicate)?, construct_result(program, result)?, construct_enviorment(program, enviorment, inverted)?)?));
     }
 }
 
