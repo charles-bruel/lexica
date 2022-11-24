@@ -250,6 +250,36 @@ function get_AST_node(input) {
     return "ERROR: Could not parse literal \"" + input + "\"";
 }
 
+//This functions takes an AST and does any computation that can be done ahead of time, and returns the ASTNode representing it
+//It recursively goes through and calculates whatever it can
+function precompute_AST(ast) {
+    //Process:
+    //Take the current AST node. Go through each of it's parameters and check if it is avaliable.
+    //If it is, evaluate it and replace it with the relevant literal.
+    //If not, call this function on it and replace the value with this.
+    
+    //If there are no parameters, there is nothing to do
+    //Generally speaking, a 0 parameter AST node cannot be simplified
+    //The only 0 parameter AST nodes are literals, and some functions, but those functions should still be evaluated
+    if(ast.params.length == 0) {
+        return ast;
+    }
+
+    if(ast.immediate_avaliable()) {
+        //If we can immediately calculate a value, we do so
+        return create_AST_literal(ast.evaluate());
+    }
+
+    //If not, we check each parameter
+    //We wont be able to make this avaliable immediately but we can still precompute some things
+    for(var i = 0;i < ast.params.length;i ++) {
+        //All the logic is handled one level down
+        ast.params[i] = precompute_AST(ast.params[i]);
+    }
+
+    return ast;//Return the AST with the modified values
+}
+
 function eval_value(input, pos) {
     if(!input.startsWith("=")) {
         return input;
