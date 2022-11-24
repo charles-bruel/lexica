@@ -294,11 +294,13 @@ function precompute_AST(ast, require_immediate=true) {
 }
 
 //This function takes a single AST and attempts to evaluate it
+//Note that pos is not a x, y pair or similar, like in eval_spreadsheet_formula(input, pos),
+//it is a callback to assign the value where it should go
 function evaluate_single(ast, pos) {
     if(ast.avaliable()) {
-        return ast.evaluate;
+        return ast.evaluate();
     } else {
-        computation_queue.push(get_AST_job(precompute_AST(), pos));
+        computation_queue.push(new ASTJob(precompute_AST(), pos));
         return "AWAITING RESULT";
     }
 }
@@ -314,9 +316,25 @@ function mark_updated() {
         if(computation_queue[i].ready_now()) {
             computation_queue[i].finish(computation_queue[i].evaluate());
             computation_queue.splice(i, 1);
-            i--;//Need to backtrace
+            i--;//Need to backtrack
         } else {
             //Still awaiting result
         }
     }
+}
+
+//This functions take a formula from the spreadsheet, assembles it's AST, then evaluates it
+//If it's not immediate, it gets sent to the queue and the callback is automatically set up
+function eval_spreadsheet_formula(input, pos) {
+    if(!input.startsWith("=")) {
+        //Not a formula; ignore
+        return input;
+    }
+    input = input.substring(1);//Remove the = sign
+
+    var pos_cb = function(value) {
+        var element = document.getElementById("spreadsheet-" + pos.i + ":" + pos.j);
+        element.value = value;
+    }
+    return evaluate_single(create_AST(input, true), pos_cb);
 }

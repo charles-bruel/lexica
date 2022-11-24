@@ -209,7 +209,7 @@ function populate_headers() {
 function handle_blur(element, i, j) {
     last_focused_cell = null;
     underyling_editor_mode = false;
-    element.value = eval_value(element.value, { i: i, j:j });
+    element.value = eval_spreadsheet_formula(element.value, { i: i, j:j });
     set_root_variable("--select-color", "blue");
     current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
 }
@@ -385,7 +385,7 @@ function rerun_all() {
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
             var element = document.getElementById("spreadsheet-" + i + ":" + j);
-            if(element.value != "") eval_value(element.value, { i: i, j:j });
+            if(element.value != "") eval_spreadsheet_formula(element.value, { i: i, j:j });
         }
     }
 }

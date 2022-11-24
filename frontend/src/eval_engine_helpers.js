@@ -332,7 +332,3 @@ class ASTJob {
         this.callback(final_value);
     }
 }
-
-function get_AST_job(pos) {
-
-}
