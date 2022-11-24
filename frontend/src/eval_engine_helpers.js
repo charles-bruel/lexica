@@ -70,6 +70,8 @@ function handle_sc_response(entries) {
     }
 }
 
+//This function converts an input which may have escaped characters (e.g. \\, \n, etc.) into one with just regular codepoints
+//The output of this function may display as escaped characters in certain places, but these characters are still escaped
 function manage_escaped_characters(input) {
     var result = "";
     for(var i = 0;i < input.length;i ++) {
