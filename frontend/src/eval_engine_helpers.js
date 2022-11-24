@@ -101,6 +101,8 @@ function manage_escaped_characters(input) {
 //An AST node should contain the following functions
 //avaliable() returns true or false depending on whether the value is avaliable RN
 //            For example, a sound change run function would not be avaliable if the correct operation is not cached
+//immediate_avaliable() returns true if the value is immediately and always computable. Literals and operations just on literals always fulfil this criteria
+//                      but even sound change runs, even if cached would not. This should always return the same value for each node type.
 //make_avaliable() Runs code to attempt to make the expression avaliable. For example, a sound change run might use this to ask for the value, which is then cached.
 //                 This function is only required to behave well if avaliable() === false. For some nodes, avaliable() is always true, so this might not even be defined
 //evaluate() evaluates the value of the expression, possibly recursively. This is only required to behave well if avaliable() === true
@@ -118,6 +120,9 @@ class ASTStringLiteralNode extends ASTNode {
     avaliable() {
         return true;
     }
+    immediate_avaliable() {
+        return true;
+    }
 }
 
 //This node represents a number. It is also used as the boolean type, with 0 === false and everything being true
@@ -130,6 +135,9 @@ class ASTNumericLiteralNode extends ASTNode {
         return this.literal;
     }
     avaliable() {
+        return true;
+    }
+    immediate_avaliable() {
         return true;
     }
 }
@@ -147,6 +155,9 @@ class ASTFunctionNode extends ASTNode {
     avaliable() {
         return "TODO";
     }
+    immediate_avaliable() {
+        return "TODO";
+    }
 }
 
 //This represents a unary operation, that is an operation on a single operand
@@ -157,6 +168,9 @@ class ASTUnaryNode extends ASTNode {
     }
     avaliable() {
         return this.operand.avaliable();
+    }
+    immediate_avaliable() {
+        return this.operand.immediate_avaliable();
     }
 }
 
@@ -169,6 +183,9 @@ class ASTBinaryNode extends ASTNode {
     }
     avaliable() {
         return this.operand_left.avaliable() && this.operand_right.avaliable();
+    }
+    immediate_avaliable() {
+        return this.operand_left.immediate_avaliable() && this.operand_right.immediate_avaliable();
     }
 }
 
