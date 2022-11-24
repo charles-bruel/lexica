@@ -319,7 +319,13 @@ function mark_updated() {
             computation_queue.splice(i, 1);
             i--;//Need to backtrack
         } else {
-            //Still awaiting result
+            //Still awaiting result, however it may have made some progress
+            //Therefore we refresh the job
+            var temp = computation_queue[i];
+            computation_queue.splice(i, 1);
+            temp.ast.make_available();
+            temp.ast = precompute_AST(temp.ast);
+            computation_queue.push(temp);
         }
     }
 }
