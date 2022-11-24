@@ -96,8 +96,15 @@ function manage_escaped_characters(input) {
 }
 
 //AST nodes
+//An AST node should contain the following functions
+//avaliable() returns true or false depending on whether the value is avaliable RN
+//            For example, a sound change run function would not be avaliable if the correct operation is not cached
+//make_avaliable() Runs code to attempt to make the expression avaliable. For example, a sound change run might use this to ask for the value, which is then cached.
+//                 This function is only required to behave well if avaliable() === false. For some nodes, avaliable() is always true, so this might not even be defined
+//evaluate() evaluates the value of the expression, possibly recursively. This is only required to behave well if avaliable() === true
 class ASTNode {}
 
+//This node represents a string literal
 class ASTStringLiteralNode extends ASTNode {
     constructor(string) {
         super();
@@ -111,6 +118,7 @@ class ASTStringLiteralNode extends ASTNode {
     }
 }
 
+//This node represents a number. It is also used as the boolean type, with 0 === false and everything being true
 class ASTNumericLiteralNode extends ASTNode {
     constructor(value) {
         super();
@@ -124,6 +132,7 @@ class ASTNumericLiteralNode extends ASTNode {
     }
 }
 
+//This node represents a function, like a syscall. These are all system defined functions
 class ASTFunctionNode extends ASTNode {
     constructor(function_name, params) {
         super();
@@ -138,6 +147,7 @@ class ASTFunctionNode extends ASTNode {
     }
 }
 
+//This represents a unary operation, that is an operation on a single operand
 class ASTUnaryNode extends ASTNode {
     constructor(operand) {
         super();
@@ -148,6 +158,7 @@ class ASTUnaryNode extends ASTNode {
     }
 }
 
+//This represents a binary operation, that is an operation on two operands
 class ASTBinaryNode extends ASTNode {
     constructor(operand_left, operand_right) {
         super();
@@ -159,6 +170,8 @@ class ASTBinaryNode extends ASTNode {
     }
 }
 
+//This is an intermediate representation of an AST operator, between being parsed and having the context to have other nodes assigned to it
+//An AST operator should have a get_node(operand, ...) function which takes the appropiate number of operands and returns an ASTNode that represents the operation
 class ASTOperator {}
 
 function create_AST_unary_node(fn) {
