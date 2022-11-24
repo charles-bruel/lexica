@@ -308,7 +308,21 @@ function evaluate_single(ast, pos) {
 
 //This function clears the cache and starts the evaluation process for everything over again
 function mark_dirty() {
+    //First, we reset the cache
+    //We reset all the cache, even if just one program changed
+    //Probably an optimization we can do
+    computation_cache = {};
+    computation_queue = [];
+    conversions_to_send = {};
+    conversions_in_flight = [];
 
+    //This just recalculates every single spreadsheet cell value
+    //A more efficient way of doing this is definitely possible
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
+            eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
+        }
+    }
 }
 
 //This function attempts to re-evaluate all queued jobs

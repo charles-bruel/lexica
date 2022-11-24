@@ -207,17 +207,20 @@ function populate_headers() {
 }
 
 function handle_blur(element, i, j) {
+    if(underyling_editor_mode) {
+        current_spreadsheet_state.underlying_cell_data[i][j] = element.value
+    }
     last_focused_cell = null;
     underyling_editor_mode = false;
-    element.value = eval_spreadsheet_formula(element.value, { i: i, j:j });
+    element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
     set_root_variable("--select-color", "blue");
-    current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
 }
 
 function handle_focus(element, i, j, dbl) {
     if(dbl) {
         //Enter underlying value editor
         underyling_editor_mode = true;
+        element.value = current_spreadsheet_state.underlying_cell_data[i][j];
         set_root_variable("--select-color", "green");
     } else {
         last_focused_cell = element;

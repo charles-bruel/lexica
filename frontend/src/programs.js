@@ -132,6 +132,8 @@ function handle_program_manager_save() {
 
     send_compile_request(name == "" ? "test" : name, program_contents);
 
+    mark_dirty();
+
     send_test_words_flag = name == "" ? "test" : name;
 }
 
