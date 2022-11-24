@@ -97,6 +97,9 @@ function manage_escaped_characters(input) {
     return result;
 }
 
+//AST functions
+const AST_functions = {};
+
 //AST nodes
 //An AST node should contain the following functions
 //avaliable() returns true or false depending on whether the value is avaliable RN
@@ -152,13 +155,25 @@ class ASTFunctionNode extends ASTNode {
         this.params = params;
     }
     evaluate() {
-        return "TODO";
+        if(Object.hasOwn(AST_functions, this.function_name)) {
+            return AST_functions[this.function_name].evaluate(params);
+        } else {
+            return "ERROR: Unknown function \"" + this.function_name + "\"";
+        }
     }
     avaliable() {
-        return "TODO";
+        if(Object.hasOwn(AST_functions, this.function_name)) {
+            return AST_functions[this.function_name].avaliable(params);
+        } else {
+            return true;
+        }
     }
     immediate_avaliable() {
-        return "TODO";
+        if(Object.hasOwn(AST_functions, this.function_name)) {
+            return AST_functions[this.function_name].immediate;
+        } else {
+            return false;
+        }
     }
 }
 
