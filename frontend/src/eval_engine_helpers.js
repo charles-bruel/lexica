@@ -242,6 +242,13 @@ class ASTFunctionNode extends ASTNode {
     }
     make_available() {
         super.make_available();
+
+        //There are two ways this not available
+        //The first is if available() returned because of super.available(), i.e. one of the params was not available
+        //Or this function could be unavailable due to function itself
+        //The function cannot make itself available if it's parameters are not ready
+        if(!super.available()) return;
+
         if(Object.hasOwn(AST_functions, this.function_name)) {
             AST_functions[this.function_name].make_available(this.params);
         }
