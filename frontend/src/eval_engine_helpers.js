@@ -41,6 +41,8 @@ function get_sc_result(obj) {
     }
 }
 
+//This function takes a list of returned sound changer results and
+//adds them to the cache, and routes them wherever else they need to go, if nessecary
 function handle_sc_response(entries) {
     for(const entry of entries) {
         //Save everything to the cache
@@ -62,6 +64,7 @@ function handle_sc_response(entries) {
             element.value = temp.join("\n");
         }
     }
+    mark_updated();
 }
 
 //This looks through and array of id/position pairs for the given id,
@@ -106,17 +109,35 @@ function manage_escaped_characters(input) {
 }
 
 //AST functions
+//TODO: Must check that params are avaliable before evaluating
+//TODO: Refactor params part of avaliable() into ASTNode
 const AST_functions = {
     run: {
         immediate: false,
-        avaliable: function() {
-
+        avaliable: function(params) {
+            if(!Object.hasOwn(computation_cache, params[0].evaluate())) {
+                //Nothing with this program name has been cached
+                return false;
+            }
+            if(!Object.hasOwn(computation_cache[params[0].evaluate()], params[1].evaluate())) {
+                //This program name has been cached, but not this input
+                return false;
+            }
+            //This program name has been cached and this input has been cached
+            return true;
         },
-        make_avaliable: function() {
-
+        make_avaliable: function(params) {
+            for(x in conversions_in_flight) {
+                //Check if this conversion has already been requested
+                //If so, no need to send it again
+                if(x.prog == params[0].evaluate() && x.og == params[1].evaluate()) return;
+            }
+            request_conversion(params[0].evaluate(), params[1].evaluate());
         },
-        evaluate: function() {
-            
+        evaluate: function(params) {
+            //Since we can assume avaliable() is true, we can just immediately grab the valuea
+            //and not worry about safety
+            return computation_cache[params[0].evaluate()][params[1].evaluate()];
         }
     }
 };
@@ -133,12 +154,12 @@ const AST_functions = {
 //An AST node should also have the following property
 //params should be an array of other ASTNodes, and represent every AST node that is used to evaluate this AST node
 class ASTNode {
-    ASTNode() {
-        params = [];
+    constructor() {
+        this.params = [];
     }
     make_avaliable() {
-        for(var i = 0;i < params.length;i ++) {
-            params[i].make_avaliable();
+        for(var i = 0;i < this.params.length;i ++) {
+            this.params[i].make_avaliable();
         }
     }
 }
@@ -186,14 +207,14 @@ class ASTFunctionNode extends ASTNode {
     }
     evaluate() {
         if(Object.hasOwn(AST_functions, this.function_name)) {
-            return AST_functions[this.function_name].evaluate(params);
+            return AST_functions[this.function_name].evaluate(this.params);
         } else {
             return "ERROR: Unknown function \"" + this.function_name + "\"";
         }
     }
     avaliable() {
         if(Object.hasOwn(AST_functions, this.function_name)) {
-            return AST_functions[this.function_name].avaliable(params);
+            return AST_functions[this.function_name].avaliable(this.params);
         } else {
             return true;
         }
@@ -208,7 +229,7 @@ class ASTFunctionNode extends ASTNode {
     make_avaliable() {
         super.make_avaliable();
         if(Object.hasOwn(AST_functions, this.function_name)) {
-            return AST_functions[this.function_name].make_avaliable;
+            return AST_functions[this.function_name].make_avaliable(this.params);
         }
     }
 }
@@ -314,7 +335,7 @@ class ASTBinaryOperator extends ASTOperator {
 //This class represents an AST node that is waiting on something to complete. It contains the partially compiled AST tree and the a callback
 //which will be called when the computation finishes so that the value can be assigned.
 class ASTJob {
-    ASTJob(ast, callback) {
+    constructor(ast, callback) {
         this.ast = ast;
         this.callback = callback;
     }

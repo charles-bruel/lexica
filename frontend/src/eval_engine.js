@@ -300,7 +300,8 @@ function evaluate_single(ast, pos) {
     if(ast.avaliable()) {
         return ast.evaluate();
     } else {
-        computation_queue.push(new ASTJob(precompute_AST(), pos));
+        ast.make_avaliable();
+        computation_queue.push(new ASTJob(precompute_AST(ast), pos));
         return "AWAITING RESULT";
     }
 }
@@ -332,9 +333,11 @@ function eval_spreadsheet_formula(input, pos) {
     }
     input = input.substring(1);//Remove the = sign
 
+    //Creates the callback to set the value when completed
     var pos_cb = function(value) {
         var element = document.getElementById("spreadsheet-" + pos.i + ":" + pos.j);
         element.value = value;
     }
-    return evaluate_single(create_AST(input, true), pos_cb);
+    var ast = create_AST(input, true);
+    return evaluate_single(ast, pos_cb);
 }
