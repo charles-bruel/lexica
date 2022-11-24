@@ -109,12 +109,12 @@ function manage_escaped_characters(input) {
 }
 
 //AST functions
-//TODO: Must check that params are avaliable before evaluating
-//TODO: Refactor params part of avaliable() into ASTNode
+//TODO: Must check that params are available before evaluating
+//TODO: Refactor params part of available() into ASTNode
 const AST_functions = {
     run: {
         immediate: false,
-        avaliable: function(params) {
+        available: function(params) {
             if(!Object.hasOwn(computation_cache, params[0].evaluate())) {
                 //Nothing with this program name has been cached
                 return false;
@@ -126,7 +126,7 @@ const AST_functions = {
             //This program name has been cached and this input has been cached
             return true;
         },
-        make_avaliable: function(params) {
+        make_available: function(params) {
             for(x in conversions_in_flight) {
                 //Check if this conversion has already been requested
                 //If so, no need to send it again
@@ -135,7 +135,7 @@ const AST_functions = {
             request_conversion(params[0].evaluate(), params[1].evaluate());
         },
         evaluate: function(params) {
-            //Since we can assume avaliable() is true, we can just immediately grab the valuea
+            //Since we can assume available() is true, we can just immediately grab the valuea
             //and not worry about safety
             return computation_cache[params[0].evaluate()][params[1].evaluate()];
         }
@@ -144,23 +144,35 @@ const AST_functions = {
 
 //AST nodes
 //An AST node should contain the following functions
-//avaliable() returns true or false depending on whether the value is avaliable RN
-//            For example, a sound change run function would not be avaliable if the correct operation is not cached
-//immediate_avaliable() returns true if the value is immediately and always computable. Literals and operations just on literals always fulfil this criteria
+//available() returns true or false depending on whether the value is available RN
+//            For example, a sound change run function would not be available if the correct operation is not cached
+//immediate_available() returns true if the value is immediately and always computable. Literals and operations just on literals always fulfil this criteria
 //                      but even sound change runs, even if cached would not. This should always return the same value for each node type.
-//make_avaliable() Runs code to attempt to make the expression avaliable. For example, a sound change run might use this to ask for the value, which is then cached.
-//                 This function is only required to behave well if avaliable() === false. For some nodes, avaliable() is always true, so this might not even be defined
-//evaluate() evaluates the value of the expression, possibly recursively. This is only required to behave well if avaliable() === true
+//make_available() Runs code to attempt to make the expression available. For example, a sound change run might use this to ask for the value, which is then cached.
+//                 This function is only required to behave well if available() === false. For some nodes, available() is always true, so this might not even be defined
+//evaluate() evaluates the value of the expression, possibly recursively. This is only required to behave well if available() === true
 //An AST node should also have the following property
 //params should be an array of other ASTNodes, and represent every AST node that is used to evaluate this AST node
 class ASTNode {
     constructor() {
         this.params = [];
     }
-    make_avaliable() {
+    make_available() {
         for(var i = 0;i < this.params.length;i ++) {
-            this.params[i].make_avaliable();
+            this.params[i].make_available();
         }
+    }
+    available() {
+        for(var i = 0;i < this.params.length;i ++) {
+            if(!this.params[i].available()) return false;
+        }
+        return true;
+    }
+    immediate_available() {
+        for(var i = 0;i < this.params.length;i ++) {
+            if(!this.params[i].immediate_available()) return false;
+        }
+        return true;
     }
 }
 
@@ -173,10 +185,10 @@ class ASTStringLiteralNode extends ASTNode {
     evaluate() {
         return this.literal;
     }
-    avaliable() {
+    available() {
         return true;
     }
-    immediate_avaliable() {
+    immediate_available() {
         return true;
     }
 }
@@ -190,10 +202,10 @@ class ASTNumericLiteralNode extends ASTNode {
     evaluate() {
         return this.literal;
     }
-    avaliable() {
+    available() {
         return true;
     }
-    immediate_avaliable() {
+    immediate_available() {
         return true;
     }
 }
@@ -212,24 +224,26 @@ class ASTFunctionNode extends ASTNode {
             return "ERROR: Unknown function \"" + this.function_name + "\"";
         }
     }
-    avaliable() {
+    available() {
+        if(!super.available()) return false;
         if(Object.hasOwn(AST_functions, this.function_name)) {
-            return AST_functions[this.function_name].avaliable(this.params);
+            return AST_functions[this.function_name].available(this.params);
         } else {
             return true;
         }
     }
-    immediate_avaliable() {
+    immediate_available() {
+        if(!super.immediate_available()) return false;
         if(Object.hasOwn(AST_functions, this.function_name)) {
             return AST_functions[this.function_name].immediate;
         } else {
             return false;
         }
     }
-    make_avaliable() {
-        super.make_avaliable();
+    make_available() {
+        super.make_available();
         if(Object.hasOwn(AST_functions, this.function_name)) {
-            return AST_functions[this.function_name].make_avaliable(this.params);
+            AST_functions[this.function_name].make_available(this.params);
         }
     }
 }
@@ -240,12 +254,6 @@ class ASTUnaryNode extends ASTNode {
         super();
         this.params = [operand];
     }
-    avaliable() {
-        return this.params[0].avaliable();
-    }
-    immediate_avaliable() {
-        return this.params[0].immediate_avaliable();
-    }
 }
 
 //This represents a binary operation, that is an operation on two operands
@@ -253,12 +261,6 @@ class ASTBinaryNode extends ASTNode {
     constructor(operand_left, operand_right) {
         super();
         this.params = [operand_left, operand_right];
-    }
-    avaliable() {
-        return this.params[0].avaliable() && this.params[1].avaliable();
-    }
-    immediate_avaliable() {
-        return this.params[0].immediate_avaliable() && this.params[1].immediate_avaliable();
     }
 }
 
@@ -341,7 +343,7 @@ class ASTJob {
     }
 
     ready_now() {
-        return this.ast.avaliable();
+        return this.ast.available();
     }
 
     //This assumes ready_now() returned true

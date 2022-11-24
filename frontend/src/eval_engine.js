@@ -267,7 +267,7 @@ function get_AST_node(input) {
 //It recursively goes through and calculates whatever it can
 function precompute_AST(ast, require_immediate=true) {
     //Process:
-    //Take the current AST node. Go through each of it's parameters and check if it is avaliable.
+    //Take the current AST node. Go through each of it's parameters and check if it is available.
     //If it is, evaluate it and replace it with the relevant literal.
     //If not, call this function on it and replace the value with this.
     
@@ -278,13 +278,13 @@ function precompute_AST(ast, require_immediate=true) {
         return ast;
     }
 
-    if((require_immediate && ast.immediate_avaliable()) || (!require_immediate && ast.avaliable())) {
+    if((require_immediate && ast.immediate_available()) || (!require_immediate && ast.available())) {
         //If we can calculate a value, we do so
         return create_AST_literal(ast.evaluate());
     }
 
     //If not, we check each parameter
-    //We wont be able to make this avaliable immediately but we can still precompute some things
+    //We wont be able to make this available immediately but we can still precompute some things
     for(var i = 0;i < ast.params.length;i ++) {
         //All the logic is handled one level down
         ast.params[i] = precompute_AST(ast.params[i]);
@@ -297,10 +297,10 @@ function precompute_AST(ast, require_immediate=true) {
 //Note that pos is not a x, y pair or similar, like in eval_spreadsheet_formula(input, pos),
 //it is a callback to assign the value where it should go
 function evaluate_single(ast, pos) {
-    if(ast.avaliable()) {
+    if(ast.available()) {
         return ast.evaluate();
     } else {
-        ast.make_avaliable();
+        ast.make_available();
         computation_queue.push(new ASTJob(precompute_AST(ast), pos));
         return "AWAITING RESULT";
     }
