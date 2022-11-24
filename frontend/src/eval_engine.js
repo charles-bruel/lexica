@@ -1,8 +1,21 @@
-var active_conversions = {};
-var conversion_id = 0;
+//This stores every word transformation for the current iteration of the program
+//It's stored as a two level dictionary with the first level property names being the program name
+//and the second level being the input word
+//e.g. { foo: { bar: "baz" }} means that when running foo, bar => baz
+var computation_cache = {};
+
+//This stores all in progress computations that are waiting on something
+var computation_queue = [];
+
+//This stores every requested sound change, so that they can be batched
+//This is an object with the program name as the property name, and that property contains an array of everything that needs to be sent
+//This contains requests from both the program menu test area and from the evaluator
 var conversions_to_send = {};
-var spreadsheet_references = [];
-var program_test_references = [];
+
+//This stores a list of all the conversion currently in progress, their id, and the program name associated with them
+//This is used to link the results to their source and program for cache storing. Every sound change request goes through this system,
+//even ones not through the evaluator
+var conversions_in_flight = [];
 
 //This will evaluate into an array of ASTNodes, with each ASTNode coming from a single section of comma seperated input
 //Note this is context aware; it only splits on the highest level
@@ -252,7 +265,7 @@ function get_AST_node(input) {
 
 //This functions takes an AST and does any computation that can be done ahead of time, and returns the ASTNode representing it
 //It recursively goes through and calculates whatever it can
-function precompute_AST(ast) {
+function precompute_AST(ast, require_immediate=true) {
     //Process:
     //Take the current AST node. Go through each of it's parameters and check if it is avaliable.
     //If it is, evaluate it and replace it with the relevant literal.
@@ -265,8 +278,8 @@ function precompute_AST(ast) {
         return ast;
     }
 
-    if(ast.immediate_avaliable()) {
-        //If we can immediately calculate a value, we do so
+    if((require_immediate && ast.immediate_avaliable()) || (!require_immediate && ast.avaliable())) {
+        //If we can calculate a value, we do so
         return create_AST_literal(ast.evaluate());
     }
 
@@ -280,15 +293,30 @@ function precompute_AST(ast) {
     return ast;//Return the AST with the modified values
 }
 
-function eval_value(input, pos) {
-    if(!input.startsWith("=")) {
-        return input;
+//This function takes a single AST and attempts to evaluate it
+function evaluate_single(ast, pos) {
+    if(ast.avaliable()) {
+        return ast.evaluate;
+    } else {
+        computation_queue.push(get_AST_job(precompute_AST(), pos));
+        return "AWAITING RESULT";
     }
-    input = input.substring(1);
-    // TODO: Create fully recursive evaluator
-    if(input.startsWith("run")) {
-        input = handle_run(input, pos);
+}
+
+//This function clears the cache and starts the evaluation process for everything over again
+function mark_dirty() {
+
+}
+
+//This function attempts to re-evaluate all queued jobs
+function mark_updated() {
+    for(var i = 0;i < computation_queue.length;i ++) {
+        if(computation_queue[i].ready_now()) {
+            computation_queue[i].finish(computation_queue[i].evaluate());
+            computation_queue.splice(i, 1);
+            i--;//Need to backtrace
+        } else {
+            //Still awaiting result
+        }
     }
-    push_conversions();
-    return input;
 }

@@ -144,7 +144,6 @@ function handle_program_area_compile_success() {
             }
         }
     }
-    push_conversions();
 }
 
 function handle_program_manager_selection_change() {
