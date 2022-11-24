@@ -106,12 +106,21 @@ function load_save_state(data) {
 
     handle_bottom_bar_button(obj.current_index);
 
+    compile_programs();
+
     var endTime = performance.now();
     console.log(`Call to load_save_state took ${endTime - startTime} milliseconds`);
 }
 
 function send_compile_request(name, program) {
     post_message({ LoadProgram: { name: name, contents: program }});
+}
+
+function compile_programs() {
+    var keys = Object.keys(programs);
+    for (var i = 0; i < keys.length; i++) {
+        send_compile_request(keys[i], programs[keys[i]][0]);
+    }
 }
 
 function send_sc_request(array, program) {
