@@ -106,6 +106,8 @@ function manage_escaped_characters(input) {
 //make_avaliable() Runs code to attempt to make the expression avaliable. For example, a sound change run might use this to ask for the value, which is then cached.
 //                 This function is only required to behave well if avaliable() === false. For some nodes, avaliable() is always true, so this might not even be defined
 //evaluate() evaluates the value of the expression, possibly recursively. This is only required to behave well if avaliable() === true
+//An AST node should also have the following property
+//params should be an array of other ASTNodes, and represent every AST node that is used to evaluate this AST node
 class ASTNode {}
 
 //This node represents a string literal
@@ -164,13 +166,13 @@ class ASTFunctionNode extends ASTNode {
 class ASTUnaryNode extends ASTNode {
     constructor(operand) {
         super();
-        this.operand = operand;
+        this.params = [operand];
     }
     avaliable() {
-        return this.operand.avaliable();
+        return this.params[0].avaliable();
     }
     immediate_avaliable() {
-        return this.operand.immediate_avaliable();
+        return this.params[0].immediate_avaliable();
     }
 }
 
@@ -178,29 +180,41 @@ class ASTUnaryNode extends ASTNode {
 class ASTBinaryNode extends ASTNode {
     constructor(operand_left, operand_right) {
         super();
-        this.operand_left = operand_left;
-        this.operand_right = operand_right;
+        this.params = [operand_left, operand_right];
     }
     avaliable() {
-        return this.operand_left.avaliable() && this.operand_right.avaliable();
+        return this.params[0].avaliable() && this.params[1].avaliable();
     }
     immediate_avaliable() {
-        return this.operand_left.immediate_avaliable() && this.operand_right.immediate_avaliable();
+        return this.params[0].immediate_avaliable() && this.params[1].immediate_avaliable();
     }
+}
+
+//This function takes a value of unknown type and returns the correct AST literal node type
+//This function assumes that the type is already correct; it will not attempt to parse a float from a string, for example
+//If you put in "1.23", you get a string literal containing "1.23", not a numeric literal with 1.23
+function create_AST_literal(input) {
+    if(typeof input == "string") {
+        return new ASTStringLiteralNode(input);
+    }
+    if(typeof input == "number") {
+        return new ASTNumericLiteralNode(input);
+    }
+    return "ERROR: Unknown type"
 }
 
 //This is an intermediate representation of an AST operator, between being parsed and having the context to have other nodes assigned to it
 //An AST operator should have a get_node(operand, ...) function which takes the appropiate number of operands and returns an ASTNode that represents the operation
 class ASTOperator {}
 
-function create_AST_unary_node(fn) {
-    var temp = Object.create(ASTUnaryNode);
+function create_AST_unary_node(operand, fn) {
+    var temp = new ASTUnaryNode(operand);
     temp.evaluate = fn;
     return temp;
 }
 
-function create_AST_binary_node(fn) {
-    var temp = Object.create(ASTBinaryNode);
+function create_AST_binary_node(operand_left, operand_right, fn) {
+    var temp = new ASTBinaryNode(operand_left, operand_right);
     temp.evaluate = fn;
     return temp;
 }
@@ -218,9 +232,9 @@ class ASTUnaryOperator extends ASTOperator {
     get_node(operand) {
         switch(this.operator) {
             case "~":
-                return create_AST_unary_node(function() { return -operand.evaluate(); });
+                return create_AST_unary_node(operand, function() { return -this.params[0].evaluate(); });
             case "!":
-                return create_AST_unary_node(function() { return operand.evaluate() == 0 ? 1 : 0 });
+                return create_AST_unary_node(operand, function() { return this.params[0].evaluate() == 0 ? 1 : 0 });
         }
         return "TODO";
     }
@@ -238,9 +252,9 @@ class ASTBinaryOperator extends ASTOperator {
     get_node(operand_left, operand_right) {
         switch(this.operator) {
             case "+":
-                return create_AST_binary_node(function() { return operand_left.evaluate() + operand_right.evaluate(); });
+                return create_AST_binary_node(operand_left, operand_right, function() { return this.params[0].evaluate() + this.params[1].evaluate(); });
             case "-":
-                return create_AST_binary_node(function() { return operand_left.evaluate() - operand_right.evaluate(); });
+                return create_AST_binary_node(operand_left, operand_right, function() { return this.params[0].evaluate() - this.params[1].evaluate(); });
         }
         return "TODO";
     }
