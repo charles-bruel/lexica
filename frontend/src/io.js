@@ -94,6 +94,7 @@ function load_save_state(data) {
 
     programs = obj.programs;
 
+    //TODO: Organize this better?
     clear_program_dropdown();
     insert_program_dropdown(obj.programs); 
 

@@ -14,6 +14,7 @@ function set_root_variable(variable_name, value) {
     r.style.setProperty(variable_name, value);
 }
 
+//This handles selecting a tab
 function handle_bottom_bar_button(index) {
     var startTime = performance.now();
 
@@ -32,6 +33,7 @@ function handle_bottom_bar_button(index) {
     console.log(`Call to handle_bottom_bar_button took ${endTime - startTime} milliseconds`);
 }
 
+//This handles finishing renaming a tab
 function handle_end_bottom_bar_rename(index, input_element) {
     bottom_bar_state.elems[index].style.display = "";
     var new_name = input_element.value;
@@ -42,6 +44,7 @@ function handle_end_bottom_bar_rename(index, input_element) {
     document.getElementById("top-bar-tab-name").textContent = bottom_bar_state.names[index];
 }
 
+//This handles starting to rename a tab
 function handle_bottom_bar_rename(index) {
     bottom_bar_state.elems[index].style.display = "none";
     var element = document.createElement("input");
@@ -52,6 +55,7 @@ function handle_bottom_bar_rename(index) {
     element.addEventListener("focusout", function() { handle_end_bottom_bar_rename(index, element); })
 }
 
+//This handles creating a new button
 function generate_bottom_bar_button(index) {
     var element = document.createElement("button");
     element.textContent = bottom_bar_state.names[index];
@@ -62,6 +66,7 @@ function generate_bottom_bar_button(index) {
     return element;
 }
 
+//This handles adding a new tab
 function add_bottom_bar_button(name) {
     bottom_bar_state.names.push(name);
     parent_elem = document.getElementById("bottom-bar-buttons");

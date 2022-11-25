@@ -1,6 +1,6 @@
 var programs = {};
 
-function update_textarea(comp) {//Syntax highlighter
+function update_textarea(comp) {
     var area = document.getElementById("program-textarea");
     var element = document.getElementById("textarea-renderer-container");
     var numbers = document.getElementById("line-numbers");
@@ -9,14 +9,12 @@ function update_textarea(comp) {//Syntax highlighter
     numbers.replaceChildren();
     syntax_highlighter(element, area.value, []);
 
-
     for(var i = 0;i < lines.length;i ++) {
         var number = document.createElement("p");
         number.textContent = i + 1 + "";
         number.className = "line-number unselectable";
         numbers.appendChild(number);
     }
-
 
     scroll_textarea();
 
@@ -120,6 +118,7 @@ function get_test_area_content () {
     return to_return.join("\n");
 }
 
+//This marks what the name that is internally used for indentifying the program with the backend
 var send_test_words_flag = "";
 
 function handle_program_manager_run() {
@@ -188,6 +187,8 @@ populate_program_dropdown();
 document.getElementById("program-textarea").addEventListener("input", () => update_textarea(true));
 document.getElementById("program-textarea").addEventListener("scroll", scroll_textarea);
 
+//This handles (poorly) helpful features of the IDE like auto indentation
+//TODO: Refactor and rewrite all of this
 document.getElementById('program-textarea').addEventListener('keydown', function(e) {
     if (e.key == 'Tab') {//based on https://stackoverflow.com/questions/6637341/use-tab-to-indent-in-textarea
         e.preventDefault();

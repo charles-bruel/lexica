@@ -1,3 +1,7 @@
+//This file handles formatting for the lexica webapp and it's documentation page
+
+//Just for documentation
+//TODO: Rewrite this
 function generate_table_of_contents() {//This is super ugly and scales horribly
     var body = document.body.children;
     var element = document.getElementById("table-of-contents-container");
@@ -58,6 +62,7 @@ function generate_table_of_contents() {//This is super ugly and scales horribly
     }
 }
 
+//Just for documentation
 function generate_indent_lines() {
     var element = document.getElementById("indent-lines");
     element.replaceChildren();
@@ -68,6 +73,7 @@ function generate_indent_lines() {
     }
 }
 
+//Just for documentation
 function generate_indent_line(element, arr, index, parent_elem) {
     var following_element;
     var flag = true;
@@ -98,6 +104,7 @@ function generate_indent_line(element, arr, index, parent_elem) {
     parent_elem.appendChild(div);
 }
 
+//For documentation and webapp
 function syntax_highlighter(parent_element, text_content, symbols) {
     var temp = text_content.replace("\t", "    ");
     var lines = temp.split("\n");
@@ -222,6 +229,8 @@ function syntax_highlighter(parent_element, text_content, symbols) {
 
 current_error_line = -1;
 
+//For documentation and webapp
+//Util method of syntax_highlighter()
 function add_textarea_span(element, content, type) {
     var temp = document.createElement("span");
     temp.className = "textarea-content " + type;
@@ -229,6 +238,8 @@ function add_textarea_span(element, content, type) {
     element.appendChild(temp);
 }
 
+//For documentation only
+//Applies code syntax highlighting to every <pre>
 function format_code_blocks() {
     var blocks = document.getElementsByTagName("pre");
     for(var i = 0; i < blocks.length; i++) {
