@@ -1,6 +1,7 @@
 var conversion_id = 0;
 var program_test_references = [];
 
+//This  function adds requests a sound change for use in the program test area
 function add_program_test_area_conversion(program_name, word, line) {
     var id = request_conversion(program_name, word);
     program_test_references.push({ id: id, val: line})
@@ -33,6 +34,7 @@ function push_conversions() {
 //This calls it every 100ms, or 10x a second
 setInterval(push_conversions, 100);
 
+//This function extracts the result from a sound change result object
 function get_sc_result(obj) {
     if(Object.hasOwn(obj, "Ok")) {
         return obj.Ok;
