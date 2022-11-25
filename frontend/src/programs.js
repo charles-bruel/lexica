@@ -93,7 +93,8 @@ function insert_program_dropdown(obj) {
 
     for (var i = 0; i < keys.length; i++) {
         add_program_to_dropdown(keys[i]);
-        if(i == 0) {
+        //TODO: Save selected program?
+        if(i == keys.length - 1) {
             handle_program_manager_selection_change(); 
         }
     }
