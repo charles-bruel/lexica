@@ -83,7 +83,12 @@ function populate_program_dropdown() {
     }
 }
 
-function add_programs_to_dropdown(obj) {
+function clear_program_dropdown() {
+    var element = document.getElementById("programs-selector");
+    element.replaceChildren();
+}
+
+function insert_program_dropdown(obj) {
     var keys = Object.keys(obj);
 
     for (var i = 0; i < keys.length; i++) {

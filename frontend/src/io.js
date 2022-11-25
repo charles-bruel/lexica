@@ -94,7 +94,8 @@ function load_save_state(data) {
 
     programs = obj.programs;
 
-    add_programs_to_dropdown(obj.programs); 
+    clear_program_dropdown();
+    insert_program_dropdown(obj.programs); 
 
     delete_lexicon();
     delete_spreadsheet();
