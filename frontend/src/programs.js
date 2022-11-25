@@ -116,6 +116,22 @@ function get_test_area_content () {
 
 var send_test_words_flag = "";
 
+function handle_program_manager_run() {
+    var element = document.getElementById("program-manager-rename");
+    var name = element.value;
+    var reset_test_area  = get_test_area_content();
+    document.getElementById("program-manager-test-area").value = reset_test_area;
+    var program_contents = document.getElementById("program-textarea").value;
+    if(name != "") {
+        name = name.replace(/\s/g, '_');
+    }
+
+    var request_prog_name = name == "" ? "test" : name + "_test";
+    send_compile_request(request_prog_name, program_contents);
+
+    send_test_words_flag = request_prog_name;
+}
+
 function handle_program_manager_save() {
     var element = document.getElementById("program-manager-rename");
     var name = element.value;
@@ -241,4 +257,5 @@ document.getElementById("program-manager-button-exit").addEventListener("mousedo
 });
 
 document.getElementById("program-manager-button-save").addEventListener("mousedown", () => handle_program_manager_save());
+document.getElementById("program-manager-button-comprun").addEventListener("mousedown", () => handle_program_manager_run());
 document.getElementById("programs-selector").addEventListener("input", () => handle_program_manager_selection_change());
