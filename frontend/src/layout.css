@@ -25,6 +25,10 @@
     top: 0%;
 }
 
+#spreadsheet-cell-editor {
+    width: calc(100% - 4px);
+}
+
 .spreadsheet-column-header {
     resize: horizontal;
     overflow: auto;
