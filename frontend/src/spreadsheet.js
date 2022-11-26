@@ -213,18 +213,6 @@ function handle_blur(element, i, j) {
     last_focused_cell = null;
     underyling_editor_mode = false;
     element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
-    set_root_variable("--select-color", "blue");
-}
-
-function handle_focus(element, i, j, dbl) {
-    if(dbl) {
-        //Enter underlying value editor
-        underyling_editor_mode = true;
-        element.value = current_spreadsheet_state.underlying_cell_data[i][j];
-        set_root_variable("--select-color", "green");
-    } else {
-        last_focused_cell = element;
-    }
 }
 
 function populate_single_cell(container, i, j) {
@@ -292,28 +280,6 @@ document.addEventListener('mouseup', e => {
     selection_mode_active = false;
 });
 
-function handle_click(e, element, i, j, dbl) {
-    if(!dbl) {
-        selection_base_pos = { i: i, j: j };
-        selection_base_element = element;
-        e.preventDefault();
-    }
-}
-
-function handle_mouse_enter(e, element, i, j) {
-    if(typeof selection_base_pos !== 'undefined' && selection_base_pos.i == i && selection_base_pos.j == j) {
-        element.blur();
-    }
-    if(e.buttons === 1) {
-        console.log(i + ", " + j);
-        if(selection_base_element != null) {
-            // console.log(selection_base_element === document.activeElement);
-            selection_base_element.blur();
-        }
-        // selection_extent_pos = { i: i, j: j }
-        // console.log({start: selection_base_pos, end: selection_extent_pos});
-    }
-}
 
 function populate_cells() {
     var container = document.getElementById("spreadsheet-container");
