@@ -213,6 +213,10 @@ function handle_blur(element, i, j) {
     last_focused_cell = null;
     underyling_editor_mode = false;
     element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
+
+    selection_extents_element_a.style.display = "none";
+    selection_extents_element_b.style.display = "none";
+    selection_extents_element_c.style.display = "none";
 }
 
 function populate_single_cell(container, i, j) {
@@ -222,6 +226,7 @@ function populate_single_cell(container, i, j) {
     element.style.gridColumnStart = j + 2;
     element.style.gridRowStart = i + 2;
     container.appendChild(element);
+    element.addEventListener("blur", function() { handle_blur(element, i, j); });
 }
 
 var selection_base_pos;
