@@ -138,7 +138,6 @@ textarea {
 
 input:focus {
     z-index: 5;
-    border-color: var(--select-color);
     outline: none;
 }
 

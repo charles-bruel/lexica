@@ -221,7 +221,6 @@ function populate_single_cell(container, i, j) {
     element.className = "spreadsheet-cell";
     element.style.gridColumnStart = j + 2;
     element.style.gridRowStart = i + 2;
-    // element.disabled = true;
     container.appendChild(element);
 }
 
