@@ -230,12 +230,89 @@ function handle_focus(element, i, j, dbl) {
 function populate_single_cell(container, i, j) {
     var element = document.createElement("input");
     element.id = "spreadsheet-" + i + ":" + j;
+    element.className = "spreadsheet-cell";
     element.style.gridColumnStart = j + 2;
     element.style.gridRowStart = i + 2;
+    // element.disabled = true;
     container.appendChild(element);
-    element.addEventListener("click", function() { handle_focus(element, i, j, false); });
-    element.addEventListener("dblclick", function() { handle_focus(element, i, j, true); });
-    element.addEventListener("blur", function() { handle_blur(element, i, j); });
+}
+
+var selection_base_pos;
+var selection_extent_pos;
+var selection_base_element;
+var selection_mode_active;
+var selection_extents_element;
+
+selection_extents_element = document.getElementById("spreadsheet-selection-extents");
+
+function show_selection_extents() {
+    var mini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+    var maxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+    var minj = Math.min(selection_base_pos.j, selection_extent_pos.j);
+    var maxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+
+    selection_extents_element.style.gridRowStart = mini + 2;
+    selection_extents_element.style.gridRowEnd = maxi + 3;
+    selection_extents_element.style.gridColumnStart = minj + 2;
+    selection_extents_element.style.gridColumnEnd = maxj + 3;
+
+    console.log("foo");
+}
+
+document.addEventListener('mousemove', e => {
+    if(!selection_mode_active) return;
+    var element = document.elementFromPoint(e.clientX, e.clientY);
+    if(element.className != "spreadsheet-cell") return;
+    var id = element.id;
+    id = id.substring(12);
+    var nums = id.split(":");
+    var i = parseInt(nums[0]);
+    var j = parseInt(nums[1]);
+    selection_extent_pos = { i: i, j: j };
+    show_selection_extents();
+});
+
+document.addEventListener('mousedown', e => {
+    if(selection_mode_active) return;
+    var element = document.elementFromPoint(e.clientX, e.clientY);
+    if(element.className != "spreadsheet-cell") return;
+    var id = element.id;
+    id = id.substring(12);
+    var nums = id.split(":");
+    var i = parseInt(nums[0]);
+    var j = parseInt(nums[1]);
+    selection_base_pos = { i: i, j: j };
+    selection_base_element = element;
+    selection_mode_active = true;
+});
+
+document.addEventListener('mouseup', e => {
+    var element = document.elementFromPoint(e.clientX, e.clientY);
+    if(element.className != "spreadsheet-cell") return;
+    selection_mode_active = false;
+});
+
+function handle_click(e, element, i, j, dbl) {
+    if(!dbl) {
+        selection_base_pos = { i: i, j: j };
+        selection_base_element = element;
+        e.preventDefault();
+    }
+}
+
+function handle_mouse_enter(e, element, i, j) {
+    if(typeof selection_base_pos !== 'undefined' && selection_base_pos.i == i && selection_base_pos.j == j) {
+        element.blur();
+    }
+    if(e.buttons === 1) {
+        console.log(i + ", " + j);
+        if(selection_base_element != null) {
+            // console.log(selection_base_element === document.activeElement);
+            selection_base_element.blur();
+        }
+        // selection_extent_pos = { i: i, j: j }
+        // console.log({start: selection_base_pos, end: selection_extent_pos});
+    }
 }
 
 function populate_cells() {
@@ -372,7 +449,7 @@ function save_spreadsheet_state() {
 
 function delete_spreadsheet() {
     var container = document.getElementById("spreadsheet-container");
-    container.replaceChildren();
+    container.replaceChildren(selection_extents_element);//Leave the selection element
 }
 
 function switch_spreadsheet_state(new_index) {
