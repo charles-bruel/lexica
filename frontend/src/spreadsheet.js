@@ -230,20 +230,84 @@ var selection_base_element;
 var selection_mode_active;
 var selection_extents_element;
 
-selection_extents_element = document.getElementById("spreadsheet-selection-extents");
+selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
+selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
 
 function show_selection_extents() {
-    var mini = Math.min(selection_base_pos.i, selection_extent_pos.i);
-    var maxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
-    var minj = Math.min(selection_base_pos.j, selection_extent_pos.j);
-    var maxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+    //Special cases
+    if(selection_base_pos.i == selection_extent_pos.i && selection_base_pos.j == selection_extent_pos.j) {
+        selection_extents_element_a.style.display = "none";
+        selection_extents_element_b.style.display = "none";
+        return;
+    }
 
-    selection_extents_element.style.gridRowStart = mini + 2;
-    selection_extents_element.style.gridRowEnd = maxi + 3;
-    selection_extents_element.style.gridColumnStart = minj + 2;
-    selection_extents_element.style.gridColumnEnd = maxj + 3;
+    if(selection_base_pos.i == selection_extent_pos.i) {
+        selection_extents_element_b.style.display = "none";
 
-    console.log("foo");
+        var aminj;
+        var amaxj;
+        if(selection_base_pos.j < selection_extent_pos.j) {
+            aminj = selection_base_pos.j + 1;
+            amaxj = selection_extent_pos.j;
+        } else {
+            aminj = selection_extent_pos.j;
+            amaxj = selection_base_pos.j - 1;
+        }
+        var ai = selection_base_pos.i;
+
+        selection_extents_element_a.style.gridRowStart = ai + 2;
+        selection_extents_element_a.style.gridRowEnd = ai + 3;
+        selection_extents_element_a.style.gridColumnStart = aminj + 2;
+        selection_extents_element_a.style.gridColumnEnd = amaxj + 3;
+        return;
+    }
+
+
+    //A will take the column of the main selected element, excluding that element
+    //B will take the block of everything else, excluding A's column
+    selection_extents_element_a.style.display = "block";
+
+    var amini;
+    var amaxi;
+    if(selection_base_pos.i < selection_extent_pos.i) {
+        amini = selection_base_pos.i + 1;
+        amaxi = selection_extent_pos.i;
+    } else {
+        amini = selection_extent_pos.i;
+        amaxi = selection_base_pos.i - 1;
+    }
+    var aj = selection_base_pos.j;
+
+    selection_extents_element_a.style.gridRowStart = amini + 2;
+    selection_extents_element_a.style.gridRowEnd = amaxi + 3;
+    selection_extents_element_a.style.gridColumnStart = aj + 2;
+    selection_extents_element_a.style.gridColumnEnd = aj + 3;
+
+    //Deferred special case, a already does what we want
+    if(selection_base_pos.j == selection_extent_pos.j) {
+        selection_extents_element_b.style.display = "none";
+        return;
+    }
+
+    selection_extents_element_b.style.display = "block";
+
+    var bmini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+    var bmaxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+    var bminj;
+    var bmaxj;
+    if(selection_base_pos.j < selection_extent_pos.j) {
+        bminj = selection_base_pos.j + 1;
+        bmaxj = selection_extent_pos.j;
+    } else {
+        bminj = selection_extent_pos.j;
+        bmaxj = selection_base_pos.j - 1;
+    }
+
+    selection_extents_element_b.style.gridRowStart = bmini + 2;
+    selection_extents_element_b.style.gridRowEnd = bmaxi + 3;
+    selection_extents_element_b.style.gridColumnStart = bminj + 2;
+    selection_extents_element_b.style.gridColumnEnd = bmaxj + 3;
+
 }
 
 document.addEventListener('mousemove', e => {
@@ -269,8 +333,10 @@ document.addEventListener('mousedown', e => {
     var i = parseInt(nums[0]);
     var j = parseInt(nums[1]);
     selection_base_pos = { i: i, j: j };
+    selection_extent_pos = { i: i, j: j };
     selection_base_element = element;
     selection_mode_active = true;
+    show_selection_extents();
 });
 
 document.addEventListener('mouseup', e => {
@@ -414,7 +480,7 @@ function save_spreadsheet_state() {
 
 function delete_spreadsheet() {
     var container = document.getElementById("spreadsheet-container");
-    container.replaceChildren(selection_extents_element);//Leave the selection element
+    container.replaceChildren(selection_extents_element_a, selection_extents_element_b);//Leave the selection element
 }
 
 function switch_spreadsheet_state(new_index) {

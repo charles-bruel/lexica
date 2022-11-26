@@ -29,7 +29,7 @@
     width: calc(100% - 4px);
 }
 
-#spreadsheet-selection-extents {
+#spreadsheet-selection-extents-a, #spreadsheet-selection-extents-b {
     z-index: 1000;
     /* position: absolute; */
     width: 100%;
