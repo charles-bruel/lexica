@@ -232,8 +232,23 @@ var selection_extents_element;
 
 selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
 selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
+selection_extents_element_c = document.getElementById("spreadsheet-selection-extents-c");
 
 function show_selection_extents() {
+    //Border
+    selection_extents_element_c.style.display = "block";
+
+    var cmini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+    var cmaxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+    var cminj = Math.min(selection_base_pos.j, selection_extent_pos.j);
+    var cmaxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+    selection_extents_element_c.style.gridRowStart = cmini + 2;
+    selection_extents_element_c.style.gridRowEnd = cmaxi + 3;
+    selection_extents_element_c.style.gridColumnStart = cminj + 2;
+    selection_extents_element_c.style.gridColumnEnd = cmaxj + 3;
+
+
+    //Selection highlight
     //Special cases
     if(selection_base_pos.i == selection_extent_pos.i && selection_base_pos.j == selection_extent_pos.j) {
         selection_extents_element_a.style.display = "none";
@@ -480,7 +495,7 @@ function save_spreadsheet_state() {
 
 function delete_spreadsheet() {
     var container = document.getElementById("spreadsheet-container");
-    container.replaceChildren(selection_extents_element_a, selection_extents_element_b);//Leave the selection element
+    container.replaceChildren(selection_extents_element_a, selection_extents_element_b, selection_extents_element_c);//Leave the selection element
 }
 
 function switch_spreadsheet_state(new_index) {
