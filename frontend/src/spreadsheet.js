@@ -286,7 +286,6 @@ var selection_base_pos;
 var selection_extent_pos;
 var selection_base_element;
 var selection_mode_active;
-var selection_extents_element;
 
 selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
 selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
@@ -577,7 +576,7 @@ function rerun_all() {
 create_spreadsheet();
 
 document.body.addEventListener("keyup", function(event) {
-    console.log(event);
+    console.log("x");
     if (event.key === "Enter" && (document.activeElement.id.startsWith("spreadsheet") || document.activeElement.id.startsWith("lexicon"))) {
         if(spreadsheet_cell_id_regex.test(document.activeElement.id)) {
             var id = document.activeElement.id;
@@ -598,5 +597,46 @@ document.body.addEventListener("keyup", function(event) {
             return;
         }
         document.activeElement.blur();
+    }
+
+    if(document.activeElement.id.startsWith("spreadsheet") && spreadsheet_cell_id_regex.test(document.activeElement.id)) {
+        var flag = false;
+        var di = 0;
+        var dj = 0;
+        if(event.key === "ArrowLeft") {
+            dj = -1;
+            flag = true;
+        }
+        if(event.key === "ArrowRight") {
+            dj = +1;
+            flag = true;
+        }
+        if(event.key === "ArrowUp") {
+            di = -1;
+            flag = true;
+        }
+        if(event.key === "ArrowDown") {
+            di = +1;
+            flag = true;
+        }
+
+        if(flag) {
+            if(event.shiftKey) {
+                selection_extent_pos.i += di;
+                selection_extent_pos.j += dj;
+                show_spreadsheet_selection_extents();
+            } else {
+                var id = document.activeElement.id;
+                id = id.substring(12);
+                var nums = id.split(":");
+                var i = parseInt(nums[0]) + di;
+                var j = parseInt(nums[1]) + dj;
+                var try_element = document.getElementById("spreadsheet-" + i + ":" + j);
+                if(try_element != null) {
+                    try_element.focus();
+                }
+            }
+            return;
+        }
     }
 });
