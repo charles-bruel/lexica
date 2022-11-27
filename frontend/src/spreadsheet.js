@@ -41,7 +41,7 @@ function set_root_variable(variable_name, value) {
     var r = document.querySelector(':root');
     r.style.setProperty(variable_name, value);
 }
-set_root_variable("--spreadsheet-textedit", "transparent");
+set_spreadsheet_text_mode(false);
 
 function generate_cells() {
     var container = document.getElementById("spreadsheet-container");
@@ -237,11 +237,7 @@ function handle_spreadsheet_cell_editor_blur(e) {
 
 function blur_spreadsheet_selection() {
     last_focused_cell = null;
-    spreadsheet_edit_cell_text = false;
-    set_root_variable("--spreadsheet-textedit", "transparent");
-    var i = selection_base_pos.i;
-    var j = selection_base_pos.j;
-    selection_base_element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
+    set_spreadsheet_text_mode(false);
 
     selection_extents_element_a.style.display = "none";
     selection_extents_element_b.style.display = "none";
@@ -250,7 +246,8 @@ function blur_spreadsheet_selection() {
 
 function handle_spreadsheet_cell_blur(e, element, i, j) {
     if(spreadsheet_edit_cell_text) {
-        current_spreadsheet_state.underlying_cell_data[i][j] = element.value
+        current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
+        element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
     }
 
     if(e.relatedTarget != spreadsheet_cell_editor) {
@@ -285,18 +282,35 @@ function populate_single_cell(container, i, j) {
     element.addEventListener("focus", function() { handle_spreadsheet_cell_focus(element, i, j); });
     element.addEventListener("input", function() { handle_spreadsheet_cell_input(element); });
     element.addEventListener("dblclick", e => {
-        spreadsheet_edit_cell_text = true;
-        set_root_variable("--spreadsheet-textedit", "white");
+        set_spreadsheet_text_mode(true);
     })
+}
+
+function set_spreadsheet_text_mode(val) {
+    spreadsheet_edit_cell_text = val;
+    set_root_variable("--spreadsheet-textedit", val ? "white" : "transparent");
+    if(val) {
+        var i = selection_base_pos.i;
+        var j = selection_base_pos.j;    
+        var new_value = current_spreadsheet_state.underlying_cell_data[i][j];
+
+        selection_base_element.value = new_value;
+        spreadsheet_cell_editor.value = new_value;
+    } else {
+
+    }
 }
 
 //This function is generic and handles both cell 
 //editor bar and editing in the cell itself
 function handle_spreadsheet_cell_input(element) {
-    spreadsheet_edit_cell_text = true;
-    set_root_variable("--spreadsheet-textedit", "white");
+    var cached_value = element.value;
+    if(!spreadsheet_edit_cell_text) set_spreadsheet_text_mode(true);
 
     var new_value = element.value;
+    if(new_value === "") {
+        new_value = cached_value;
+    }
 
     var i = selection_base_pos.i;
     var j = selection_base_pos.j;
@@ -619,6 +633,12 @@ document.body.addEventListener("keyup", function(event) {
     }
 
     if(document.activeElement.id.startsWith("spreadsheet") && spreadsheet_cell_id_regex.test(document.activeElement.id)) {
+        var id = document.activeElement.id;
+        id = id.substring(12);
+        var nums = id.split(":");
+        var i = parseInt(nums[0]);
+        var j = parseInt(nums[1]);
+
         var flag = false;
         var di = 0;
         var dj = 0;
@@ -664,11 +684,27 @@ document.body.addEventListener("keyup", function(event) {
             var j = selection_base_pos.j;
             current_spreadsheet_state.underlying_cell_data[i][j] = "";        
             spreadsheet_cell_editor.value = "";
+            return;
         }
 
         if(event.key === "F2") {
-            spreadsheet_edit_cell_text = true;
-            set_root_variable("--spreadsheet-textedit", "white");    
+            selection_base_pos.i = i;
+            selection_base_pos.j = j;
+            selection_extent_pos.i = i;
+            selection_extent_pos.j = j;
+            selection_base_element = document.activeElement;
+            set_spreadsheet_text_mode(true);
+            return;
+        }
+
+        if(event.key === "Escape") {
+            set_spreadsheet_text_mode(false);
+            var i = selection_base_pos.i;
+            var j = selection_base_pos.j;
+            var element = document.getElementById("spreadsheet-" + i + ":" + j);
+            current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
+            element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
+            return; 
         }
     }
 });
