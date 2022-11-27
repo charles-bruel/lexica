@@ -399,7 +399,8 @@ function show_spreadsheet_selection_extents() {
 document.addEventListener('mousemove', e => {
     if(!selection_mode_active) return;
     var element = document.elementFromPoint(e.clientX, e.clientY);
-    if(element.className != "spreadsheet-cell") return;
+    console.log(element);
+    if(!element.classList.contains("spreadsheet-cell")) return;
     var id = element.id;
     id = id.substring(12);
     var nums = id.split(":");
@@ -412,7 +413,7 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mousedown', e => {
     if(selection_mode_active) return;
     var element = document.elementFromPoint(e.clientX, e.clientY);
-    if(element.className != "spreadsheet-cell") return;
+    if(!element.classList.contains("spreadsheet-cell")) return;
     var id = element.id;
     id = id.substring(12);
     var nums = id.split(":");
@@ -428,7 +429,6 @@ document.addEventListener('mousedown', e => {
 document.addEventListener('mouseup', e => {
     selection_mode_active = false;
     var element = document.elementFromPoint(e.clientX, e.clientY);
-    if(element.className != "spreadsheet-cell") return;
 });
 
 
@@ -590,7 +590,6 @@ function rerun_all() {
 create_spreadsheet();
 
 document.body.addEventListener("keyup", function(event) {
-    console.log("x");
     if (event.key === "Enter" && (document.activeElement.id.startsWith("spreadsheet") || document.activeElement.id.startsWith("lexicon"))) {
         if(spreadsheet_cell_id_regex.test(document.activeElement.id)) {
             var id = document.activeElement.id;

@@ -14,14 +14,37 @@ function handle_basic_button(e, clazz) {
     }
 }
 
+function get_elements_for_modification() {
+    var element = document.activeElement;
+    if (element == null) return [];
+    if (element.id == "") return [];
+    if (element.id.startsWith("lexicon")) {
+        return [element];
+    } else if (element.id.startsWith("spreadsheet")) {
+        var mini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+        var maxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+        var minj = Math.min(selection_base_pos.j, selection_extent_pos.j);
+        var maxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+        var result = [];
+
+        for(var i = mini;i <= maxi;i ++) {
+            for(var j = minj;j <= maxj;j ++) {
+                var temp = document.getElementById("spreadsheet-" + i + ":" + j);
+                if(temp != null) result.push(temp);
+            }
+        }
+        return result;
+    } else {
+        return [];
+    }
+}
+
 function handle_align_button(e, clazz) {
     e.preventDefault();
 
-    var element = document.activeElement;
-    if (element == null) return;
+    var elements = get_elements_for_modification();
 
-    if(element.id == "") return;
-    if(element.id.startsWith("spreadsheet") || element.id.startsWith("lexicon")) {
+    for(const element of elements) {
         element.classList.remove("formatting-left");
         element.classList.remove("formatting-right");
         element.classList.remove("formatting-center");
@@ -32,12 +55,10 @@ function handle_align_button(e, clazz) {
 function handle_spreadsheet_button(e, clazz) {
     e.preventDefault();
 
-    var element = document.activeElement;
-    if (element == null) return;
-
-    if(element.id == "") return;
-    if(element.id.startsWith("spreadsheet")) {
-        if(element.classList.contains(clazz)){
+    var elements = get_elements_for_modification();
+    var to_remove = elements[0].classList.contains(clazz);
+    for(const element of elements) {
+        if(to_remove){
             element.classList.remove(clazz);
         } else {
             element.classList.add(clazz);
