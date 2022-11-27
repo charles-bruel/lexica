@@ -206,17 +206,48 @@ function populate_headers() {
     container.appendChild(create_expansion_button_columns(current_spreadsheet_state.num_columns + 1));
 }
 
-function handle_blur(element, i, j) {
-    if(underyling_editor_mode) {
-        current_spreadsheet_state.underlying_cell_data[i][j] = element.value
+var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
+
+spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e) })
+
+function handle_spreadsheet_cell_editor_blur(e) {
+    const regex = /spreadsheet-[0-9]+:[0-9]+/;
+    if(e.relatedTarget == null || !regex.test(e.relatedTarget.id)) {
+        blur_spreadsheet_selection();
     }
+}
+
+function blur_spreadsheet_selection() {
     last_focused_cell = null;
     underyling_editor_mode = false;
-    element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
+    var i = selection_base_pos.i;
+    var j = selection_base_pos.j;
+    selection_base_element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
 
     selection_extents_element_a.style.display = "none";
     selection_extents_element_b.style.display = "none";
     selection_extents_element_c.style.display = "none";
+}
+
+function handle_spreadsheet_cell_blur(e, element, i, j) {
+    if(underyling_editor_mode) {
+        current_spreadsheet_state.underlying_cell_data[i][j] = element.value
+    }
+
+    if(e.relatedTarget != spreadsheet_cell_editor) {
+        blur_spreadsheet_selection()
+    }
+}
+
+function handle_spreadsheet_cell_focus(element, i, j) {
+    if(selection_mode_active) { 
+        show_spreadsheet_selection_extents();
+        return;
+    }
+    selection_base_pos = { i: i, j: j };
+    selection_extent_pos = { i: i, j: j };
+    selection_base_element = element;
+    show_spreadsheet_selection_extents();
 }
 
 function populate_single_cell(container, i, j) {
@@ -226,7 +257,13 @@ function populate_single_cell(container, i, j) {
     element.style.gridColumnStart = j + 2;
     element.style.gridRowStart = i + 2;
     container.appendChild(element);
-    element.addEventListener("blur", function() { handle_blur(element, i, j); });
+    element.addEventListener("blur", function(e) { handle_spreadsheet_cell_blur(e, element, i, j); });
+    element.addEventListener("focus", function() { handle_spreadsheet_cell_focus(element, i, j); });
+    element.addEventListener("input", function() { handle_spreadsheet_cell_input(element, i, j); });
+}
+
+function handle_spreadsheet_cell_input(element, i, j) {
+    console.log(element.value); // Log the new value after an input is made
 }
 
 var selection_base_pos;
@@ -239,7 +276,7 @@ selection_extents_element_a = document.getElementById("spreadsheet-selection-ext
 selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
 selection_extents_element_c = document.getElementById("spreadsheet-selection-extents-c");
 
-function show_selection_extents() {
+function show_spreadsheet_selection_extents() {
     //Border
     selection_extents_element_c.style.display = "block";
 
@@ -340,7 +377,7 @@ document.addEventListener('mousemove', e => {
     var i = parseInt(nums[0]);
     var j = parseInt(nums[1]);
     selection_extent_pos = { i: i, j: j };
-    show_selection_extents();
+    show_spreadsheet_selection_extents();
 });
 
 document.addEventListener('mousedown', e => {
@@ -356,13 +393,13 @@ document.addEventListener('mousedown', e => {
     selection_extent_pos = { i: i, j: j };
     selection_base_element = element;
     selection_mode_active = true;
-    show_selection_extents();
+    show_spreadsheet_selection_extents();
 });
 
 document.addEventListener('mouseup', e => {
+    selection_mode_active = false;
     var element = document.elementFromPoint(e.clientX, e.clientY);
     if(element.className != "spreadsheet-cell") return;
-    selection_mode_active = false;
 });
 
 
