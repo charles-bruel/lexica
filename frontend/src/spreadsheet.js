@@ -454,7 +454,7 @@ function load_data() {
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
             var element = document.getElementById("spreadsheet-" + i + ":" + j);
             if(element != null) {
-                element.value = current_spreadsheet_state.cell_data[i][j];
+                element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
                 element.className = current_spreadsheet_state.cell_style_classes[i][j];
                 if(!element.classList.contains("spreadsheet-cell")) {
                     element.classList.add("spreadsheet-cell");

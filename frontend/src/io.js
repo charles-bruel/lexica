@@ -102,13 +102,13 @@ function load_save_state(data) {
     delete_spreadsheet();
     delete_bottom_bar();
     
+    compile_programs();
+
     create_spreadsheet();
     create_lexicon();
     create_bottom_bar();
 
     handle_bottom_bar_button(obj.current_index);
-
-    compile_programs();
 
     var endTime = performance.now();
     console.log(`Call to load_save_state took ${endTime - startTime} milliseconds`);
