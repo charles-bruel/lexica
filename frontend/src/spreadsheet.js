@@ -19,7 +19,7 @@ var spreadsheet_states = [current_spreadsheet_state];
 var spreadsheet_container;
 
 var last_focused_cell = null;
-var underyling_editor_mode = false;
+var spreadsheet_edit_cell_text = false;
 
 var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
 
@@ -36,6 +36,12 @@ var selection_mode_active;
 selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
 selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
 selection_extents_element_c = document.getElementById("spreadsheet-selection-extents-c");
+
+function set_root_variable(variable_name, value) {
+    var r = document.querySelector(':root');
+    r.style.setProperty(variable_name, value);
+}
+set_root_variable("--spreadsheet-textedit", "transparent");
 
 function generate_cells() {
     var container = document.getElementById("spreadsheet-container");
@@ -231,7 +237,8 @@ function handle_spreadsheet_cell_editor_blur(e) {
 
 function blur_spreadsheet_selection() {
     last_focused_cell = null;
-    underyling_editor_mode = false;
+    spreadsheet_edit_cell_text = false;
+    set_root_variable("--spreadsheet-textedit", "transparent");
     var i = selection_base_pos.i;
     var j = selection_base_pos.j;
     selection_base_element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
@@ -242,7 +249,7 @@ function blur_spreadsheet_selection() {
 }
 
 function handle_spreadsheet_cell_blur(e, element, i, j) {
-    if(underyling_editor_mode) {
+    if(spreadsheet_edit_cell_text) {
         current_spreadsheet_state.underlying_cell_data[i][j] = element.value
     }
 
@@ -277,11 +284,18 @@ function populate_single_cell(container, i, j) {
     element.addEventListener("blur", function(e) { handle_spreadsheet_cell_blur(e, element, i, j); });
     element.addEventListener("focus", function() { handle_spreadsheet_cell_focus(element, i, j); });
     element.addEventListener("input", function() { handle_spreadsheet_cell_input(element); });
+    element.addEventListener("dblclick", e => {
+        spreadsheet_edit_cell_text = true;
+        set_root_variable("--spreadsheet-textedit", "white");
+    })
 }
 
 //This function is generic and handles both cell 
 //editor bar and editing in the cell itself
 function handle_spreadsheet_cell_input(element) {
+    spreadsheet_edit_cell_text = true;
+    set_root_variable("--spreadsheet-textedit", "white");
+
     var new_value = element.value;
 
     var i = selection_base_pos.i;
@@ -603,11 +617,11 @@ document.body.addEventListener("keyup", function(event) {
         var flag = false;
         var di = 0;
         var dj = 0;
-        if(event.key === "ArrowLeft") {
+        if(event.key === "ArrowLeft" && !spreadsheet_edit_cell_text) {
             dj = -1;
             flag = true;
         }
-        if(event.key === "ArrowRight") {
+        if(event.key === "ArrowRight" && !spreadsheet_edit_cell_text) {
             dj = +1;
             flag = true;
         }
@@ -637,6 +651,19 @@ document.body.addEventListener("keyup", function(event) {
                 }
             }
             return;
+        }
+
+        if(event.key === "Delete" && !spreadsheet_edit_cell_text) {
+            document.activeElement.value = "";
+            var i = selection_base_pos.i;
+            var j = selection_base_pos.j;
+            current_spreadsheet_state.underlying_cell_data[i][j] = "";        
+            spreadsheet_cell_editor.value = "";
+        }
+
+        if(event.key === "F2") {
+            spreadsheet_edit_cell_text = true;
+            set_root_variable("--spreadsheet-textedit", "white");    
         }
     }
 });

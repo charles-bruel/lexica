@@ -9,11 +9,6 @@ var bottom_bar_state = {
     tab_counter: 1,
 };
 
-function set_root_variable(variable_name, value) {
-    var r = document.querySelector(':root');
-    r.style.setProperty(variable_name, value);
-}
-
 //This handles selecting a tab
 function handle_bottom_bar_button(index) {
     var startTime = performance.now();
