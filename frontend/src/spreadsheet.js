@@ -209,12 +209,15 @@ function populate_headers() {
 var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
 
 spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e) })
+spreadsheet_cell_editor.addEventListener("input", function() { handle_spreadsheet_cell_input(spreadsheet_cell_editor); });
+
+const spreadsheet_cell_id_regex = /spreadsheet-[0-9]+:[0-9]+/;
 
 function handle_spreadsheet_cell_editor_blur(e) {
-    const regex = /spreadsheet-[0-9]+:[0-9]+/;
-    if(e.relatedTarget == null || !regex.test(e.relatedTarget.id)) {
+    if(e.relatedTarget == null || !spreadsheet_cell_id_regex.test(e.relatedTarget.id)) {
         blur_spreadsheet_selection();
     }
+    spreadsheet_cell_editor.value = "";
 }
 
 function blur_spreadsheet_selection() {
@@ -235,11 +238,16 @@ function handle_spreadsheet_cell_blur(e, element, i, j) {
     }
 
     if(e.relatedTarget != spreadsheet_cell_editor) {
-        blur_spreadsheet_selection()
+        blur_spreadsheet_selection();
+        if(e.relatedTarget == null || !spreadsheet_cell_id_regex.test(e.relatedTarget.id)) {
+            spreadsheet_cell_editor.value = "";
+        }
     }
 }
 
 function handle_spreadsheet_cell_focus(element, i, j) {
+    spreadsheet_cell_editor.value = element.value;
+
     if(selection_mode_active) { 
         show_spreadsheet_selection_extents();
         return;
@@ -259,11 +267,19 @@ function populate_single_cell(container, i, j) {
     container.appendChild(element);
     element.addEventListener("blur", function(e) { handle_spreadsheet_cell_blur(e, element, i, j); });
     element.addEventListener("focus", function() { handle_spreadsheet_cell_focus(element, i, j); });
-    element.addEventListener("input", function() { handle_spreadsheet_cell_input(element, i, j); });
+    element.addEventListener("input", function() { handle_spreadsheet_cell_input(element); });
 }
 
-function handle_spreadsheet_cell_input(element, i, j) {
-    console.log(element.value); // Log the new value after an input is made
+//This function is generic and handles both cell 
+//editor bar and editing in the cell itself
+function handle_spreadsheet_cell_input(element) {
+    var new_value = element.value;
+
+    var i = selection_base_pos.i;
+    var j = selection_base_pos.j;
+    current_spreadsheet_state.underlying_cell_data[i][j] = new_value;
+    selection_base_element.value = new_value;
+    spreadsheet_cell_editor.value = new_value;
 }
 
 var selection_base_pos;
