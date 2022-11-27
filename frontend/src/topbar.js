@@ -1,19 +1,3 @@
-function handle_basic_button(e, clazz) {
-    e.preventDefault();
-
-    var element = document.activeElement;
-    if (element == null) return;
-
-    if(element.id == "") return;
-    if(element.id.startsWith("spreadsheet") || element.id.startsWith("lexicon")) {
-        if(element.classList.contains(clazz)){
-            element.classList.remove(clazz);
-        } else {
-            element.classList.add(clazz);
-        }
-    }
-}
-
 function get_elements_for_modification() {
     var element = document.activeElement;
     if (element == null) return [];
@@ -39,6 +23,21 @@ function get_elements_for_modification() {
     }
 }
 
+function handle_basic_button(e, clazz) {
+    e.preventDefault();
+
+    var elements = get_elements_for_modification();
+    if(elements.length === 0) return;
+    var to_remove = elements[0].classList.contains(clazz);
+    for(const element of elements) {
+        if(element.classList.contains(clazz)){
+            element.classList.remove(clazz);
+        } else {
+            element.classList.add(clazz);
+        }
+    }
+}
+
 function handle_align_button(e, clazz) {
     e.preventDefault();
 
@@ -56,6 +55,7 @@ function handle_spreadsheet_button(e, clazz) {
     e.preventDefault();
 
     var elements = get_elements_for_modification();
+    if(elements.length === 0) return;
     var to_remove = elements[0].classList.contains(clazz);
     for(const element of elements) {
         if(to_remove){
