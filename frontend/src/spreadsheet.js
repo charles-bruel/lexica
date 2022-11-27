@@ -577,7 +577,26 @@ function rerun_all() {
 create_spreadsheet();
 
 document.body.addEventListener("keyup", function(event) {
+    console.log(event);
     if (event.key === "Enter" && (document.activeElement.id.startsWith("spreadsheet") || document.activeElement.id.startsWith("lexicon"))) {
+        if(spreadsheet_cell_id_regex.test(document.activeElement.id)) {
+            var id = document.activeElement.id;
+            id = id.substring(12);
+            var nums = id.split(":");
+            var i = parseInt(nums[0]);
+            var j = parseInt(nums[1]);
+            if(event.shiftKey) {
+                i--;
+            } else {
+                i++;
+            }
+
+            var try_element = document.getElementById("spreadsheet-" + i + ":" + j);
+            if(try_element != null) {
+                try_element.focus();
+            }
+            return;
+        }
         document.activeElement.blur();
     }
 });
