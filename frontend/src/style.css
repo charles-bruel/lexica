@@ -31,6 +31,25 @@ input, textarea {
     -moz-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
 }
 
+.spreadsheet-cell {
+    caret-color: var(--spreadsheet-textedit);
+}
+
+#spreadsheet-selection-extents-a, #spreadsheet-selection-extents-b {
+    background-color: rgba(128, 128, 128, 0.4);
+}
+
+#spreadsheet-selection-extents-c {
+    background: none;
+    border: 2px gray solid;
+    background: none;
+    position: relative;
+    top: -2px;
+    left: -2px;
+    overflow: visible;
+
+}
+
 button {
     text-align: center;
     border:2px outset darkgray;
@@ -134,7 +153,6 @@ textarea {
 
 input:focus {
     z-index: 5;
-    border-color: var(--select-color);
     outline: none;
 }
 

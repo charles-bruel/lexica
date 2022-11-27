@@ -19,7 +19,29 @@ var spreadsheet_states = [current_spreadsheet_state];
 var spreadsheet_container;
 
 var last_focused_cell = null;
-var underyling_editor_mode = false;
+var spreadsheet_edit_cell_text = false;
+
+var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
+
+spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e) })
+spreadsheet_cell_editor.addEventListener("input", function() { handle_spreadsheet_cell_input(spreadsheet_cell_editor); });
+
+const spreadsheet_cell_id_regex = /spreadsheet-[0-9]+:[0-9]+/;
+
+var selection_base_pos;
+var selection_extent_pos;
+var selection_base_element;
+var selection_mode_active;
+
+selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
+selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
+selection_extents_element_c = document.getElementById("spreadsheet-selection-extents-c");
+
+function set_root_variable(variable_name, value) {
+    var r = document.querySelector(':root');
+    r.style.setProperty(variable_name, value);
+}
+set_spreadsheet_text_mode(false);
 
 function generate_cells() {
     var container = document.getElementById("spreadsheet-container");
@@ -206,37 +228,222 @@ function populate_headers() {
     container.appendChild(create_expansion_button_columns(current_spreadsheet_state.num_columns + 1));
 }
 
-function handle_blur(element, i, j) {
-    if(underyling_editor_mode) {
-        current_spreadsheet_state.underlying_cell_data[i][j] = element.value
+function handle_spreadsheet_cell_editor_blur(e) {
+    if(e.relatedTarget == null || !spreadsheet_cell_id_regex.test(e.relatedTarget.id)) {
+        blur_spreadsheet_selection();
     }
-    last_focused_cell = null;
-    underyling_editor_mode = false;
-    element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
-    set_root_variable("--select-color", "blue");
+    spreadsheet_cell_editor.value = "";
 }
 
-function handle_focus(element, i, j, dbl) {
-    if(dbl) {
-        //Enter underlying value editor
-        underyling_editor_mode = true;
-        element.value = current_spreadsheet_state.underlying_cell_data[i][j];
-        set_root_variable("--select-color", "green");
-    } else {
-        last_focused_cell = element;
+function blur_spreadsheet_selection() {
+    last_focused_cell = null;
+    set_spreadsheet_text_mode(false);
+
+    selection_extents_element_a.style.display = "none";
+    selection_extents_element_b.style.display = "none";
+    selection_extents_element_c.style.display = "none";
+}
+
+function handle_spreadsheet_cell_blur(e, element, i, j) {
+    if(spreadsheet_edit_cell_text) {
+        current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
+        element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
     }
+
+    if(e.relatedTarget != spreadsheet_cell_editor) {
+        blur_spreadsheet_selection();
+        if(e.relatedTarget == null || !spreadsheet_cell_id_regex.test(e.relatedTarget.id)) {
+            spreadsheet_cell_editor.value = "";
+        }
+    }
+}
+
+function handle_spreadsheet_cell_focus(element, i, j) {
+    spreadsheet_cell_editor.value = element.value;
+
+    if(selection_mode_active) { 
+        show_spreadsheet_selection_extents();
+        return;
+    }
+    selection_base_pos = { i: i, j: j };
+    selection_extent_pos = { i: i, j: j };
+    selection_base_element = element;
+    show_spreadsheet_selection_extents();
 }
 
 function populate_single_cell(container, i, j) {
     var element = document.createElement("input");
     element.id = "spreadsheet-" + i + ":" + j;
+    element.className = "spreadsheet-cell";
     element.style.gridColumnStart = j + 2;
     element.style.gridRowStart = i + 2;
     container.appendChild(element);
-    element.addEventListener("click", function() { handle_focus(element, i, j, false); });
-    element.addEventListener("dblclick", function() { handle_focus(element, i, j, true); });
-    element.addEventListener("blur", function() { handle_blur(element, i, j); });
+    element.addEventListener("blur", function(e) { handle_spreadsheet_cell_blur(e, element, i, j); });
+    element.addEventListener("focus", function() { handle_spreadsheet_cell_focus(element, i, j); });
+    element.addEventListener("input", function() { handle_spreadsheet_cell_input(element); });
+    element.addEventListener("dblclick", e => {
+        set_spreadsheet_text_mode(true);
+    })
 }
+
+function set_spreadsheet_text_mode(val) {
+    spreadsheet_edit_cell_text = val;
+    set_root_variable("--spreadsheet-textedit", val ? "white" : "transparent");
+    if(val) {
+        var i = selection_base_pos.i;
+        var j = selection_base_pos.j;    
+        var new_value = current_spreadsheet_state.underlying_cell_data[i][j];
+
+        selection_base_element.value = new_value;
+        spreadsheet_cell_editor.value = new_value;
+    } else {
+
+    }
+}
+
+//This function is generic and handles both cell 
+//editor bar and editing in the cell itself
+function handle_spreadsheet_cell_input(element) {
+    var cached_value = element.value;
+    if(!spreadsheet_edit_cell_text) set_spreadsheet_text_mode(true);
+
+    var new_value = element.value;
+    if(new_value === "") {
+        new_value = cached_value;
+    }
+
+    var i = selection_base_pos.i;
+    var j = selection_base_pos.j;
+    current_spreadsheet_state.underlying_cell_data[i][j] = new_value;
+    selection_base_element.value = new_value;
+    spreadsheet_cell_editor.value = new_value;
+}
+
+function show_spreadsheet_selection_extents() {
+    //Border
+    selection_extents_element_c.style.display = "block";
+
+    var cmini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+    var cmaxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+    var cminj = Math.min(selection_base_pos.j, selection_extent_pos.j);
+    var cmaxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+    selection_extents_element_c.style.gridRowStart = cmini + 2;
+    selection_extents_element_c.style.gridRowEnd = cmaxi + 3;
+    selection_extents_element_c.style.gridColumnStart = cminj + 2;
+    selection_extents_element_c.style.gridColumnEnd = cmaxj + 3;
+
+
+    //Selection highlight
+    //Special cases
+    if(selection_base_pos.i == selection_extent_pos.i && selection_base_pos.j == selection_extent_pos.j) {
+        selection_extents_element_a.style.display = "none";
+        selection_extents_element_b.style.display = "none";
+        return;
+    }
+
+    if(selection_base_pos.i == selection_extent_pos.i) {
+        selection_extents_element_b.style.display = "none";
+
+        var aminj;
+        var amaxj;
+        if(selection_base_pos.j < selection_extent_pos.j) {
+            aminj = selection_base_pos.j + 1;
+            amaxj = selection_extent_pos.j;
+        } else {
+            aminj = selection_extent_pos.j;
+            amaxj = selection_base_pos.j - 1;
+        }
+        var ai = selection_base_pos.i;
+
+        selection_extents_element_a.style.gridRowStart = ai + 2;
+        selection_extents_element_a.style.gridRowEnd = ai + 3;
+        selection_extents_element_a.style.gridColumnStart = aminj + 2;
+        selection_extents_element_a.style.gridColumnEnd = amaxj + 3;
+        return;
+    }
+
+
+    //A will take the column of the main selected element, excluding that element
+    //B will take the block of everything else, excluding A's column
+    selection_extents_element_a.style.display = "block";
+
+    var amini;
+    var amaxi;
+    if(selection_base_pos.i < selection_extent_pos.i) {
+        amini = selection_base_pos.i + 1;
+        amaxi = selection_extent_pos.i;
+    } else {
+        amini = selection_extent_pos.i;
+        amaxi = selection_base_pos.i - 1;
+    }
+    var aj = selection_base_pos.j;
+
+    selection_extents_element_a.style.gridRowStart = amini + 2;
+    selection_extents_element_a.style.gridRowEnd = amaxi + 3;
+    selection_extents_element_a.style.gridColumnStart = aj + 2;
+    selection_extents_element_a.style.gridColumnEnd = aj + 3;
+
+    //Deferred special case, a already does what we want
+    if(selection_base_pos.j == selection_extent_pos.j) {
+        selection_extents_element_b.style.display = "none";
+        return;
+    }
+
+    selection_extents_element_b.style.display = "block";
+
+    var bmini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+    var bmaxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+    var bminj;
+    var bmaxj;
+    if(selection_base_pos.j < selection_extent_pos.j) {
+        bminj = selection_base_pos.j + 1;
+        bmaxj = selection_extent_pos.j;
+    } else {
+        bminj = selection_extent_pos.j;
+        bmaxj = selection_base_pos.j - 1;
+    }
+
+    selection_extents_element_b.style.gridRowStart = bmini + 2;
+    selection_extents_element_b.style.gridRowEnd = bmaxi + 3;
+    selection_extents_element_b.style.gridColumnStart = bminj + 2;
+    selection_extents_element_b.style.gridColumnEnd = bmaxj + 3;
+
+}
+
+document.addEventListener('mousemove', e => {
+    if(!selection_mode_active) return;
+    var element = document.elementFromPoint(e.clientX, e.clientY);
+    if(!element.classList.contains("spreadsheet-cell")) return;
+    var id = element.id;
+    id = id.substring(12);
+    var nums = id.split(":");
+    var i = parseInt(nums[0]);
+    var j = parseInt(nums[1]);
+    selection_extent_pos = { i: i, j: j };
+    show_spreadsheet_selection_extents();
+});
+
+document.addEventListener('mousedown', e => {
+    if(selection_mode_active) return;
+    var element = document.elementFromPoint(e.clientX, e.clientY);
+    if(!element.classList.contains("spreadsheet-cell")) return;
+    var id = element.id;
+    id = id.substring(12);
+    var nums = id.split(":");
+    var i = parseInt(nums[0]);
+    var j = parseInt(nums[1]);
+    selection_base_pos = { i: i, j: j };
+    selection_extent_pos = { i: i, j: j };
+    selection_base_element = element;
+    selection_mode_active = true;
+    show_spreadsheet_selection_extents();
+});
+
+document.addEventListener('mouseup', e => {
+    selection_mode_active = false;
+    var element = document.elementFromPoint(e.clientX, e.clientY);
+});
+
 
 function populate_cells() {
     var container = document.getElementById("spreadsheet-container");
@@ -261,8 +468,11 @@ function load_data() {
         for(var j = 0;j < current_spreadsheet_state.num_columns;j ++) {
             var element = document.getElementById("spreadsheet-" + i + ":" + j);
             if(element != null) {
-                element.value = current_spreadsheet_state.cell_data[i][j];
+                element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
                 element.className = current_spreadsheet_state.cell_style_classes[i][j];
+                if(!element.classList.contains("spreadsheet-cell")) {
+                    element.classList.add("spreadsheet-cell");
+                }
             }
         }
     }
@@ -283,16 +493,18 @@ function umerge_cells(element) {
 
     var contents = element.value;
     element.parentNode.removeChild(element);
+    var new_class_name = element.className.replace("merged", "").trim();
 
     for(var i = y1;i <= y2;i ++) {
         for(var j = x1;j <= x2;j ++) {
-            var element = document.createElement("input");
-            element.id = "spreadsheet-" + i + ":" + j;
-            element.style.gridColumnStart = j + 2;
-            element.style.gridRowStart = i + 2;
-            spreadsheet_container.appendChild(element);
+            var new_element = document.createElement("input");
+            new_element.id = "spreadsheet-" + i + ":" + j;
+            new_element.style.gridColumnStart = j + 2;
+            new_element.style.gridRowStart = i + 2;
+            new_element.className = new_class_name;
+            spreadsheet_container.appendChild(new_element);
             if(i == y1 && j == x1) {
-                element.value = contents;
+                new_element.value = contents;
             }
         }
     }
@@ -325,6 +537,7 @@ function merge_cells(x1, x2, y1, y2, add) {
     }
     element.id = "spreadsheet-" + fy1 + ":" + fx1;
     element.classList.add("merged");
+    element.classList.add("spreadsheet-cell");
     element.style.gridColumnStart = fx1 + 2;
     element.style.gridColumnEnd = fx2 + 3;
     element.style.gridRowStart = fy1 + 2;
@@ -352,7 +565,8 @@ function save_spreadsheet_state() {
             var element = document.getElementById("spreadsheet-" + i + ":" + j);
             if(element != null) {
                 current_spreadsheet_state.cell_data[i].push(element.value);
-                current_spreadsheet_state.cell_style_classes[i].push(element.className);
+                var new_class_name = element.className.replace("spreadsheet-cell", "").trim();
+                current_spreadsheet_state.cell_style_classes[i].push(new_class_name);
             } else {
                 current_spreadsheet_state.cell_data[i].push("");
                 current_spreadsheet_state.cell_style_classes[i].push("");
@@ -372,7 +586,7 @@ function save_spreadsheet_state() {
 
 function delete_spreadsheet() {
     var container = document.getElementById("spreadsheet-container");
-    container.replaceChildren();
+    container.replaceChildren(selection_extents_element_a, selection_extents_element_b, selection_extents_element_c);//Leave the selection element
 }
 
 function switch_spreadsheet_state(new_index) {
@@ -395,8 +609,136 @@ function rerun_all() {
 
 create_spreadsheet();
 
+function get_elements_for_modification() {
+    var element = document.activeElement;
+    if (element == null) return [];
+    if (element.id == "") return [];
+    if (element.id.startsWith("lexicon")) {
+        return [element];
+    } else if (element.id.startsWith("spreadsheet")) {
+        var mini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+        var maxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+        var minj = Math.min(selection_base_pos.j, selection_extent_pos.j);
+        var maxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+        var result = [];
+
+        for(var i = mini;i <= maxi;i ++) {
+            for(var j = minj;j <= maxj;j ++) {
+                var temp = document.getElementById("spreadsheet-" + i + ":" + j);
+                if(temp != null) result.push(temp);
+            }
+        }
+        return result;
+    } else {
+        return [];
+    }
+}
+
 document.body.addEventListener("keyup", function(event) {
     if (event.key === "Enter" && (document.activeElement.id.startsWith("spreadsheet") || document.activeElement.id.startsWith("lexicon"))) {
+        if(spreadsheet_cell_id_regex.test(document.activeElement.id)) {
+            var id = document.activeElement.id;
+            id = id.substring(12);
+            var nums = id.split(":");
+            var i = parseInt(nums[0]);
+            var j = parseInt(nums[1]);
+            if(event.shiftKey) {
+                i--;
+            } else {
+                i++;
+            }
+
+            var try_element = document.getElementById("spreadsheet-" + i + ":" + j);
+            if(try_element != null) {
+                try_element.focus();
+            }
+            return;
+        }
         document.activeElement.blur();
+    }
+
+    if(document.activeElement.id.startsWith("spreadsheet") && spreadsheet_cell_id_regex.test(document.activeElement.id)) {
+        var id = document.activeElement.id;
+        id = id.substring(12);
+        var nums = id.split(":");
+        var i = parseInt(nums[0]);
+        var j = parseInt(nums[1]);
+
+        var flag = false;
+        var di = 0;
+        var dj = 0;
+        if(event.key === "ArrowLeft" && !spreadsheet_edit_cell_text) {
+            dj = -1;
+            flag = true;
+        }
+        if(event.key === "ArrowRight" && !spreadsheet_edit_cell_text) {
+            dj = +1;
+            flag = true;
+        }
+        if(event.key === "ArrowUp") {
+            di = -1;
+            flag = true;
+        }
+        if(event.key === "ArrowDown") {
+            di = +1;
+            flag = true;
+        }
+
+        if(flag) {
+            if(event.shiftKey) {
+                selection_extent_pos.i += di;
+                selection_extent_pos.j += dj;
+                show_spreadsheet_selection_extents();
+            } else {
+                var id = document.activeElement.id;
+                id = id.substring(12);
+                var nums = id.split(":");
+                var i = parseInt(nums[0]) + di;
+                var j = parseInt(nums[1]) + dj;
+                var try_element = document.getElementById("spreadsheet-" + i + ":" + j);
+                if(try_element != null) {
+                    try_element.focus();
+                }
+            }
+            return;
+        }
+
+        if(event.key === "Delete" && !spreadsheet_edit_cell_text) {
+            var elements = get_elements_for_modification();
+            for(const element of elements) {
+                element.value = "";
+
+                //Highly inefficient however it probably doesn't matter
+                //Also yes I know I'm using var wrong. I really should switch to let
+                var id = document.activeElement.id;
+                id = id.substring(12);
+                var nums = id.split(":");
+                var i = parseInt(nums[0]);
+                var j = parseInt(nums[1]);        
+                current_spreadsheet_state.underlying_cell_data[i][j] = "";        
+                spreadsheet_cell_editor.value = "";
+            }
+            return;
+        }
+
+        if(event.key === "F2") {
+            selection_base_pos.i = i;
+            selection_base_pos.j = j;
+            selection_extent_pos.i = i;
+            selection_extent_pos.j = j;
+            selection_base_element = document.activeElement;
+            set_spreadsheet_text_mode(true);
+            return;
+        }
+
+        if(event.key === "Escape") {
+            set_spreadsheet_text_mode(false);
+            var i = selection_base_pos.i;
+            var j = selection_base_pos.j;
+            var element = document.getElementById("spreadsheet-" + i + ":" + j);
+            current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
+            element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });
+            return; 
+        }
     }
 });
