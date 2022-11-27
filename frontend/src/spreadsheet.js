@@ -457,6 +457,9 @@ function load_data() {
             if(element != null) {
                 element.value = current_spreadsheet_state.cell_data[i][j];
                 element.className = current_spreadsheet_state.cell_style_classes[i][j];
+                if(!element.classList.contains("spreadsheet-cell")) {
+                    element.classList.add("spreadsheet-cell");
+                }
             }
         }
     }
@@ -546,7 +549,8 @@ function save_spreadsheet_state() {
             var element = document.getElementById("spreadsheet-" + i + ":" + j);
             if(element != null) {
                 current_spreadsheet_state.cell_data[i].push(element.value);
-                current_spreadsheet_state.cell_style_classes[i].push(element.className);
+                var new_class_name = element.className.replace("spreadsheet-cell", "").trim();
+                current_spreadsheet_state.cell_style_classes[i].push(new_class_name);
             } else {
                 current_spreadsheet_state.cell_data[i].push("");
                 current_spreadsheet_state.cell_style_classes[i].push("");
