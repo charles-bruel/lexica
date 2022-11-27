@@ -49,12 +49,12 @@ function handle_sc_response(entries) {
     for(const entry of entries) {
         //Save everything to the cache
         var conversion = take_valid_entry_for_sc(conversions_in_flight, entry.id);
-        if(test_item !== -1) {
+        if(conversion !== -1) {
             if(!Object.hasOwn(computation_cache, conversion.prog)) computation_cache[conversion.prog] = {};
             computation_cache[conversion.prog][conversion.og] = get_sc_result(entry.data);
         } else {
             //Should be unreachable, everything is supposed to get cached
-            console.log("result somehow was requested to be cached");
+            console.log("result somehow wasn't requested to be cached");
         }
 
         //TODO: Maybe come up with a better way of linking these
