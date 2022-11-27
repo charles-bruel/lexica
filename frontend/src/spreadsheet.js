@@ -609,6 +609,31 @@ function rerun_all() {
 
 create_spreadsheet();
 
+function get_elements_for_modification() {
+    var element = document.activeElement;
+    if (element == null) return [];
+    if (element.id == "") return [];
+    if (element.id.startsWith("lexicon")) {
+        return [element];
+    } else if (element.id.startsWith("spreadsheet")) {
+        var mini = Math.min(selection_base_pos.i, selection_extent_pos.i);
+        var maxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+        var minj = Math.min(selection_base_pos.j, selection_extent_pos.j);
+        var maxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+        var result = [];
+
+        for(var i = mini;i <= maxi;i ++) {
+            for(var j = minj;j <= maxj;j ++) {
+                var temp = document.getElementById("spreadsheet-" + i + ":" + j);
+                if(temp != null) result.push(temp);
+            }
+        }
+        return result;
+    } else {
+        return [];
+    }
+}
+
 document.body.addEventListener("keyup", function(event) {
     if (event.key === "Enter" && (document.activeElement.id.startsWith("spreadsheet") || document.activeElement.id.startsWith("lexicon"))) {
         if(spreadsheet_cell_id_regex.test(document.activeElement.id)) {
@@ -679,11 +704,20 @@ document.body.addEventListener("keyup", function(event) {
         }
 
         if(event.key === "Delete" && !spreadsheet_edit_cell_text) {
-            document.activeElement.value = "";
-            var i = selection_base_pos.i;
-            var j = selection_base_pos.j;
-            current_spreadsheet_state.underlying_cell_data[i][j] = "";        
-            spreadsheet_cell_editor.value = "";
+            var elements = get_elements_for_modification();
+            for(const element of elements) {
+                element.value = "";
+
+                //Highly inefficient however it probably doesn't matter
+                //Also yes I know I'm using var wrong. I really should switch to let
+                var id = document.activeElement.id;
+                id = id.substring(12);
+                var nums = id.split(":");
+                var i = parseInt(nums[0]);
+                var j = parseInt(nums[1]);        
+                current_spreadsheet_state.underlying_cell_data[i][j] = "";        
+                spreadsheet_cell_editor.value = "";
+            }
             return;
         }
 

@@ -1,28 +1,3 @@
-function get_elements_for_modification() {
-    var element = document.activeElement;
-    if (element == null) return [];
-    if (element.id == "") return [];
-    if (element.id.startsWith("lexicon")) {
-        return [element];
-    } else if (element.id.startsWith("spreadsheet")) {
-        var mini = Math.min(selection_base_pos.i, selection_extent_pos.i);
-        var maxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
-        var minj = Math.min(selection_base_pos.j, selection_extent_pos.j);
-        var maxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
-        var result = [];
-
-        for(var i = mini;i <= maxi;i ++) {
-            for(var j = minj;j <= maxj;j ++) {
-                var temp = document.getElementById("spreadsheet-" + i + ":" + j);
-                if(temp != null) result.push(temp);
-            }
-        }
-        return result;
-    } else {
-        return [];
-    }
-}
-
 function handle_basic_button(e, clazz) {
     e.preventDefault();
 
