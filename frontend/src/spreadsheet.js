@@ -399,7 +399,6 @@ function show_spreadsheet_selection_extents() {
 document.addEventListener('mousemove', e => {
     if(!selection_mode_active) return;
     var element = document.elementFromPoint(e.clientX, e.clientY);
-    console.log(element);
     if(!element.classList.contains("spreadsheet-cell")) return;
     var id = element.id;
     id = id.substring(12);
@@ -480,16 +479,18 @@ function umerge_cells(element) {
 
     var contents = element.value;
     element.parentNode.removeChild(element);
+    var new_class_name = element.className.replace("merged", "").trim();
 
     for(var i = y1;i <= y2;i ++) {
         for(var j = x1;j <= x2;j ++) {
-            var element = document.createElement("input");
-            element.id = "spreadsheet-" + i + ":" + j;
-            element.style.gridColumnStart = j + 2;
-            element.style.gridRowStart = i + 2;
-            spreadsheet_container.appendChild(element);
+            var new_element = document.createElement("input");
+            new_element.id = "spreadsheet-" + i + ":" + j;
+            new_element.style.gridColumnStart = j + 2;
+            new_element.style.gridRowStart = i + 2;
+            new_element.className = new_class_name;
+            spreadsheet_container.appendChild(new_element);
             if(i == y1 && j == x1) {
-                element.value = contents;
+                new_element.value = contents;
             }
         }
     }
@@ -522,6 +523,7 @@ function merge_cells(x1, x2, y1, y2, add) {
     }
     element.id = "spreadsheet-" + fy1 + ":" + fx1;
     element.classList.add("merged");
+    element.classList.add("spreadsheet-cell");
     element.style.gridColumnStart = fx1 + 2;
     element.style.gridColumnEnd = fx2 + 3;
     element.style.gridRowStart = fy1 + 2;
