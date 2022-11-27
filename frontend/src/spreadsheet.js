@@ -21,6 +21,22 @@ var spreadsheet_container;
 var last_focused_cell = null;
 var underyling_editor_mode = false;
 
+var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
+
+spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e) })
+spreadsheet_cell_editor.addEventListener("input", function() { handle_spreadsheet_cell_input(spreadsheet_cell_editor); });
+
+const spreadsheet_cell_id_regex = /spreadsheet-[0-9]+:[0-9]+/;
+
+var selection_base_pos;
+var selection_extent_pos;
+var selection_base_element;
+var selection_mode_active;
+
+selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
+selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
+selection_extents_element_c = document.getElementById("spreadsheet-selection-extents-c");
+
 function generate_cells() {
     var container = document.getElementById("spreadsheet-container");
     var countx = 0;
@@ -206,13 +222,6 @@ function populate_headers() {
     container.appendChild(create_expansion_button_columns(current_spreadsheet_state.num_columns + 1));
 }
 
-var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
-
-spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e) })
-spreadsheet_cell_editor.addEventListener("input", function() { handle_spreadsheet_cell_input(spreadsheet_cell_editor); });
-
-const spreadsheet_cell_id_regex = /spreadsheet-[0-9]+:[0-9]+/;
-
 function handle_spreadsheet_cell_editor_blur(e) {
     if(e.relatedTarget == null || !spreadsheet_cell_id_regex.test(e.relatedTarget.id)) {
         blur_spreadsheet_selection();
@@ -281,15 +290,6 @@ function handle_spreadsheet_cell_input(element) {
     selection_base_element.value = new_value;
     spreadsheet_cell_editor.value = new_value;
 }
-
-var selection_base_pos;
-var selection_extent_pos;
-var selection_base_element;
-var selection_mode_active;
-
-selection_extents_element_a = document.getElementById("spreadsheet-selection-extents-a");
-selection_extents_element_b = document.getElementById("spreadsheet-selection-extents-b");
-selection_extents_element_c = document.getElementById("spreadsheet-selection-extents-c");
 
 function show_spreadsheet_selection_extents() {
     //Border
