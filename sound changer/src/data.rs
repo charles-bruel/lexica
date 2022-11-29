@@ -18,6 +18,18 @@ pub struct Program {
     pub letter_to_symbol: HashMap<Letter, String>,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Word {
+    pub letters: Vec<Letter>,
+    pub syllables: Vec<SyllableDefinition>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct SyllableDefinition {
+    pub start: usize,
+    pub end: usize,
+}
+
 pub struct ProgramCreationContext { 
     pub rule_line_defs: HashMap<usize, u32>,
 }
@@ -51,6 +63,22 @@ pub struct FeatureDef {
     pub id: u32,
     pub validation_mask: u64,
     pub validation_key: u64,
+}
+
+impl Word {
+    pub fn get_syllable<'a>(&'a mut self, syllable: SyllableDefinition) -> Vec<&'a mut Letter> {
+        let mut result: Vec<&'a mut Letter> = Vec::with_capacity(syllable.len());
+        for x in self.letters[syllable.start..syllable.end+1].iter_mut() {
+            result.push(x);
+        }
+        return result;
+    }
+}
+
+impl SyllableDefinition {
+    pub fn len(&self) -> usize {
+        return 1 + self.end - self.start;
+    }
 }
 
 impl Feature {
@@ -583,6 +611,28 @@ pub fn create_constructor_error_empty<S>(error_message: S, line_number_code: u32
         line_number_code: line_number_code,
         error_type: error_type,
     }
+}
+
+pub fn create_word_syllables(letters: Vec<Letter>, syllables: Vec<SyllableDefinition>) -> Word {
+    Word {
+        letters: letters,
+        syllables: syllables,
+    }
+}
+
+pub fn create_word(letters: Vec<Letter>) -> Word {
+    Word {
+        letters: letters,
+        syllables: Vec::new(),
+    }
+}
+
+pub fn create_syllable_definition(start: usize, end: usize) -> std::result::Result<SyllableDefinition, ApplicationError> {
+    if start > end {
+        return Err(ApplicationError::InternalError(String::from("Syllable start is after end")));
+    }
+
+    return Ok(SyllableDefinition { start: start, end: end });
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

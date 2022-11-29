@@ -652,6 +652,46 @@ fn test_error_line_attribution_d() {
     }
 }
 
+#[test]
+fn test_syllables_a() {
+    let result = create_syllable_definition(3, 2);
+    match result {
+        Ok(_) => assert!(false),
+        Err(_) => assert!(true),
+    }
+}
+
+#[test]
+fn test_syllables_b() {
+    let result = create_syllable_definition(3, 3).unwrap();
+    assert!(result.len() == 1);
+}
+
+#[test]
+fn test_syllables_c() {
+    let result = create_syllable_definition(0, 68).unwrap();
+    assert!(result.len() == 69);
+}
+
+#[test]
+fn test_syllables_mod_a() {
+    let a = random_letter();
+    let vec_let = vec![a, random_letter(), random_letter(), random_letter()];
+    let mut word = create_word(vec_let);
+    let syllable = create_syllable_definition(0, 0).unwrap();
+    assert!(*word.get_syllable(syllable)[0] == a);
+}
+
+#[test]
+fn test_syllables_mod_b() {
+    let a = random_letter();
+    let vec_let = vec![random_letter(), random_letter(), random_letter()];
+    let mut word = create_word(vec_let);
+    let syllable = create_syllable_definition(0, 0).unwrap();
+    *word.get_syllable(syllable)[0] = a;
+    assert!(a == word.letters[0]);
+}
+
 fn simple_test_helper(rule: &str, input: &str) -> String {
     let prog: Program = construct(&(create_ipa() + rule)).unwrap();
     let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();
