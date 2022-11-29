@@ -81,6 +81,19 @@ impl SyllableDefinition {
     }
 }
 
+impl core::ops::Index<usize> for Word {
+    type Output = Letter;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.letters[index]
+    }
+}
+
+impl core::ops::IndexMut<usize> for Word {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.letters[index]
+    }
+}
+
 impl Feature {
     pub fn start_byte(&self) -> u8 {
         match self {
