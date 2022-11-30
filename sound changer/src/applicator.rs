@@ -147,10 +147,7 @@ impl super::data::RuleByte {
                     Some(v) => v,
                     None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
                 };
-                //TODO: move insert and other vector operations to Word so
-                //that syllable definitions are also updated
-                //There should ideally be no calls to Word.letters
-                result.letters.insert(0, temp);
+                result.insert(0, temp);
                 *mod_flag = true;
                 i += 1;
             }
@@ -164,7 +161,7 @@ impl super::data::RuleByte {
                     Some(v) => v,
                     None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
                 };
-                result.letters.insert(i + 1, temp);
+                result.insert(i + 1, temp);
                 *mod_flag = true;
                 i += 1;
             }
@@ -222,7 +219,7 @@ impl super::data::RuleByte {
                         *mod_flag = true;
                     },
                     None => {
-                        result.letters.remove((i as i32 + i_adjustment) as usize);
+                        result.remove((i as i32 + i_adjustment) as usize);
                         i_adjustment -= 1;
                         *mod_flag = true;
                     },
@@ -310,7 +307,7 @@ impl super::data::RuleByte {
                             *mod_flag = true;
                         },
                         None => {
-                            result.letters.remove(((i + k) as i32 + i_adjustment) as usize);
+                            result.remove(((i + k) as i32 + i_adjustment) as usize);
                             *mod_flag = true;
                             if num > result.len() {
                                 return Ok(result);

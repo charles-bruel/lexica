@@ -77,6 +77,30 @@ impl Word {
     pub fn len(&self) -> usize {
         self.letters.len()
     }
+
+    pub fn insert(&mut self, index: usize, element: Letter) {
+        self.letters.insert(index, element);
+        for x in &mut self.syllables {
+            if index > x.start {
+                x.start += 1;
+            }
+            if index >= x.end {
+                x.end += 1;
+            }
+        }
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        self.letters.remove(index);
+        for x in &mut self.syllables {
+            if x.start > index {
+                x.start -= 1;
+            }
+            if x.end >= index {
+                x.end -= 1;
+            }
+        }
+    }
 }
 
 impl SyllableDefinition {
