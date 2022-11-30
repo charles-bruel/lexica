@@ -73,6 +73,10 @@ impl Word {
         }
         return result;
     }
+
+    pub fn len(&self) -> usize {
+        self.letters.len()
+    }
 }
 
 impl SyllableDefinition {
@@ -220,7 +224,7 @@ impl Letter {
 }
 
 pub trait Predicate {
-    fn validate(&self, word: &Vec<Letter>, position: usize) -> bool;
+    fn validate(&self, word: &Word, position: usize) -> bool;
 }
 
 pub trait Result {
@@ -541,9 +545,9 @@ pub fn create_enviorment_predicate(predicate: Box<dyn Predicate>, min: u8, max: 
     }
 }
 
-pub fn to_string(program: &Program, word: Vec<Letter>) -> std::result::Result<String, ApplicationError> {
+pub fn to_string(program: &Program, word: Word) -> std::result::Result<String, ApplicationError> {
     let mut result = String::from("");
-    for l in word {
+    for l in word.letters {
         result += &l.get_symbol(&program)?;
     }
     return Ok(result);
@@ -551,13 +555,13 @@ pub fn to_string(program: &Program, word: Vec<Letter>) -> std::result::Result<St
 
 pub struct ExecutionContext {
     pub instruction_ptr: usize,
-    pub result: Vec<Letter>,
+    pub result: Word,
     pub mod_flag: bool,
     pub flag_flag: bool,
     pub jump_flag: bool,
 }
 
-pub fn create_execution_context(result: &Vec<Letter>) -> ExecutionContext {
+pub fn create_execution_context(result: &Word) -> ExecutionContext {
     ExecutionContext {
         instruction_ptr: 0,
         result: result.clone(),
@@ -630,6 +634,13 @@ pub fn create_word_syllables(letters: Vec<Letter>, syllables: Vec<SyllableDefini
     Word {
         letters: letters,
         syllables: syllables,
+    }
+}
+
+pub fn create_empty_word() -> Word {
+    Word {
+        letters: Vec::new(),
+        syllables: Vec::new(),
     }
 }
 

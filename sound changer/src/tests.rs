@@ -7,6 +7,13 @@ use super::io::*;
 extern crate rand;
 use self::rand::Rng;
 
+//TODO: Move this
+macro_rules! word {
+    ($($inp:expr),+) => {
+        create_word(vec!($($inp),+))
+    };
+}
+
 #[test]
 fn test_simple_result() {
     let letter = random_letter();
@@ -44,8 +51,8 @@ fn test_simple_predicate_a() {
 
     let predicate = create_simple_predicate(key, mask);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -60,8 +67,8 @@ fn test_simple_predicate_b() {
 
     let predicate = create_simple_predicate(key, mask);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -87,8 +94,8 @@ fn test_multi_predicate_a() {
 
     let predicate = create_multi_predicate(tests, true);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -116,8 +123,8 @@ fn test_multi_predicate_b() {
 
     let predicate = create_multi_predicate(tests, false);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -140,9 +147,9 @@ fn test_positive_negative_predicate() {
 
     let predicate = create_positive_negative_predicate(mask, key & mask, vec![neg_mask], vec![neg_key]);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test_1), 0));
-    assert!(!predicate.validate(&vec!(neg_test_2), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test_1), 0));
+    assert!(!predicate.validate(&word!(neg_test_2), 0));
 }
 
 #[test]
@@ -220,7 +227,7 @@ fn test_0_feature_a() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[A1]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(!predicate.validate(&vec![letter], 0));
+    assert!(!predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -228,7 +235,7 @@ fn test_0_feature_b() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[B1]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(!predicate.validate(&vec![letter], 0));
+    assert!(!predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -236,7 +243,7 @@ fn test_0_feature_c() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[-toggleA]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(predicate.validate(&vec![letter], 0));
+    assert!(predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -244,7 +251,7 @@ fn test_0_feature_d() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[+toggleA]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(!predicate.validate(&vec![letter], 0));
+    assert!(!predicate.validate(&word![letter], 0));
 }
 
 #[test]

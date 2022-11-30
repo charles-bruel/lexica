@@ -1,7 +1,7 @@
 use super::data::*;
 
 impl super::data::Program {
-    pub fn apply(&self, input: Vec<Letter>) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    pub fn apply(&self, input: Word) -> std::result::Result<Word, ApplicationError> {
         let mut context: ExecutionContext = create_execution_context(&input);
         let mut instruction_count: u16 = 0;
         while context.instruction_ptr < self.rules.len() {
@@ -21,11 +21,11 @@ impl super::data::Program {
         return Ok(context.result);
     }
 
-    pub fn apply_vec(&self, input: Vec<Vec<Letter>>) -> std::result::Result<Vec<Vec<Letter>>, ApplicationError> {
+    pub fn apply_vec(&self, input: Vec<Word>) -> std::result::Result<Vec<Word>, ApplicationError> {
         use std::time::Instant;
         let now = Instant::now();    
 
-        let mut result: Vec<Vec<Letter>> = Vec::new();
+        let mut result: Vec<Word> = Vec::new();
         for v in input {
             result.push(self.apply(v)?);
         }
@@ -46,9 +46,10 @@ impl super::data::Rule {
 
                 for rule in bytes {
                     let mut mod_flag: bool = false;
-                    context.result = rule.apply(std::mem::replace(&mut context.result, vec!()), &mut mod_flag)?;
+                    context.result = rule.apply(std::mem::replace(&mut context.result, create_empty_word()), &mut mod_flag)?;
                     context.mod_flag = mod_flag;
                     //Replaces with an empty struct to avoid ownership issues. I think this is faster than clone.
+                    //Maybe use Option?
                 }
                 return Ok(());
             },
@@ -119,14 +120,14 @@ impl super::data::Rule {
 }
 
 impl super::data::RuleByte {
-    pub fn apply(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    pub fn apply(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
         match self.transformations.len() == 1 {
             true => Ok(self.apply_single(input, mod_flag)?),
             false => Ok(self.apply_multi(input, mod_flag)?),
         }
     }
 
-    fn apply_single(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_single(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
         if self.transformations[0].predicate.len() == 0 {
             return Ok(self.apply_empty_predicate(input, mod_flag)?);
         } else {
@@ -134,7 +135,7 @@ impl super::data::RuleByte {
         }
     }
 
-    fn apply_empty_predicate(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_empty_predicate(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
 
@@ -146,7 +147,10 @@ impl super::data::RuleByte {
                     Some(v) => v,
                     None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
                 };
-                result.insert(0, temp);
+                //TODO: move insert and other vector operations to Word so
+                //that syllable definitions are also updated
+                //There should ideally be no calls to Word.letters
+                result.letters.insert(0, temp);
                 *mod_flag = true;
                 i += 1;
             }
@@ -160,7 +164,7 @@ impl super::data::RuleByte {
                     Some(v) => v,
                     None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
                 };
-                result.insert(i + 1, temp);
+                result.letters.insert(i + 1, temp);
                 *mod_flag = true;
                 i += 1;
             }
@@ -171,7 +175,7 @@ impl super::data::RuleByte {
         return Ok(result);
     }
 
-    fn apply_single_simple(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_single_simple(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
         while i < result.len() {
@@ -218,7 +222,7 @@ impl super::data::RuleByte {
                         *mod_flag = true;
                     },
                     None => {
-                        result.remove((i as i32 + i_adjustment) as usize);
+                        result.letters.remove((i as i32 + i_adjustment) as usize);
                         i_adjustment -= 1;
                         *mod_flag = true;
                     },
@@ -231,7 +235,7 @@ impl super::data::RuleByte {
         return Ok(result);
     }
 
-    fn apply_multi(&self, input: Vec<Letter>, mod_flag: &mut bool) -> std::result::Result<Vec<Letter>, ApplicationError> {
+    fn apply_multi(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
         let num = self.transformations.len();
 
         let mut result = input;
@@ -306,7 +310,7 @@ impl super::data::RuleByte {
                             *mod_flag = true;
                         },
                         None => {
-                            result.remove(((i + k) as i32 + i_adjustment) as usize);
+                            result.letters.remove(((i + k) as i32 + i_adjustment) as usize);
                             *mod_flag = true;
                             if num > result.len() {
                                 return Ok(result);
@@ -326,7 +330,7 @@ impl super::data::RuleByte {
 }
 
 impl super::data::Enviorment {
-    fn check_enviorment(&self, input: &Vec<Letter>, start_position: usize, length: usize) -> bool {
+    fn check_enviorment(&self, input: &Word, start_position: usize, length: usize) -> bool {
         let mut j: usize = 0;
         let mut position_ante = start_position;
         let mut position_post = start_position + length;
@@ -413,7 +417,7 @@ impl super::data::Enviorment {
         return !self.inverted;
     }
 
-    fn check_enviorment_for_initial(&self, input: &Vec<Letter>) -> bool {
+    fn check_enviorment_for_initial(&self, input: &Word) -> bool {
         if self.ante.len() != 0 {
             return self.inverted;
         }
@@ -466,7 +470,7 @@ impl super::data::Enviorment {
 }
 
 
-pub fn from_string(program: &Program, input: &String) -> std::result::Result<Vec<Letter>, ApplicationError> {
+pub fn from_string(program: &Program, input: &String) -> std::result::Result<Word, ApplicationError> {
     let mut string = input.clone();
     let mut result: Vec<Letter> = Vec::new();
     let mut keys: Vec<&str> = Vec::new();
@@ -503,5 +507,5 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Vec
             return Err(ApplicationError::IntoConversionError(format!("Could not convert string \"{0}\", got to \"{1}\"", input, string)));
         }
     }
-    return Ok(result);
+    return Ok(create_word(result));
 }
