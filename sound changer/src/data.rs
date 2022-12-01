@@ -81,10 +81,10 @@ impl Word {
     pub fn insert(&mut self, index: usize, element: Letter) {
         self.letters.insert(index, element);
         for x in &mut self.syllables {
-            if index > x.start {
+            if x.start > index {
                 x.start += 1;
             }
-            if index >= x.end {
+            if x.end >= index {
                 x.end += 1;
             }
         }
@@ -571,8 +571,20 @@ pub fn create_enviorment_predicate(predicate: Box<dyn Predicate>, min: u8, max: 
 
 pub fn to_string(program: &Program, word: Word) -> std::result::Result<String, ApplicationError> {
     let mut result = String::from("");
-    for l in word.letters {
+    let mut index: usize = 0;
+    for l in &word.letters {
+        for x in &word.syllables {
+            if x.start == index || x.end == index {
+                if index != 0 && index != word.len() {
+                    result += ".";
+                    //We only place on dot per syllable boundary, but two will match;
+                    //the end of the prev and the start of the next
+                    break;
+                }
+            }
+        }
         result += &l.get_symbol(&program)?;
+        index += 1;
     }
     return Ok(result);
 }

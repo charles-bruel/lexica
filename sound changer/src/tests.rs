@@ -699,6 +699,32 @@ fn test_syllables_mod_b() {
     assert!(a == word.letters[0]);
 }
 
+#[test]
+fn test_syllable_conversion_a() {
+    let prog = construct(&load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")).unwrap();
+    let word = String::from("a");
+    let converted = to_string(&prog, from_string(&prog, &word).unwrap()).unwrap();
+    assert_eq!(word, converted);
+}
+
+#[test]
+fn test_syllable_conversion_b() {
+    let prog = construct(&load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")).unwrap();
+    let word = String::from("a.a");
+    let temp = from_string(&prog, &word).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(word, converted);
+}
+
+#[test]
+fn test_syllable_conversion_c() {
+    let prog = construct(&load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")).unwrap();
+    let word = String::from("abcdef.abcd");
+    let temp = from_string(&prog, &word).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(word, converted);
+}
+
 fn simple_test_helper(rule: &str, input: &str) -> String {
     let prog: Program = construct(&(create_ipa() + rule)).unwrap();
     let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();

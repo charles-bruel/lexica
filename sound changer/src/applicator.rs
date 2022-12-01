@@ -470,6 +470,7 @@ impl super::data::Enviorment {
 pub fn from_string(program: &Program, input: &String) -> std::result::Result<Word, ApplicationError> {
     let mut string = input.clone();
     let mut result: Vec<Letter> = Vec::new();
+    let mut syllables: Vec<SyllableDefinition> = Vec::new();
     let mut keys: Vec<&str> = Vec::new();
     for k in program.symbol_to_letter.keys() {
         keys.push(k);
@@ -478,7 +479,15 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Wor
 
     let mut depth: usize = 0;
     let mut flag = false;
+    let mut index: usize = 0;
+    syllables.push(create_syllable_definition(0, 0)?);
     while string.len() > 0 {
+        if string.starts_with(".") {
+            let i = syllables.len() - 1;
+            syllables[i].end = index;
+            syllables.push(create_syllable_definition(index, index)?);
+            string = String::from(string.strip_prefix(".").unwrap())
+        }
         if flag {
             for d in &program.diacritics {
                 if string.starts_with(&d.diacritic) {
@@ -496,6 +505,7 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Wor
                 string = String::from(string.strip_prefix(k).unwrap());
                 let (letter, _) = program.symbol_to_letter.get(*k).unwrap();
                 result.push(*letter);
+                index += 1;
                 flag = true;
             }
         }
@@ -504,5 +514,7 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Wor
             return Err(ApplicationError::IntoConversionError(format!("Could not convert string \"{0}\", got to \"{1}\"", input, string)));
         }
     }
-    return Ok(create_word(result));
+    let i = syllables.len() - 1;
+    syllables[i].end = index;
+    return Ok(create_word_syllables(result, syllables));
 }
