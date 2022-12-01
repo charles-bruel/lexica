@@ -725,6 +725,71 @@ fn test_syllable_conversion_c() {
     assert_eq!(word, converted);
 }
 
+#[test]
+fn test_syllable_sticking_a() {
+    const PROG: &str = "rules\nrule t\n*=>a / $ _\nend\nend";
+    const INPUT: &str = "k.a";
+    const OUTPUT: &str = "ak.a";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_b() {
+    const PROG: &str = "rules\nrule t\n*=>b / _ a $\nend\nend";
+    const INPUT: &str = "ka.a";
+    const OUTPUT: &str = "ka.ba";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_c() {
+    const PROG: &str = "rules\nrule t\nd=>*\nend\nend";
+    const INPUT: &str = "ada.ab";
+    const OUTPUT: &str = "aa.ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_d() {
+    const PROG: &str = "rules\nrule t\n*=>b / _ $\nend\nend";
+    const INPUT: &str = "ka.a";
+    const OUTPUT: &str = "ka.ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_e() {
+    const PROG: &str = "rules\nrule t\nd=>*\nend\nend";
+    const INPUT: &str = "da.ab";
+    const OUTPUT: &str = "a.ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
 fn simple_test_helper(rule: &str, input: &str) -> String {
     let prog: Program = construct(&(create_ipa() + rule)).unwrap();
     let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();

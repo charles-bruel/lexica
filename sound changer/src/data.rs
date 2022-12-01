@@ -84,7 +84,7 @@ impl Word {
             if x.start > index {
                 x.start += 1;
             }
-            if x.end >= index {
+            if x.end > index || x.end == self.letters.len() - 1 {
                 x.end += 1;
             }
         }
@@ -96,7 +96,7 @@ impl Word {
             if x.start > index {
                 x.start -= 1;
             }
-            if x.end >= index {
+            if x.end > index {
                 x.end -= 1;
             }
         }
