@@ -100,6 +100,17 @@ impl Word {
                 x.end -= 1;
             }
         }
+        //Check for syllables made 0 length
+        let mut i = 0;
+        while i < self.syllables.len() {
+            if self.syllables[i].start == self.syllables[i].end {
+                self.syllables.remove(i);
+            } else {
+                //If we removed a syllable, we need to subtract one from i
+                //Doing it here removes chance of underflow
+                i += 1;
+            }
+        }
     }
 }
 

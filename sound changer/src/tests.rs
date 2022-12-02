@@ -790,6 +790,20 @@ fn test_syllable_sticking_e() {
     assert_eq!(converted, OUTPUT);
 }
 
+#[test]
+fn test_syllable_sticking_f() {
+    const PROG: &str = "rules\nrule t\ne=>*\nend\nend";
+    const INPUT: &str = "e.ab";
+    const OUTPUT: &str = "ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    assert_eq!(temp.syllables.len(), 1);
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
 fn simple_test_helper(rule: &str, input: &str) -> String {
     let prog: Program = construct(&(create_ipa() + rule)).unwrap();
     let result = to_string(&prog, prog.apply(from_string(&prog, &String::from(input)).unwrap()).unwrap()).unwrap();
