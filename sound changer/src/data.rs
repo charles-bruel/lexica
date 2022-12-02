@@ -18,6 +18,18 @@ pub struct Program {
     pub letter_to_symbol: HashMap<Letter, String>,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Word {
+    pub letters: Vec<Letter>,
+    pub syllables: Vec<SyllableDefinition>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct SyllableDefinition {
+    pub start: usize,
+    pub end: usize,
+}
+
 pub struct ProgramCreationContext { 
     pub rule_line_defs: HashMap<usize, u32>,
 }
@@ -51,6 +63,74 @@ pub struct FeatureDef {
     pub id: u32,
     pub validation_mask: u64,
     pub validation_key: u64,
+}
+
+impl Word {
+    pub fn get_syllable<'a>(&'a mut self, syllable: SyllableDefinition) -> Vec<&'a mut Letter> {
+        let mut result: Vec<&'a mut Letter> = Vec::with_capacity(syllable.len());
+        for x in self.letters[syllable.start..syllable.end+1].iter_mut() {
+            result.push(x);
+        }
+        return result;
+    }
+
+    pub fn len(&self) -> usize {
+        self.letters.len()
+    }
+
+    pub fn insert(&mut self, index: usize, element: Letter) {
+        self.letters.insert(index, element);
+        for x in &mut self.syllables {
+            if x.start > index {
+                x.start += 1;
+            }
+            if x.end > index || x.end == self.letters.len() - 1 {
+                x.end += 1;
+            }
+        }
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        self.letters.remove(index);
+        for x in &mut self.syllables {
+            if x.start > index {
+                x.start -= 1;
+            }
+            if x.end > index {
+                x.end -= 1;
+            }
+        }
+        //Check for syllables made 0 length
+        let mut i = 0;
+        while i < self.syllables.len() {
+            if self.syllables[i].start == self.syllables[i].end {
+                self.syllables.remove(i);
+            } else {
+                //If we removed a syllable, we need to subtract one from i
+                //Doing it here removes chance of underflow
+                i += 1;
+            }
+        }
+    }
+}
+
+impl SyllableDefinition {
+    pub fn len(&self) -> usize {
+        return 1 + self.end - self.start;
+    }
+}
+
+impl core::ops::Index<usize> for Word {
+    type Output = Letter;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.letters[index]
+    }
+}
+
+impl core::ops::IndexMut<usize> for Word {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.letters[index]
+    }
 }
 
 impl Feature {
@@ -179,7 +259,7 @@ impl Letter {
 }
 
 pub trait Predicate {
-    fn validate(&self, word: &Vec<Letter>, position: usize) -> bool;
+    fn validate(&self, word: &Word, position: usize) -> bool;
 }
 
 pub trait Result {
@@ -500,23 +580,35 @@ pub fn create_enviorment_predicate(predicate: Box<dyn Predicate>, min: u8, max: 
     }
 }
 
-pub fn to_string(program: &Program, word: Vec<Letter>) -> std::result::Result<String, ApplicationError> {
+pub fn to_string(program: &Program, word: Word) -> std::result::Result<String, ApplicationError> {
     let mut result = String::from("");
-    for l in word {
+    let mut index: usize = 0;
+    for l in &word.letters {
+        for x in &word.syllables {
+            if x.start == index || x.end == index {
+                if index != 0 && index != word.len() {
+                    result += ".";
+                    //We only place on dot per syllable boundary, but two will match;
+                    //the end of the prev and the start of the next
+                    break;
+                }
+            }
+        }
         result += &l.get_symbol(&program)?;
+        index += 1;
     }
     return Ok(result);
 }
 
 pub struct ExecutionContext {
     pub instruction_ptr: usize,
-    pub result: Vec<Letter>,
+    pub result: Word,
     pub mod_flag: bool,
     pub flag_flag: bool,
     pub jump_flag: bool,
 }
 
-pub fn create_execution_context(result: &Vec<Letter>) -> ExecutionContext {
+pub fn create_execution_context(result: &Word) -> ExecutionContext {
     ExecutionContext {
         instruction_ptr: 0,
         result: result.clone(),
@@ -583,6 +675,35 @@ pub fn create_constructor_error_empty<S>(error_message: S, line_number_code: u32
         line_number_code: line_number_code,
         error_type: error_type,
     }
+}
+
+pub fn create_word_syllables(letters: Vec<Letter>, syllables: Vec<SyllableDefinition>) -> Word {
+    Word {
+        letters: letters,
+        syllables: syllables,
+    }
+}
+
+pub fn create_empty_word() -> Word {
+    Word {
+        letters: Vec::new(),
+        syllables: Vec::new(),
+    }
+}
+
+pub fn create_word(letters: Vec<Letter>) -> Word {
+    Word {
+        letters: letters,
+        syllables: Vec::new(),
+    }
+}
+
+pub fn create_syllable_definition(start: usize, end: usize) -> std::result::Result<SyllableDefinition, ApplicationError> {
+    if start > end {
+        return Err(ApplicationError::InternalError(String::from("Syllable start is after end")));
+    }
+
+    return Ok(SyllableDefinition { start: start, end: end });
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

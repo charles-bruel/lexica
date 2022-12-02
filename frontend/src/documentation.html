@@ -596,6 +596,14 @@ rules
 end</pre></div>
     <h2>Complex language topics</h2>
     <p>These topics are more complex and generally not required for writing most sound changes. They may be useful if you try to use this for something unusual.</p>
+    <h3>Syllables</h3>
+    <p>A syllable breaks up the word into syllable sections. Syllables can be manually marked with the <span class="code">.</span> symbol. Syllables will automatically shift
+       when letters are added or removed, but it may not work as expected. When inserted a letter on top of a syllable, the letter goes after the syllable break. Syllables
+       are reduced to 0 length by changes are automatically deleted. A word always has at least one syllable.</p>
+    <p>Below is an example of a word with syllables:</p>
+    <div><pre>
+si'.bi => si'.βi</pre></div>
+    <p>Currently syllables are a W.I.P. feature and are missing many pieces of functionality.</p>
     <h3>Control flow</h3>
     <p>By default rules are executed top to bottom, however you can change that. This is not typically very useful but does make it turing complete (probably) so it's a neat 
        feature. This may also be useful for writing actual sound changs. It's mostly just for fun though.</p>

@@ -29,7 +29,7 @@ pub struct SimpleApplicationResult {
 pub struct DeleteResult {}
 
 impl Predicate for MultiPredicate {
-    fn validate(&self, word: &Vec<Letter>, position: usize) -> bool {
+    fn validate(&self, word: &Word, position: usize) -> bool {
         let mut flag: bool = self.req_all;
         for predicate in &self.predicate {
             if self.req_all != predicate.validate(word, position) { flag = !self.req_all; }
@@ -39,14 +39,14 @@ impl Predicate for MultiPredicate {
 }
 
 impl Predicate for SimplePredicate {
-    fn validate(&self, word: &Vec<Letter>, position: usize) -> bool {
+    fn validate(&self, word: &Word, position: usize) -> bool {
         let letter = word[position];
         return (letter.value & self.mask) == self.key;
     }
 }
 
 impl Predicate for PositiveNegativePredicate {
-    fn validate(&self, word: &Vec<Letter>, position: usize) -> bool {
+    fn validate(&self, word: &Word, position: usize) -> bool {
         let letter = word[position];
 
         if (letter.value & self.positive_mask) != self.positive_key {
