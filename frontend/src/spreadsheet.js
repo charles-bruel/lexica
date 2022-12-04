@@ -23,7 +23,7 @@ var spreadsheet_edit_cell_text = false;
 
 var spreadsheet_cell_editor = document.getElementById("spreadsheet-cell-editor");
 
-spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e) })
+spreadsheet_cell_editor.addEventListener("blur", function(e) { handle_spreadsheet_cell_editor_blur(e, spreadsheet_cell_editor) })
 spreadsheet_cell_editor.addEventListener("input", function() { handle_spreadsheet_cell_input(spreadsheet_cell_editor); });
 
 const spreadsheet_cell_id_regex = /spreadsheet-[0-9]+:[0-9]+/;
@@ -228,9 +228,13 @@ function populate_headers() {
     container.appendChild(create_expansion_button_columns(current_spreadsheet_state.num_columns + 1));
 }
 
-function handle_spreadsheet_cell_editor_blur(e) {
+function handle_spreadsheet_cell_editor_blur(e, element) {
     if(e.relatedTarget == null || !spreadsheet_cell_id_regex.test(e.relatedTarget.id)) {
         blur_spreadsheet_selection();
+        var i = selection_base_pos.i;
+        var j = selection_base_pos.j;
+        current_spreadsheet_state.underlying_cell_data[i][j] = element.value;
+        selection_base_element.value = eval_spreadsheet_formula(current_spreadsheet_state.underlying_cell_data[i][j], { i: i, j:j });  
     }
     spreadsheet_cell_editor.value = "";
 }
