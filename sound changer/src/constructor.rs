@@ -199,9 +199,9 @@ fn handle_err(result: std::result::Result<(), ConstructorError>, line: String, l
     }
 }
 
-pub fn construct_words(program: &Program, input: String) -> std::result::Result<Vec<Vec<Letter>>, ApplicationError> {
+pub fn construct_words(program: &Program, input: String) -> std::result::Result<Vec<Word>, ApplicationError> {
     let lines: Vec<&str> = input.split("\n").collect();
-    let mut result: Vec<Vec<Letter>> = Vec::new();
+    let mut result: Vec<Word> = Vec::new();
     for l in lines {
         result.push(from_string(&program, &String::from(l.trim()))?);
     }

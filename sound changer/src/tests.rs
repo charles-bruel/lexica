@@ -7,6 +7,13 @@ use super::io::*;
 extern crate rand;
 use self::rand::Rng;
 
+//TODO: Move this
+macro_rules! word {
+    ($($inp:expr),+) => {
+        create_word(vec!($($inp),+))
+    };
+}
+
 #[test]
 fn test_simple_result() {
     let letter = random_letter();
@@ -44,8 +51,8 @@ fn test_simple_predicate_a() {
 
     let predicate = create_simple_predicate(key, mask);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -60,8 +67,8 @@ fn test_simple_predicate_b() {
 
     let predicate = create_simple_predicate(key, mask);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -87,8 +94,8 @@ fn test_multi_predicate_a() {
 
     let predicate = create_multi_predicate(tests, true);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -116,8 +123,8 @@ fn test_multi_predicate_b() {
 
     let predicate = create_multi_predicate(tests, false);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test), 0));
 }
 
 #[test]
@@ -140,9 +147,9 @@ fn test_positive_negative_predicate() {
 
     let predicate = create_positive_negative_predicate(mask, key & mask, vec![neg_mask], vec![neg_key]);
 
-    assert!(predicate.validate(&vec!(pos_test), 0));
-    assert!(!predicate.validate(&vec!(neg_test_1), 0));
-    assert!(!predicate.validate(&vec!(neg_test_2), 0));
+    assert!(predicate.validate(&word!(pos_test), 0));
+    assert!(!predicate.validate(&word!(neg_test_1), 0));
+    assert!(!predicate.validate(&word!(neg_test_2), 0));
 }
 
 #[test]
@@ -220,7 +227,7 @@ fn test_0_feature_a() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[A1]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(!predicate.validate(&vec![letter], 0));
+    assert!(!predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -228,7 +235,7 @@ fn test_0_feature_b() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[B1]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(!predicate.validate(&vec![letter], 0));
+    assert!(!predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -236,7 +243,7 @@ fn test_0_feature_c() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[-toggleA]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(predicate.validate(&vec![letter], 0));
+    assert!(predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -244,7 +251,7 @@ fn test_0_feature_d() {
     let program = create_diacritic_test_program();
     let predicate = construct_simple_predicate(&program, "[+toggleA]").expect("");
     let letter: Letter = Letter { value: 0 };
-    assert!(!predicate.validate(&vec![letter], 0));
+    assert!(!predicate.validate(&word![letter], 0));
 }
 
 #[test]
@@ -650,6 +657,151 @@ fn test_error_line_attribution_d() {
         Ok(_) => assert!(false),
         Err(v) => assert!(v.line_number_user_program == LineNumberInformation::Raw(152)),
     }
+}
+
+#[test]
+fn test_syllables_a() {
+    let result = create_syllable_definition(3, 2);
+    match result {
+        Ok(_) => assert!(false),
+        Err(_) => assert!(true),
+    }
+}
+
+#[test]
+fn test_syllables_b() {
+    let result = create_syllable_definition(3, 3).unwrap();
+    assert!(result.len() == 1);
+}
+
+#[test]
+fn test_syllables_c() {
+    let result = create_syllable_definition(0, 68).unwrap();
+    assert!(result.len() == 69);
+}
+
+#[test]
+fn test_syllables_mod_a() {
+    let a = random_letter();
+    let vec_let = vec![a, random_letter(), random_letter(), random_letter()];
+    let mut word = create_word(vec_let);
+    let syllable = create_syllable_definition(0, 0).unwrap();
+    assert!(*word.get_syllable(syllable)[0] == a);
+}
+
+#[test]
+fn test_syllables_mod_b() {
+    let a = random_letter();
+    let vec_let = vec![random_letter(), random_letter(), random_letter()];
+    let mut word = create_word(vec_let);
+    let syllable = create_syllable_definition(0, 0).unwrap();
+    *word.get_syllable(syllable)[0] = a;
+    assert!(a == word.letters[0]);
+}
+
+#[test]
+fn test_syllable_conversion_a() {
+    let prog = construct(&load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")).unwrap();
+    let word = String::from("a");
+    let converted = to_string(&prog, from_string(&prog, &word).unwrap()).unwrap();
+    assert_eq!(word, converted);
+}
+
+#[test]
+fn test_syllable_conversion_b() {
+    let prog = construct(&load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")).unwrap();
+    let word = String::from("a.a");
+    let temp = from_string(&prog, &word).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(word, converted);
+}
+
+#[test]
+fn test_syllable_conversion_c() {
+    let prog = construct(&load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file")).unwrap();
+    let word = String::from("abcdef.abcd");
+    let temp = from_string(&prog, &word).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(word, converted);
+}
+
+#[test]
+fn test_syllable_sticking_a() {
+    const PROG: &str = "rules\nrule t\n*=>a / $ _\nend\nend";
+    const INPUT: &str = "k.a";
+    const OUTPUT: &str = "ak.a";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_b() {
+    const PROG: &str = "rules\nrule t\n*=>b / _ a $\nend\nend";
+    const INPUT: &str = "ka.a";
+    const OUTPUT: &str = "ka.ba";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_c() {
+    const PROG: &str = "rules\nrule t\nd=>*\nend\nend";
+    const INPUT: &str = "ada.ab";
+    const OUTPUT: &str = "aa.ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_d() {
+    const PROG: &str = "rules\nrule t\n*=>b / _ $\nend\nend";
+    const INPUT: &str = "ka.a";
+    const OUTPUT: &str = "ka.ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_e() {
+    const PROG: &str = "rules\nrule t\nd=>*\nend\nend";
+    const INPUT: &str = "da.ab";
+    const OUTPUT: &str = "a.ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
+}
+
+#[test]
+fn test_syllable_sticking_f() {
+    const PROG: &str = "rules\nrule t\ne=>*\nend\nend";
+    const INPUT: &str = "e.ab";
+    const OUTPUT: &str = "ab";
+    let defs = load_from_file(&String::from("test-data/full-ipa.lsc"), false).expect("Error reading file");
+    let prog = construct(&format!("{0}\n{1}", defs, PROG)).unwrap();
+    let mut temp = from_string(&prog, &String::from(INPUT)).unwrap();
+    temp = prog.apply(temp).unwrap();
+    assert_eq!(temp.syllables.len(), 1);
+    let converted = to_string(&prog, temp).unwrap();
+    assert_eq!(converted, OUTPUT);
 }
 
 fn simple_test_helper(rule: &str, input: &str) -> String {

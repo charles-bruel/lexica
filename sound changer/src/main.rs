@@ -14,7 +14,7 @@ pub mod applicator;
 pub mod websocket_handler;
 #[cfg(test)]
 mod tests;
-
+ 
 fn main() {
     io::web_socket_listener();
 }
