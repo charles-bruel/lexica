@@ -93,7 +93,12 @@ function create_header(posx, posy, text) {
     } else {
         element.id = "spreadsheet-header-row-" + posy;
     }
-    element.innerText = text;
+    if(posx != 0 || posy != 0) {
+        var element2 = document.createElement("button");
+        element2.className = "spreadsheet-column-header-selector";
+        element2.innerText = text;
+        element.appendChild(element2);
+    }
     element.style.gridColumnStart = posx;
     element.style.gridColumnStart = posx + 1;
     element.style.gridRowStart = posy;

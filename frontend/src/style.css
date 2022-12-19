@@ -31,6 +31,24 @@ input, textarea {
     -moz-box-shadow: 5px 5px 15px rgba(0,0,0,0.4);
 }
 
+.spreadsheet-header:hover {
+    border:2px outset lightgray;
+    background: darkgray;
+    font-weight: bold;
+}
+
+.spreadsheet-column-header-selector {
+    border: 0px;
+    background-color: none;
+    box-shadow: none;
+}
+
+.spreadsheet-column-header-selector:hover {
+    border: 0px;
+    background: none !important; 
+    box-shadow: none;
+}
+
 .spreadsheet-cell {
     caret-color: var(--spreadsheet-textedit);
 }
