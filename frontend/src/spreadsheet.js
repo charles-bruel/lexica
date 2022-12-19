@@ -100,6 +100,7 @@ function create_header(posx, posy, text) {
         element2.innerText = text;
         if(posx != 0) {
             element2.addEventListener("click", () => {
+                document.getElementById("spreadsheet-" + 0 + ":" + (posx - 1)).focus();
                 selection_base_element = element;
                 selection_base_pos = { j: posx - 1, i: 0 };
                 selection_extent_pos = { j: posx - 1, i: "max" };
@@ -111,6 +112,7 @@ function create_header(posx, posy, text) {
                 selection_base_element = element;
                 selection_base_pos = { i: posy - 1, j: 0 };
                 selection_extent_pos = { i: posy - 1, j: "max" };
+                element.focus();
                 show_spreadsheet_selection_extents();
             });
         }
@@ -207,6 +209,20 @@ function add_column_handler(button_ref) {
         spreadsheet_container.appendChild(element);
     }
 }
+
+function remove_column_handler(j) {
+    current_spreadsheet_state.num_columns--;
+    var container = document.getElementById("spreadsheet-container");
+
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        var element = document.getElementById("spreadsheet-" + i + ":" + j);
+        container.removeChild(element);
+    }
+    container.removeChild(document.getElementById("spreadsheet-header-col-" + (j + 1)));
+
+    //Wipe selection
+    blur_spreadsheet_selection();}
+
 
 function create_expansion_button_rows(posy) {
     var element = document.createElement("button");
@@ -740,6 +756,14 @@ document.body.addEventListener("keyup", function(event) {
         }
 
         if(event.key === "Delete" && !spreadsheet_edit_cell_text) {
+            if(selection_extent_pos.i == "max") {
+                remove_column_handler(selection_extent_pos.j);
+                return;
+            }
+            if(selection_extent_pos.j == "max") {
+                return;
+            }
+
             var elements = get_elements_for_modification();
             for(const element of elements) {
                 element.value = "";
