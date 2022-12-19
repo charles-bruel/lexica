@@ -28,6 +28,7 @@ spreadsheet_cell_editor.addEventListener("input", function() { handle_spreadshee
 
 const spreadsheet_cell_id_regex = /spreadsheet-[0-9]+:[0-9]+/;
 
+var selection_region_mode;
 var selection_base_pos;
 var selection_extent_pos;
 var selection_base_element;
@@ -97,6 +98,22 @@ function create_header(posx, posy, text) {
         var element2 = document.createElement("button");
         element2.className = "spreadsheet-column-header-selector";
         element2.innerText = text;
+        if(posx != 0) {
+            element2.addEventListener("click", () => {
+                selection_base_element = element;
+                selection_base_pos = { j: posx - 1, i: 0 };
+                selection_extent_pos = { j: posx - 1, i: "max" };
+                show_spreadsheet_selection_extents();
+            });
+        }
+        if(posy != 0) {
+            element2.addEventListener("click", () => {
+                selection_base_element = element;
+                selection_base_pos = { i: posy - 1, j: 0 };
+                selection_extent_pos = { i: posy - 1, j: "max" };
+                show_spreadsheet_selection_extents();
+            });
+        }
         element.appendChild(element2);
     }
     element.style.gridColumnStart = posx;
@@ -329,13 +346,23 @@ function handle_spreadsheet_cell_input(element) {
 }
 
 function show_spreadsheet_selection_extents() {
+    //Make effective bounds for boundless selections
+    var effective_extents_i = selection_extent_pos.i;
+    var effective_extents_j = selection_extent_pos.j;
+    if(selection_extent_pos.i == "max") {
+        effective_extents_i = current_spreadsheet_state.num_rows - 1;
+    }
+    if(selection_extent_pos.j == "max") {
+        effective_extents_j = current_spreadsheet_state.num_columns - 1;
+    }
+
     //Border
     selection_extents_element_c.style.display = "block";
 
-    var cmini = Math.min(selection_base_pos.i, selection_extent_pos.i);
-    var cmaxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
-    var cminj = Math.min(selection_base_pos.j, selection_extent_pos.j);
-    var cmaxj = Math.max(selection_base_pos.j, selection_extent_pos.j);
+    var cmini = Math.min(selection_base_pos.i, effective_extents_i);
+    var cmaxi = Math.max(selection_base_pos.i, effective_extents_i);
+    var cminj = Math.min(selection_base_pos.j, effective_extents_j);
+    var cmaxj = Math.max(selection_base_pos.j, effective_extents_j);
     selection_extents_element_c.style.gridRowStart = cmini + 2;
     selection_extents_element_c.style.gridRowEnd = cmaxi + 3;
     selection_extents_element_c.style.gridColumnStart = cminj + 2;
@@ -344,22 +371,22 @@ function show_spreadsheet_selection_extents() {
 
     //Selection highlight
     //Special cases
-    if(selection_base_pos.i == selection_extent_pos.i && selection_base_pos.j == selection_extent_pos.j) {
+    if(selection_base_pos.i == effective_extents_i && selection_base_pos.j == effective_extents_j) {
         selection_extents_element_a.style.display = "none";
         selection_extents_element_b.style.display = "none";
         return;
     }
 
-    if(selection_base_pos.i == selection_extent_pos.i) {
+    if(selection_base_pos.i == effective_extents_i) {
         selection_extents_element_b.style.display = "none";
 
         var aminj;
         var amaxj;
-        if(selection_base_pos.j < selection_extent_pos.j) {
+        if(selection_base_pos.j < effective_extents_j) {
             aminj = selection_base_pos.j + 1;
-            amaxj = selection_extent_pos.j;
+            amaxj = effective_extents_j;
         } else {
-            aminj = selection_extent_pos.j;
+            aminj = effective_extents_j;
             amaxj = selection_base_pos.j - 1;
         }
         var ai = selection_base_pos.i;
@@ -378,11 +405,11 @@ function show_spreadsheet_selection_extents() {
 
     var amini;
     var amaxi;
-    if(selection_base_pos.i < selection_extent_pos.i) {
+    if(selection_base_pos.i < effective_extents_i) {
         amini = selection_base_pos.i + 1;
-        amaxi = selection_extent_pos.i;
+        amaxi = effective_extents_i;
     } else {
-        amini = selection_extent_pos.i;
+        amini = effective_extents_i;
         amaxi = selection_base_pos.i - 1;
     }
     var aj = selection_base_pos.j;
@@ -393,22 +420,22 @@ function show_spreadsheet_selection_extents() {
     selection_extents_element_a.style.gridColumnEnd = aj + 3;
 
     //Deferred special case, a already does what we want
-    if(selection_base_pos.j == selection_extent_pos.j) {
+    if(selection_base_pos.j == effective_extents_j) {
         selection_extents_element_b.style.display = "none";
         return;
     }
 
     selection_extents_element_b.style.display = "block";
 
-    var bmini = Math.min(selection_base_pos.i, selection_extent_pos.i);
-    var bmaxi = Math.max(selection_base_pos.i, selection_extent_pos.i);
+    var bmini = Math.min(selection_base_pos.i, effective_extents_i);
+    var bmaxi = Math.max(selection_base_pos.i, effective_extents_i);
     var bminj;
     var bmaxj;
-    if(selection_base_pos.j < selection_extent_pos.j) {
+    if(selection_base_pos.j < effective_extents_j) {
         bminj = selection_base_pos.j + 1;
-        bmaxj = selection_extent_pos.j;
+        bmaxj = effective_extents_j;
     } else {
-        bminj = selection_extent_pos.j;
+        bminj = effective_extents_j;
         bmaxj = selection_base_pos.j - 1;
     }
 
