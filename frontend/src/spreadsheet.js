@@ -1,7 +1,7 @@
 function new_spreadsheet_state() {
     return {
-        num_rows: 30,
-        num_columns: 24,
+        num_rows: 2,
+        num_columns: 2,
         row_height: 20,
         column_width: 50, // Default
         column_widths: [],
@@ -221,7 +221,36 @@ function remove_column_handler(j) {
     container.removeChild(document.getElementById("spreadsheet-header-col-" + (j + 1)));
 
     //Wipe selection
-    blur_spreadsheet_selection();}
+    blur_spreadsheet_selection();
+
+    //Fix backing data structure
+    //The data is [row][column], so we need to remove the individual element from every row
+    //We loop through each array in one loop
+    //We actually don't need to worry about most of the data as that will be overwritten on save
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+
+    }
+
+    //Now we need to fix the grid in HTML
+    //Start by removing the column width
+    var elems = spreadsheet_container.style.gridTemplateColumns.split(" ");
+    elems.splice(j + 1, 1);
+    spreadsheet_container.style.gridTemplateColumns = elems.join(" ");
+    current_spreadsheet_state.column_widths = current_spreadsheet_state.column_widths.slice(j, 1);
+    
+    //Now we adjust all the column ids
+    for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
+        for(var k = j + 1;k <= current_spreadsheet_state.num_columns;k ++) {
+            let element = document.getElementById("spreadsheet-cell-" + i + ":" + k);
+            element.style.gridColumnStart = element.style.gridColumnStart - 1;
+        }
+    }
+    //Can't forget the add button
+    {
+        let element = document.getElementById("spreadsheet-expansion-column");
+        element.style.gridColumnStart = element.style.gridColumnStart - 1;
+    }
+}
 
 
 function create_expansion_button_rows(posy) {
@@ -498,6 +527,7 @@ document.addEventListener('mouseup', e => {
 
 
 function populate_cells() {
+    current_spreadsheet_state.underlying_cell_data = [];
     var container = document.getElementById("spreadsheet-container");
     for(var i = 0;i < current_spreadsheet_state.num_rows;i ++) {
         current_spreadsheet_state.underlying_cell_data.push([]);
