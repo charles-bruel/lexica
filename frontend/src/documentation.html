@@ -700,6 +700,7 @@ end</pre></div>
         generate_table_of_contents();
         generate_indent_lines();
         addEventListener('resize', generate_indent_lines);
+        setTimeout(() => {  generate_indent_lines(); }, 10);
     </script>
 </body>
 </html>

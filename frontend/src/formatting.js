@@ -78,6 +78,7 @@ function generate_indent_line(element, arr, index, parent_elem) {
     var following_element;
     var flag = true;
     for(var i = index + 1;i < arr.length;i ++) {
+        if(arr[i].tagName == "SCRIPT") continue;
         following_element = arr[i];
         var flag2 = false;
         if(arr[i].tagName == element.tagName) flag2 = true;
