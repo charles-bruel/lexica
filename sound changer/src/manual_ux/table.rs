@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
+    pub id: u16,
     pub table_descriptor: Rc<TableDescriptor>,
     pub table_rows: Vec<TableRow>,
 }
