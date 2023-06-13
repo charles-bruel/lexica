@@ -50,7 +50,7 @@ pub enum TableDataTypeDescriptor {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableContents {
-    Enum(u8),
+    Enum(usize),
     String(String),
     UInt(u32),
     Int(i32),
@@ -61,7 +61,7 @@ pub fn load_table(input: &String) -> Table {
     let header1 = lines[0].trim();
     let header2 = lines[1].trim();
     let header3 = lines[2].trim();
-    lines = lines.drain(0..2).collect();
+    lines = lines.drain(3..).collect();
 
     let id = header1.parse::<u16>().unwrap();
 
@@ -121,7 +121,7 @@ fn load_table_data_type(input: &str) -> TableDataTypeDescriptor {
         let enum_values: Vec<&str> = value.split(",").collect();
         let mut enum_final_values: Vec<String> = Vec::new();
         for x in enum_values {
-            enum_final_values.push(x.trim().to_string());
+            enum_final_values.push(x.to_lowercase().trim().to_string());
         }
 
         return TableDataTypeDescriptor::Enum(enum_final_values);
@@ -151,10 +151,37 @@ fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> TableRow {
 }
 
 fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -> TableContents {
-    todo!()
+    match descriptor {
+        TableDataTypeDescriptor::Enum(vec) => {
+            let test_string = cell_contents.to_lowercase();
+            // I'm sure there is an API way to do this, but I
+            // am on a plane right now and can't find it, so
+            // I'm doing it manually
+
+            let mut i = 0;
+            while i < vec.len() {
+                if test_string == vec[i] {
+                    return TableContents::Enum(i);
+                }
+
+                i += 1;
+            }
+
+            panic!()
+        },
+        TableDataTypeDescriptor::String => {
+            TableContents::String(cell_contents.to_string())
+        },
+        TableDataTypeDescriptor::UInt => {
+            TableContents::UInt(cell_contents.parse::<u32>().unwrap())
+        },
+        TableDataTypeDescriptor::Int => {
+            TableContents::Int(cell_contents.parse::<i32>().unwrap())
+        },
+    }
 }
 
 // Move to another file?
-fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> TableRow {
+fn parse_generative_table_line(_descriptor: &TableDescriptor, _line: &str) -> TableRow {
     todo!()
 }

@@ -1,5 +1,3 @@
-use std::string;
-
 use crate::{manual_ux::table, io};
 
 use super::table::Table;

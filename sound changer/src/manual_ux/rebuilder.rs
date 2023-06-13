@@ -1,5 +1,5 @@
 use super::project::Project;
 
-pub fn rebuild(project: &mut Project, start: u16) {
+pub fn rebuild(_project: &mut Project, _start: u16) {
     todo!()
 }
