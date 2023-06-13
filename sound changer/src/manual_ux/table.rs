@@ -13,9 +13,25 @@ pub struct TableDescriptor {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TableRow {
-    pub descriptor: Rc<TableDescriptor>,
-    pub contents: Vec<TableContents>,
+pub enum TableRow {
+    PopulatedTableRow {
+        source: PopulatedTableRowSource,
+        descriptor: Rc<TableDescriptor>,
+        contents: Vec<TableContents>,
+    },
+    UnpopulatedTableRow {
+        procedure: Rc<GenerativeTableRowProcedure>,
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum PopulatedTableRowSource {
+    EXPLICIT, CACHE(Rc<GenerativeTableRowProcedure>)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct GenerativeTableRowProcedure {
+    // TODO
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -64,20 +80,24 @@ pub fn load_table(input: &String) -> Table {
         i += 1;
     }
 
+    let descriptor = TableDescriptor { column_descriptors: descriptors };
+
+    let mut table_rows: Vec<TableRow> = Vec::new();
+
+    let table_descriptor = Rc::new(descriptor);
+
     for line in lines {
-        
+        table_rows.push(parse_table_line(table_descriptor.clone(), line));
     }
 
-    !todo!()
-
-    // Table {
-    //     id,
-    //     table_descriptor: descriptors,
-    //     table_rows: todo!(),
-    // }
+    Table {
+        id,
+        table_descriptor,
+        table_rows,
+    }
 }
 
-pub fn load_table_data_type(input: &str) -> TableDataTypeDescriptor {
+fn load_table_data_type(input: &str) -> TableDataTypeDescriptor {
     // Case non sensitive
     let mut value = String::from(input).to_lowercase();
     // First we check the basic data types
@@ -108,5 +128,33 @@ pub fn load_table_data_type(input: &str) -> TableDataTypeDescriptor {
     }
 
     // Todo: Real error handling
+    todo!()
+}
+
+fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> TableRow {
+    if line.starts_with(":=") {
+        return parse_generative_table_line(descriptor.as_ref(), line);
+    }
+
+    let values: Vec<&str> = line.split("|").collect();
+    assert_eq!(values.len(), descriptor.column_descriptors.len());
+
+    let mut i = 0;
+    let mut cells: Vec<TableContents> = Vec::new();
+    while i < values.len() {
+        cells.push(parse_table_cell(values[i], &descriptor.as_ref().column_descriptors[i].data_type));
+
+        i += 1;
+    }
+
+    TableRow::PopulatedTableRow { source: PopulatedTableRowSource::EXPLICIT, descriptor: descriptor, contents: cells }
+}
+
+fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -> TableContents {
+    todo!()
+}
+
+// Move to another file?
+fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> TableRow {
     todo!()
 }
