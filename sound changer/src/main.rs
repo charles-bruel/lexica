@@ -29,7 +29,7 @@ fn main() {
         args::LexicaMode::WebIO => io::web_socket_listener(),
         args::LexicaMode::Manual(command) => match command.command {
             args::ManualSubcommand::Rebuild(v) => 
-                manual_ux::rebuilder::rebuild(&mut load_project(command.path), v.start),
+                manual_ux::rebuilder::rebuild(&mut load_project(command.path).unwrap(), v.start),
         },
     }
 }

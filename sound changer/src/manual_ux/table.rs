@@ -56,24 +56,41 @@ pub enum TableContents {
     Int(i32),
 }
 
-pub fn load_table(input: &String) -> Table {
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum TableLoadingError {
+    MalformedHeader,
+    MalformedDataTypeDescriptor,
+    UnknownEnumType,
+    ValueParseError,
+    TableIDCollision,
+}
+
+pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {
     let mut lines: Vec<&str> = input.split("\n").collect();
+    if lines.len() < 3 {
+        return Err(TableLoadingError::MalformedHeader)
+    }
     let header1 = lines[0].trim();
     let header2 = lines[1].trim();
     let header3 = lines[2].trim();
     lines = lines.drain(3..).collect();
 
-    let id = header1.parse::<u16>().unwrap();
+    let id = match header1.parse::<u16>() {
+        Ok(v) => v,
+        Err(_) => return Err(TableLoadingError::MalformedHeader),
+    };
 
     let descriptors_names: Vec<&str> = header2.split("|").collect();
     let descriptors_contents: Vec<&str> = header3.split("|").collect();
-    assert_eq!(descriptors_names.len(), descriptors_contents.len());
+    if descriptors_names.len() != descriptors_contents.len() {
+        return Err(TableLoadingError::MalformedHeader)
+    }
 
     let mut descriptors: Vec<TableColumnDescriptor> = Vec::new();
     let mut i = 0;
     while i < descriptors_names.len() {
         let name = descriptors_names[i];
-        let data_type = load_table_data_type(descriptors_contents[i]);
+        let data_type = load_table_data_type(descriptors_contents[i])?;
         
         descriptors.push(TableColumnDescriptor { name: name.to_string(), data_type: data_type });
 
@@ -87,28 +104,28 @@ pub fn load_table(input: &String) -> Table {
     let table_descriptor = Rc::new(descriptor);
 
     for line in lines {
-        table_rows.push(parse_table_line(table_descriptor.clone(), line));
+        table_rows.push(parse_table_line(table_descriptor.clone(), line)?);
     }
 
-    Table {
+    Ok(Table {
         id,
         table_descriptor,
         table_rows,
-    }
+    })
 }
 
-fn load_table_data_type(input: &str) -> TableDataTypeDescriptor {
+fn load_table_data_type(input: &str) -> Result<TableDataTypeDescriptor, TableLoadingError> {
     // Case non sensitive
     let mut value = String::from(input).to_lowercase();
     // First we check the basic data types
     if value == "string" {
-        return TableDataTypeDescriptor::String;
+        return Ok(TableDataTypeDescriptor::String);
     }
     if value == "int" {
-        return TableDataTypeDescriptor::Int;
+        return Ok(TableDataTypeDescriptor::Int);
     }
     if value == "uint" {
-        return TableDataTypeDescriptor::UInt;
+        return Ok(TableDataTypeDescriptor::UInt);
     }
 
     // Enums are represented as a bracket-surrounded, comma-seperated list of values.
@@ -124,14 +141,14 @@ fn load_table_data_type(input: &str) -> TableDataTypeDescriptor {
             enum_final_values.push(x.to_lowercase().trim().to_string());
         }
 
-        return TableDataTypeDescriptor::Enum(enum_final_values);
+        return Ok(TableDataTypeDescriptor::Enum(enum_final_values));
+        
     }
 
-    // Todo: Real error handling
-    todo!()
+    Err(TableLoadingError::MalformedDataTypeDescriptor)
 }
 
-fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> TableRow {
+fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> Result<TableRow, TableLoadingError> {
     if line.starts_with(":=") {
         return parse_generative_table_line(descriptor.as_ref(), line);
     }
@@ -142,15 +159,15 @@ fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> TableRow {
     let mut i = 0;
     let mut cells: Vec<TableContents> = Vec::new();
     while i < values.len() {
-        cells.push(parse_table_cell(values[i], &descriptor.as_ref().column_descriptors[i].data_type));
+        cells.push(parse_table_cell(values[i], &descriptor.as_ref().column_descriptors[i].data_type)?);
 
         i += 1;
     }
 
-    TableRow::PopulatedTableRow { source: PopulatedTableRowSource::EXPLICIT, descriptor: descriptor, contents: cells }
+    Ok(TableRow::PopulatedTableRow { source: PopulatedTableRowSource::EXPLICIT, descriptor: descriptor, contents: cells })
 }
 
-fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -> TableContents {
+fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -> Result<TableContents, TableLoadingError> {
     match descriptor {
         TableDataTypeDescriptor::Enum(vec) => {
             let test_string = cell_contents.to_lowercase();
@@ -161,27 +178,33 @@ fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -
             let mut i = 0;
             while i < vec.len() {
                 if test_string == vec[i] {
-                    return TableContents::Enum(i);
+                    return Ok(TableContents::Enum(i));
                 }
 
                 i += 1;
             }
 
-            panic!()
+            Err(TableLoadingError::UnknownEnumType)
         },
         TableDataTypeDescriptor::String => {
-            TableContents::String(cell_contents.to_string())
+            Ok(TableContents::String(cell_contents.to_string()))
         },
         TableDataTypeDescriptor::UInt => {
-            TableContents::UInt(cell_contents.parse::<u32>().unwrap())
+            match cell_contents.parse::<u32>() { 
+                Ok(v) => Ok(TableContents::UInt(v)),
+                Err(_) => Err(TableLoadingError::ValueParseError),
+            }
         },
         TableDataTypeDescriptor::Int => {
-            TableContents::Int(cell_contents.parse::<i32>().unwrap())
+            match cell_contents.parse::<i32>() { 
+                Ok(v) => Ok(TableContents::Int(v)),
+                Err(_) => Err(TableLoadingError::ValueParseError),
+            }
         },
     }
 }
 
 // Move to another file?
-fn parse_generative_table_line(_descriptor: &TableDescriptor, _line: &str) -> TableRow {
+fn parse_generative_table_line(_descriptor: &TableDescriptor, _line: &str) -> Result<TableRow, TableLoadingError> {
     todo!()
 }
