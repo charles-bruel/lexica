@@ -17,11 +17,13 @@ pub fn load_project(filepath: String) -> Project {
         accumulation.push(temp);
     }
 
-    let mut tables = Vec::with_capacity(max_id);
+    let required_capacity = max_id + 1;
+
+    let mut tables = Vec::with_capacity(required_capacity);
 
     // Initial population
     let mut i = 0;
-    while i < max_id {
+    while i < required_capacity {
         tables.push(Option::None);
         i += 1;
     }
