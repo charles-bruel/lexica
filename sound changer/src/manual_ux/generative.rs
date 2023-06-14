@@ -74,9 +74,18 @@ pub struct GenerativeLine {
     pub columns: Vec<GenerativeProgram>,
 }
 
+pub enum GenerativeProgramRuntimeError {
+    MismatchedRangeLengths
+}
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeProgram {
     output_node: OutputNode,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct GenerativeProgramExecutionContext {
+
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -154,4 +163,44 @@ enum SimpleComparisionType {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum ComplexComparisionType {
     Equals, NotEquals, Greater, Less, GreaterEquals, LessEquals
+}
+
+impl StringNode {
+    pub fn eval(self, context: &mut GenerativeProgramExecutionContext) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
+        match self {
+            StringNode::LiteralNode(contents) => Ok(vec!(contents)),
+            StringNode::AdditionNode(a, b) => {
+                let mut operand1 = a.eval(context)?;
+                let mut operand2 = b.eval(context)?;
+                
+                if operand1.len() != operand2.len() {
+                    if operand1.len() == 1 {
+                        let mut i = 0;
+                        while i < operand2.len() {
+                            operand2[i] += &operand1[0];
+                            i += 1;
+                        } 
+                        return Ok(operand2);
+                    }
+                    if operand2.len() == 1 {
+                        let mut i = 0;
+                        while i < operand1.len() {
+                            operand1[i] += &operand2[0];
+                            i += 1;
+                        } 
+                        return Ok(operand1);
+                    }
+                    return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
+                }
+
+                let mut i = 0;
+                while i < operand1.len() {
+                    operand1[i] += &operand2[i];
+                    i += 1;
+                } 
+                return Ok(operand1);
+            },
+            StringNode::ConversionNode(_) => todo!(),
+        }
+    }
 }
