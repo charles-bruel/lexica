@@ -20,6 +20,9 @@ has to include them. For exmaple, a 12 element list can have one column with a 3
 mutation on it, which would generate 36 elements, with the other columns being
 duplicated 3 times.
 
+Internally this is implemented as an AST for each column, with changes affecting
+program state also being nodes. The AST is recursively executed when needed.
+
 Syntax discussion:
 All generative lines begin with the := operator and must be surronded in {}
 After that operator, columns are seperated like normal, with the | symbol
@@ -32,7 +35,6 @@ After that operator, columns are seperated like normal, with the | symbol
 6. The foreach function creates an entry for each row in the the table, 
    with the contents given by the specified column
 Example:
-2
 POS|word|translation
 ...|String|String
 :={=foreach(1:POS)|=foreach(1:word)+lit(ka)|=foreach(1:translation)}
@@ -63,5 +65,93 @@ POS|word|translation
 The above code creates an entry in the table for every entry in the previous
 table (id=1), and appends "ka" to every noun
 
-
 */
+
+use super::table::TableRow;
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct GenerativeLine {
+    pub columns: Vec<GenerativeProgram>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct GenerativeProgram {
+    output_node: OutputNode,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum OutputNode {
+    String(StringNode),
+    Int(IntNode),
+    UInt(UIntNode),
+    Enum(EnumNode),
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum StringNode {
+    LiteralNode(String),
+    AdditionNode(Box<StringNode>, Box<StringNode>),
+    ConversionNode(RangeNode)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum IntNode {
+    LiteralNode(i32),
+    AdditionNode(Box<IntNode>, Box<IntNode>),
+    ConversionNode(RangeNode)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum UIntNode {
+    LiteralNode(u32),
+    AdditionNode(Box<UIntNode>, Box<UIntNode>),
+    ConversionNode(RangeNode)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum EnumNode {
+    LiteralNode,
+    ConversionNode(RangeNode)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum RangeNode {
+    ForeachNode(TableSpecifier, Option<ColumnSpecifier>),
+    FilterNode(Box<RangeNode>, Box<FilterPredicate>),
+    Save(Box<RangeNode>, String),
+    Saved(String, Option<ColumnSpecifier>)
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct Range {
+    pub rows: Vec<TableRow>,
+    pub column_id: Option<usize>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct TableSpecifier {
+    pub table_id: usize,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct ColumnSpecifier {
+    pub column_id: usize,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum FilterPredicate {
+    EnumCompare(SimpleComparisionType, EnumNode, EnumNode),
+    StringCompare(SimpleComparisionType, StringNode, StringNode),
+    IntCompare(ComplexComparisionType, IntNode, IntNode),
+    UIntCompare(ComplexComparisionType, UIntNode, UIntNode),
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum SimpleComparisionType {
+    Equals, NotEquals
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum ComplexComparisionType {
+    Equals, NotEquals, Greater, Less, GreaterEquals, LessEquals
+}
