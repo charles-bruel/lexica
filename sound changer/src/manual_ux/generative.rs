@@ -67,6 +67,8 @@ table (id=1), and appends "ka" to every noun
 
 */
 
+use std::collections::HashMap;
+
 use super::table::TableRow;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -75,7 +77,8 @@ pub struct GenerativeLine {
 }
 
 pub enum GenerativeProgramRuntimeError {
-    MismatchedRangeLengths
+    MismatchedRangeLengths,
+    TypeMismatch,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -83,9 +86,9 @@ pub struct GenerativeProgram {
     output_node: OutputNode,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct GenerativeProgramExecutionContext {
-
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct ExecutionContext {
+    pub saved_ranges: HashMap<String, Range>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -166,7 +169,7 @@ enum ComplexComparisionType {
 }
 
 impl StringNode {
-    pub fn eval(self, context: &mut GenerativeProgramExecutionContext) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
+    pub fn eval(self, context: &mut ExecutionContext) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
         match self {
             StringNode::LiteralNode(contents) => Ok(vec!(contents)),
             StringNode::AdditionNode(a, b) => {
@@ -201,6 +204,29 @@ impl StringNode {
                 return Ok(operand1);
             },
             StringNode::ConversionNode(_) => todo!(),
+        }
+    }
+}
+
+impl RangeNode {
+    pub fn eval(self, context: &mut ExecutionContext) -> Result<Range, GenerativeProgramRuntimeError> {
+        match self {
+            RangeNode::ForeachNode(_, _) => todo!(),
+            RangeNode::FilterNode(_, _) => todo!(),
+            RangeNode::Save(range, key) => {
+                let evaluated = range.to_owned().eval(context)?;
+                context.saved_ranges.insert(key, evaluated.clone());
+                return Ok(evaluated);
+            },
+            RangeNode::Saved(key, column) => {
+                let mut result = context.saved_ranges[&key].clone();
+                match column {
+                    Some(v) => result.column_id = Some(v.column_id),
+                    None => (),
+                }
+
+                return Ok(result);
+            },
         }
     }
 }
