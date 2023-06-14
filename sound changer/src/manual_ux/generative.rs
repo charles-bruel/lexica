@@ -129,7 +129,7 @@ enum EnumNode {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum RangeNode {
     ForeachNode(TableSpecifier, Option<ColumnSpecifier>),
-    FilterNode(Box<RangeNode>, Box<FilterPredicate>),
+    FilterNode(Box<RangeNode>, ColumnSpecifier, Box<FilterPredicate>),
     Save(Box<RangeNode>, String),
     Saved(String, Option<ColumnSpecifier>)
 }
@@ -212,7 +212,18 @@ impl RangeNode {
     pub fn eval(self, context: &mut ExecutionContext) -> Result<Range, GenerativeProgramRuntimeError> {
         match self {
             RangeNode::ForeachNode(_, _) => todo!(),
-            RangeNode::FilterNode(_, _) => todo!(),
+            RangeNode::FilterNode(range, column, predicate) => {
+                let mut result = range.eval(context)?;
+                let mut new_range: Vec<TableRow> = Vec::with_capacity(result.rows.len());
+                for x in result.rows {
+                    if (&predicate).check(&x, &column)? {
+                        new_range.push(x);
+                    }
+                }
+                result.rows = new_range;
+
+                return Ok(result);
+            },
             RangeNode::Save(range, key) => {
                 let evaluated = range.to_owned().eval(context)?;
                 context.saved_ranges.insert(key, evaluated.clone());
@@ -226,6 +237,38 @@ impl RangeNode {
                 }
 
                 return Ok(result);
+            },
+        }
+    }
+}
+
+impl FilterPredicate {
+    pub fn check(&self, row: &TableRow, column: &ColumnSpecifier) -> Result<bool, GenerativeProgramRuntimeError> {
+        // Check data type of input
+        let descriptor = match row {
+            TableRow::PopulatedTableRow { descriptor, .. } => descriptor,
+            TableRow::UnpopulatedTableRow { descriptor, .. } => {
+                println!("Attempting to interact with an unpopulated row...");
+                descriptor
+            },
+        };
+        let input_data_type = &descriptor.column_descriptors[column.column_id].data_type;
+        match self {
+            FilterPredicate::EnumCompare(_, _, _) => match input_data_type {
+                super::table::TableDataTypeDescriptor::Enum(_) => todo!(),
+                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+            },
+            FilterPredicate::StringCompare(_, _, _) => match input_data_type {
+                super::table::TableDataTypeDescriptor::String => todo!(),
+                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+            },
+            FilterPredicate::IntCompare(_, _, _) => match input_data_type {
+                super::table::TableDataTypeDescriptor::Int => todo!(),
+                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+            },
+            FilterPredicate::UIntCompare(_, _, _) => match input_data_type {
+                super::table::TableDataTypeDescriptor::UInt => todo!(),
+                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
         }
     }

@@ -21,6 +21,7 @@ pub enum TableRow {
     },
     UnpopulatedTableRow {
         procedure: Rc<GenerativeTableRowProcedure>,
+        descriptor: Rc<TableDescriptor>,
     }
 }
 
