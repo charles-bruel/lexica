@@ -5,7 +5,7 @@
 use fancy_regex::Regex;
 use std::{collections::HashMap, rc::Rc, hint::unreachable_unchecked};
 
-use super::{data_types::{PrimitiveDataTypes, NumericLiteralEncoding, Operator, Keyword, StringLiteralEncoding}, error_handling::{CompilationError, Out, CompilationErrorType, OutBuilder}};
+use super::{data_types::{PrimitiveDataTypes, NumericLiteralEncoding, Operator, Keyword, StringLiteralEncoding}};
 
 /// Stores default settings for tokens, used to reduce verbosity on creation
 const BASE_TOKEN: TokenDefinition = TokenDefinition {
@@ -123,7 +123,7 @@ fn compile_tokens(tokens: &[TokenDefinition]) -> Result<TokenProgram, fancy_rege
 /// This function replaces all commented blocks of code with spaces, 1:1 with old characters.
 /// This keeps token attributions accurate to the original source file.
 /// Source file is included only for error handling purposes
-pub fn preprocess(mut string: String) -> Out<String, CompilationError> {
+pub fn preprocess(mut string: String) -> Option<String> {
     //We wont bother constructing an OutBuilder because there is only one possible error
 
     //We are going to be unsafe. How fun
@@ -325,10 +325,10 @@ pub fn preprocess(mut string: String) -> Out<String, CompilationError> {
                 line: last_block_comment_start_line_number,
                 column: last_block_comment_start_column_number,
             };
-            return Out::err(Some(final_result), vec![CompilationError { error_type: CompilationErrorType::UnterminatedBlockComment, message: "Unterminated block comment", attribution }]);
+            return None;
         }
 
-        return Out::success(final_result);
+        return Some(final_result);
     }
 }
 
@@ -594,16 +594,20 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
 
 /// This function tokenizes an input file. It takes an input file
 /// reference and returns a vec of tokens.
-pub fn tokenize_from_file(file: Rc<SourceFile>) -> Out<Vec<Token>, CompilationError> {
+/// The only error that can be encountered in the tokenization phase
+/// (aside from out of memory and similar) is an unterminated block
+/// comment, which is what the "None" case signifies.
+pub fn tokenize_from_file(file: Rc<SourceFile>) -> Option<Vec<Token>> {
     let input = file.src.clone();
     tokenize(input)
 }
 /// This function tokenizes an input string. It takes an input string
 /// reference and returns a vec of tokens.
+/// /// The only error that can be encountered in the tokenization phase
+/// (aside from out of memory and similar) is an unterminated block
+/// comment, which is what the "None" case signifies.
 #[allow(unused_variables)]
-pub fn tokenize(input: String) -> Out<Vec<Token>, CompilationError> {
-    let mut out: OutBuilder = OutBuilder::new();
-
+pub fn tokenize(input: String) -> Option<Vec<Token>> {
     use std::time::Instant;
     let start = Instant::now();
     let comp_start = Instant::now();
@@ -616,13 +620,13 @@ pub fn tokenize(input: String) -> Out<Vec<Token>, CompilationError> {
     let comp_duration = comp_start.elapsed();
     let pre_start = Instant::now();
 
-    let preproccessed_string = match out.test(preprocess(input.clone())) {
+    let preproccessed_string = match preprocess(input.clone()) {
         Some(v) => v,
 
         //Even if there is an error, preprocess should still return sensible output. If
         //not, we give the tokenizer the contents of file originally. That will almost
         //certainly cause problems, but it allows us to resume "gracefully"
-        None => input,
+        None => return None,
     };
 
     let pre_duration = pre_start.elapsed();
@@ -638,7 +642,7 @@ pub fn tokenize(input: String) -> Out<Vec<Token>, CompilationError> {
     // println!("Tokenized in {:?}", tok_duration);
     // println!("Total runtime: {:?}", duration);
 
-    return OutBuilder::out(result, out);
+    return Some(result);
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
