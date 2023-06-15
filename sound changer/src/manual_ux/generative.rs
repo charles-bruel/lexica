@@ -69,6 +69,9 @@ table (id=1), and appends "ka" to every noun
 */
 
 mod execution;
+mod tokenizer;
+mod data_types;
+mod error_handling;
 
 use std::{collections::HashMap, rc::Rc};
 
