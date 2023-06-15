@@ -1,8 +1,6 @@
 // The following code has been taken from Lagomorph
 // git@github.com:BigTandy/Lagomorph with permission
-// from the author
-
-use super::tokenizer::Token;
+// from the author and owner
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PrimitiveDataTypes {

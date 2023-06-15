@@ -1,6 +1,6 @@
 // The following code has been taken from Lagomorph
 // git@github.com:BigTandy/Lagomorph with permission
-// from the author
+// from the author and owner
 
 use fancy_regex::Regex;
 use std::{collections::HashMap, rc::Rc, hint::unreachable_unchecked};
@@ -123,7 +123,7 @@ fn compile_tokens(tokens: &[TokenDefinition]) -> Result<TokenProgram, fancy_rege
 /// This function replaces all commented blocks of code with spaces, 1:1 with old characters.
 /// This keeps token attributions accurate to the original source file.
 /// Source file is included only for error handling purposes
-pub fn preprocess(mut string: String, source: Rc<SourceFile>) -> Out<String, CompilationError> {
+pub fn preprocess(mut string: String) -> Out<String, CompilationError> {
     //We wont bother constructing an OutBuilder because there is only one possible error
 
     //We are going to be unsafe. How fun
@@ -324,7 +324,6 @@ pub fn preprocess(mut string: String, source: Rc<SourceFile>) -> Out<String, Com
                 token_contents: String::from("/*"),
                 line: last_block_comment_start_line_number,
                 column: last_block_comment_start_column_number,
-                source_file: source.clone(),
             };
             return Out::err(Some(final_result), vec![CompilationError { error_type: CompilationErrorType::UnterminatedBlockComment, message: "Unterminated block comment", attribution }]);
         }
@@ -335,7 +334,7 @@ pub fn preprocess(mut string: String, source: Rc<SourceFile>) -> Out<String, Com
 
 /// This is the internal tokenization function, it takes in an array of token defintions
 /// and an input string and returns an array of tokens
-fn tokenize_int(tokens: TokenProgram, input: String, file: Rc<SourceFile>) -> Vec<Token> {
+fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
     let mut result = Vec::new();
     let mut current_string: &str = &input;
     //Prevent repeated allocations by reusing vector
@@ -543,8 +542,6 @@ fn tokenize_int(tokens: TokenProgram, input: String, file: Rc<SourceFile>) -> Ve
                                 token_contents: String::from(&current_string[0..selected_match.1]),
                                 line: line_number,
                                 column: column_number,
-                                //Cloning the reference not the actual contents
-                                source_file: file.clone(),
                             });
                         }
 
@@ -595,14 +592,18 @@ fn tokenize_int(tokens: TokenProgram, input: String, file: Rc<SourceFile>) -> Ve
     return result;
 }
 
-/// This function tokenizes an input file. It takes an input file and source file
-/// reference (which will be attached to the token attributions) and returns a vec
-/// of tokens.
-#[allow(unused_variables)]
-pub fn tokenize(file: Rc<SourceFile>) -> Out<Vec<Token>, CompilationError> {
-    let mut out = OutBuilder::new();
-
+/// This function tokenizes an input file. It takes an input file
+/// reference and returns a vec of tokens.
+pub fn tokenize_from_file(file: Rc<SourceFile>) -> Out<Vec<Token>, CompilationError> {
     let input = file.src.clone();
+    tokenize(input)
+}
+/// This function tokenizes an input string. It takes an input string
+/// reference and returns a vec of tokens.
+#[allow(unused_variables)]
+pub fn tokenize(input: String) -> Out<Vec<Token>, CompilationError> {
+    let mut out: OutBuilder = OutBuilder::new();
+
     use std::time::Instant;
     let start = Instant::now();
     let comp_start = Instant::now();
@@ -615,19 +616,19 @@ pub fn tokenize(file: Rc<SourceFile>) -> Out<Vec<Token>, CompilationError> {
     let comp_duration = comp_start.elapsed();
     let pre_start = Instant::now();
 
-    let preproccessed_string = match out.test(preprocess(input, file.clone())) {
+    let preproccessed_string = match out.test(preprocess(input.clone())) {
         Some(v) => v,
 
         //Even if there is an error, preprocess should still return sensible output. If
         //not, we give the tokenizer the contents of file originally. That will almost
         //certainly cause problems, but it allows us to resume "gracefully"
-        None => file.src.clone(),
+        None => input,
     };
 
     let pre_duration = pre_start.elapsed();
     let tok_start = Instant::now();
 
-    let result = tokenize_int(compiled_tokens, preproccessed_string, file);
+    let result = tokenize_int(compiled_tokens, preproccessed_string);
 
     let tok_duration = tok_start.elapsed();
     let duration = start.elapsed();
@@ -654,8 +655,6 @@ pub struct Token {
     /// Tracks the column of the line in the file this token is from. It 
     /// references the start column
     pub column: u16,
-    /// Tracks a reference the file this token was originally from
-    pub source_file: Rc<SourceFile>,//We want to save memory and only track a reference to this source file
 }
 
 /// This stores information about the source file a token came from, used for

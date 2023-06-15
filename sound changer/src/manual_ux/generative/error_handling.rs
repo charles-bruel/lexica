@@ -1,6 +1,6 @@
 // The following code has been taken from Lagomorph
 // git@github.com:BigTandy/Lagomorph with permission
-// from the author
+// from the author and owner
 
 use std::vec;
 

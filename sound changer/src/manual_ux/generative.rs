@@ -72,18 +72,20 @@ mod execution;
 mod tokenizer;
 mod data_types;
 mod error_handling;
+mod construction;
 
 use std::{collections::HashMap, rc::Rc};
 
 use self::execution::OutputNode;
 
-use super::project::Project;
+use super::{project::Project, table::{TableDescriptor, TableRow, TableLoadingError}};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeLine {
     pub columns: Vec<GenerativeProgram>,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum GenerativeProgramRuntimeError {
     MismatchedRangeLengths,
     TypeMismatch,
@@ -93,6 +95,17 @@ pub enum GenerativeProgramRuntimeError {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum GenerativeProgramCompileError {
+   SyntaxError,
+   TokenizationError(),
+   TypeMismatch,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeProgram {
     output_node: OutputNode,
+}
+
+pub fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> Result<TableRow, TableLoadingError> {
+   construction::parse_generative_table_line(descriptor, line)
 }

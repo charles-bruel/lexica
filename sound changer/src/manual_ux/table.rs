@@ -1,5 +1,9 @@
 use std::rc::Rc;
 
+use crate::manual_ux::generative::parse_generative_table_line;
+
+use super::generative::GenerativeProgramRuntimeError;
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
     pub id: u16,
@@ -203,9 +207,4 @@ fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -
             }
         },
     }
-}
-
-// Move to another file?
-fn parse_generative_table_line(_descriptor: &TableDescriptor, _line: &str) -> Result<TableRow, TableLoadingError> {
-    todo!()
 }
