@@ -55,6 +55,7 @@ const TOKENS: &[TokenDefinition] = &[
 
     TokenDefinition { token_type: TokenType::Operator(Operator::Dollar), descriptor: "$",  priority: 1, ..BASE_TOKEN  },
     TokenDefinition { token_type: TokenType::Operator(Operator::Bang),   descriptor: "!",  priority: 1, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Operator(Operator::Pipe),   descriptor: "|",  priority: 1, ..BASE_TOKEN  },
 
     //Keywords
     TokenDefinition { token_type: TokenType::Keyword(Keyword::Foreach), descriptor: "sub",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },

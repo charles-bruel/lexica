@@ -68,4 +68,5 @@ pub enum Operator {
     SemiColon,
     Bang,
     Dollar,
+    Pipe,
 }
