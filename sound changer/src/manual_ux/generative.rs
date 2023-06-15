@@ -292,7 +292,7 @@ impl UIntNode {
 }
 
 impl RangeNode {
-    pub fn eval(self, context: &mut ExecutionContext) -> Result<Range, GenerativeProgramRuntimeError> {
+    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Range, GenerativeProgramRuntimeError> {
         match self {
             RangeNode::ForeachNode(_, _) => todo!(),
             RangeNode::FilterNode(range, column, predicate) => {
@@ -309,11 +309,11 @@ impl RangeNode {
             },
             RangeNode::Save(range, key) => {
                 let evaluated = range.to_owned().eval(context)?;
-                context.saved_ranges.insert(key, evaluated.clone());
+                context.saved_ranges.insert(key.clone(), evaluated.clone());
                 return Ok(evaluated);
             },
             RangeNode::Saved(key, column) => {
-                let mut result = context.saved_ranges[&key].clone();
+                let mut result = context.saved_ranges[key].clone();
                 match column {
                     Some(v) => result.column_id = Some(v.column_id),
                     None => (),
