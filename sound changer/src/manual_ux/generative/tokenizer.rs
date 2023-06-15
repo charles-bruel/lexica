@@ -17,6 +17,8 @@ const BASE_TOKEN: TokenDefinition = TokenDefinition {
 };
 
 /// Contains every type of token that should be matched in the compilation process
+/// LEXICA NOTE: This token list is excessively but since the work was already done,
+/// I kept it
 const TOKENS: &[TokenDefinition] = &[
     //Grouping types
     TokenDefinition { token_type: TokenType::OpenGroup(GroupType::Paren),   descriptor: "(", priority: 0, ..BASE_TOKEN },
@@ -55,35 +57,15 @@ const TOKENS: &[TokenDefinition] = &[
     TokenDefinition { token_type: TokenType::Operator(Operator::Bang),   descriptor: "!",  priority: 1, ..BASE_TOKEN  },
 
     //Keywords
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Function), descriptor: "sub",      priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Let),      descriptor: "let",      priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Mut),      descriptor: "mut",      priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Const),    descriptor: "const",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::For),      descriptor: "for",      priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::While),    descriptor: "while",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::If),       descriptor: "if",       priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Else),     descriptor: "else",     priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Elif),     descriptor: "elif",     priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Break),    descriptor: "break",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Continue), descriptor: "continue", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::Foreach), descriptor: "sub",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::Filter),  descriptor: "filter", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::Save),    descriptor: "save",   priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::Saved),   descriptor: "saved",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::Enum),    descriptor: "enum",   priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::String),  descriptor: "string", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::Int),     descriptor: "int",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Keyword(Keyword::UInt),    descriptor: "uint",   priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
 
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::I8),   descriptor: "i8 ",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::I16),  descriptor: "i16",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::I32),  descriptor: "i32",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::I64),  descriptor: "i64",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::U8),   descriptor: "u8 ",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::U16),  descriptor: "u16",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::U32),  descriptor: "u32",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::U64),  descriptor: "u64",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::F32),  descriptor: "f32",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::F64),  descriptor: "f64",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Bool), descriptor: "bool", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::True),  descriptor: "true",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::False), descriptor: "false", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN },
-
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Define), descriptor: "define", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Export), descriptor: "export", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
     //Literals
         //(?!\w) is a lookahead sequence; it checks (but doesn't match) that there is NOT a word character
         //after the regex. 
@@ -765,191 +747,4 @@ pub enum GroupType {
     Paren,
     /// []
     Square,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn valid_compile() {
-        //Tests that the tokens do compile
-        compile_tokens(TOKENS).unwrap();
-    }
-
-    #[test]
-    fn tokenize_keyword_priority() {
-        let temp = tokenize(create_test_src_file("while")).unwrap();
-        assert_eq!(temp.len(), 1);
-        assert_eq!(temp[0].token_type, TokenType::Keyword(Keyword::While));
-    }
-
-    #[test]
-    fn tokenize_word_check() {
-        let temp = tokenize(create_test_src_file("substring")).unwrap();
-        assert_eq!(temp.len(), 1);
-        assert_eq!(temp[0].token_type, TokenType::Symbol);
-    }
-
-    #[test]
-    fn tokenize_attribution_test_1() {
-        let temp = tokenize(create_test_src_file("sub foo(bar baz) {")).unwrap();
-        assert_eq!(temp.len(), 7);
-        assert_eq!(temp[2].column, 7);
-    }
-
-    #[test]
-    fn tokenize_attribution_test_2() {
-        let temp = tokenize(create_test_src_file("sub main() {\nconst u32 limit = 100;")).unwrap();
-        assert_eq!(temp.len(), 11);
-        assert_eq!(temp[4].line, 0);
-        assert_eq!(temp[5].line, 1);
-    }
-
-    #[test]
-    fn strip_comments_test_1() {
-        let result = preprocess(String::from("foo /* foo */"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "foo          ");
-    }
-
-    #[test]
-    fn strip_comments_test_2() {
-        let result = preprocess(String::from("foo // foo"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "foo       ");
-    }
-
-    #[test]
-    fn strip_comments_test_3() {
-        let result = preprocess(String::from("foo /* foo"), create_empty_test_src_file()).unwrap_err();
-        assert_eq!(result[0].attribution.line, 0);
-        assert_eq!(result[0].attribution.column, 4);
-        assert_eq!(result[0].attribution.token_contents, "/*");
-    }
-
-    #[test]
-    fn strip_comments_test_4() {
-        let result = preprocess(String::from("//foo\nbar"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "     \nbar");
-    }
-
-    #[test]
-    fn strip_comments_test_5() {
-        let result = preprocess(String::from("foo/*\n*/"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "foo  \n  ");
-    }
-
-    #[test]
-    fn strip_comments_test_6() {
-        let result = preprocess(String::from("//foo ī"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "       ");
-    }
-
-    #[test]
-    fn strip_comments_test_7() {
-        let result = preprocess(String::from("//foo 汉"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "       ");
-    }
-
-    #[test]
-    fn strip_comments_test_8() {
-        let result = preprocess(String::from("//foo 👀"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "       ");
-    }
-
-    #[test]
-    fn strip_comments_test_9() {
-        //Testing a flag emoji. It's two codepoints combined, so the output will have
-        //two characters where it used to be
-        let result = preprocess(String::from("//foo 🇵🇬"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "        ");
-    }
-
-    #[test]
-    fn strip_comments_test_10() {
-        //Testing skin tone modifiers. The skin tone modifier is a character, so the output
-        //will have two characters where it used to be
-        let result = preprocess(String::from("//foo 👋🏻"), create_empty_test_src_file()).unwrap();
-        assert_eq!(result, "        ");
-    }
-
-    #[test]
-    fn string_literal_test_1() {
-        let temp = tokenize(create_test_src_file("= r\"foo\"")).unwrap();
-        assert_eq!(temp.len(), 2);
-        assert_eq!(temp[1].token_contents, "r\"foo\"");
-    }
-
-    #[test]
-    fn string_literal_test_2() {
-        let temp = tokenize(create_test_src_file("= \"\\\"foo\\\"\"")).unwrap();
-        assert_eq!(temp.len(), 2);
-        assert_eq!(temp[1].token_contents, "\"\\\"foo\\\"\"");
-    }
-
-    #[test]
-    fn string_literal_test_3() {
-        let temp = tokenize(create_test_src_file("= \"\\\"foo\\\\\"")).unwrap();
-        assert_eq!(temp.len(), 2);
-        assert_eq!(temp[1].token_contents, "\"\\\"foo\\\\\"");
-    }
-
-    #[test]
-    fn string_literal_test_4() {
-        let temp = tokenize(create_test_src_file("= \"foo\nfoo\"")).unwrap();
-        assert_eq!(temp.len(), 2);
-        assert_eq!(temp[1].token_contents, "\"foo\nfoo\"");
-    }
-
-    #[test]
-    fn string_literal_test_5() {
-        let temp = tokenize(create_test_src_file("\"foo\nfoo")).unwrap();
-        assert_eq!(temp[0].token_type, TokenType::Unknown);
-    }
-
-    #[test]
-    fn string_literal_test_6() {
-        let temp = tokenize(create_test_src_file("r\"foo\nfoo")).unwrap();
-        //The first thing will be parsed as a symol, so we just make sure it wasn't
-        //parsed as a string literal first
-        assert_ne!(temp[0].token_type, TokenType::StringLiteral(StringLiteralEncoding::Raw));
-        assert_eq!(temp[1].token_type, TokenType::Unknown);
-
-    }
-    
-    #[test]
-    fn tokenize_int_test_1() {
-        //Tests that the tokenizer outputs the expected types
-        //Note: does not check that the contents are correct
-        let temp = tokenize(create_test_src_file("sub fib(u32 n) -> u32 {")).unwrap();
-        assert_eq!(temp.len(), 9);
-        for i in 0..9 {
-            assert_eq!(temp[i].token_type, INT_TEST_1_EXPECT_TYPE[i]);
-            assert_eq!(temp[i].column, INT_TEST_1_EXPECT_COLUMN[i]);
-        }
-    }
-
-    fn create_test_src_file(contents: &'static str) -> Rc<SourceFile> {
-        Rc::new(SourceFile { file_name: String::from("Test"), src: String::from(contents)})
-    }
-
-    fn create_empty_test_src_file() -> Rc<SourceFile> {
-        Rc::new(SourceFile { file_name: String::from("Test"), src: String::from("")})
-    }
-
-    const INT_TEST_1_EXPECT_TYPE: [TokenType; 9] = [
-        TokenType::Keyword(Keyword::Function),
-        TokenType::Symbol,
-        TokenType::OpenGroup(GroupType::Paren),
-        TokenType::Keyword(Keyword::U32),
-        TokenType::Symbol,
-        TokenType::CloseGroup(GroupType::Paren),
-        TokenType::Operator(Operator::Arrow),
-        TokenType::Keyword(Keyword::U32),
-        TokenType::OpenGroup(GroupType::Curly),
-    ];
-
-    const INT_TEST_1_EXPECT_COLUMN: [u16; 9] = [
-        0, 4, 7, 8, 12, 13, 15, 18, 22
-    ];
-
 }

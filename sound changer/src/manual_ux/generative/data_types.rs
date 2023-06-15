@@ -34,34 +34,17 @@ pub enum StringLiteralEncoding {
     Raw,  //No escaped characters, WYSIWG
 }
 
+// Modified for lexica
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Keyword {
-    Function,
-    Let,
-    Mut,
-    Const,
-    For,
-    While,
-    If,
-    Else,
-    Elif,
-    Break,
-    Continue,
-    True,
-    False,
-    Bool,
-    I8,
-    I16,
-    I32,
-    I64,
-    U8,
-    U16,
-    U32,
-    U64,
-    F32,
-    F64,
-    Define,
-    Export,
+    Foreach,
+    Filter,
+    Save,
+    Saved,
+    Enum,
+    String,
+    Int,
+    UInt
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -87,28 +70,4 @@ pub enum Operator {
     SemiColon,
     Bang,
     Dollar,
-}
-
-pub struct CompilationUnit {
-    //This is still really light on details and stuff
-    pub tokens: Vec<Token>,
-    pub source: String,
-}
-
-impl PrimitiveDataTypes {
-    pub fn sizeof(&self) -> usize {
-        match self {
-            PrimitiveDataTypes::Bool => 1,
-            PrimitiveDataTypes::I8   => 1,
-            PrimitiveDataTypes::I16  => 2,
-            PrimitiveDataTypes::I32  => 4,
-            PrimitiveDataTypes::I64  => 8,
-            PrimitiveDataTypes::U8   => 1,
-            PrimitiveDataTypes::U16  => 2,
-            PrimitiveDataTypes::U32  => 4,
-            PrimitiveDataTypes::U64  => 8,
-            PrimitiveDataTypes::F32  => 4,
-            PrimitiveDataTypes::F64  => 8,
-        }
-    }
 }

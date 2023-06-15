@@ -29,7 +29,7 @@ After that operator, columns are seperated like normal, with the | symbol
 1. Constant values are encoded as usual
 2. Variables are marked by beginning the block with the = symbol
 3. Values can be added (int, uint) or concatenated (string) with the + symbol
-4. Literals are encoded by the lit() function in equations
+4. Literals are placed into equations
 5. To reference another table, use this format: TABLE_ID:COLUMN_NAME.
    You can omit one of the values if appropiate
 6. The foreach function creates an entry for each row in the the table, 
@@ -37,7 +37,7 @@ After that operator, columns are seperated like normal, with the | symbol
 Example:
 POS|word|translation
 ...|String|String
-:={=foreach(1:POS)|=foreach(1:word)+lit(ka)|=foreach(1:translation)}
+:={=foreach(1:POS)|=foreach(1:word)+ka|=foreach(1:translation)}
 
 The above code creates an entry in the table for every entry in the previous
 table (id=1), and appends "ka" to the word
@@ -60,7 +60,7 @@ table (id=1), and appends "ka" to the word
 Example:
 POS|word|translation
 ...|String|String
-:={=foreach(1:POS).filter(:POS==POS:Noun).save(a)|=saved(a,:word)+lit(ka)|=saved(a,:translation)}
+:={=foreach(1:POS).filter(:POS==POS:Noun).save(a)|=saved(a,:word)+ka|=saved(a,:translation)}
 :={=foreach(1:POS).filter(:POS!=POS:Noun).save(a)|=saved(a,:word)|=saved(a,:translation)}
 
 The above code creates an entry in the table for every entry in the previous
