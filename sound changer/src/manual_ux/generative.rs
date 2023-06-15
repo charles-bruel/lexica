@@ -79,6 +79,7 @@ pub struct GenerativeLine {
 pub enum GenerativeProgramRuntimeError {
     MismatchedRangeLengths,
     TypeMismatch,
+    OutOfOrderExecution,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -152,10 +153,10 @@ struct ColumnSpecifier {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum FilterPredicate {
-    EnumCompare(SimpleComparisionType, EnumNode, EnumNode),
-    StringCompare(SimpleComparisionType, StringNode, StringNode),
-    IntCompare(ComplexComparisionType, IntNode, IntNode),
-    UIntCompare(ComplexComparisionType, UIntNode, UIntNode),
+    EnumCompare(SimpleComparisionType, EnumNode),
+    StringCompare(SimpleComparisionType, StringNode),
+    IntCompare(ComplexComparisionType, IntNode),
+    UIntCompare(ComplexComparisionType, UIntNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -169,9 +170,9 @@ enum ComplexComparisionType {
 }
 
 impl StringNode {
-    pub fn eval(self, context: &mut ExecutionContext) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
+    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
         match self {
-            StringNode::LiteralNode(contents) => Ok(vec!(contents)),
+            StringNode::LiteralNode(contents) => Ok(vec!(contents.clone())),
             StringNode::AdditionNode(a, b) => {
                 let mut operand1 = a.eval(context)?;
                 let mut operand2 = b.eval(context)?;
@@ -216,7 +217,7 @@ impl RangeNode {
                 let mut result = range.eval(context)?;
                 let mut new_range: Vec<TableRow> = Vec::with_capacity(result.rows.len());
                 for x in result.rows {
-                    if (&predicate).check(&x, &column)? {
+                    if (&predicate).check(&x, &column, context)? {
                         new_range.push(x);
                     }
                 }
@@ -243,33 +244,93 @@ impl RangeNode {
 }
 
 impl FilterPredicate {
-    pub fn check(&self, row: &TableRow, column: &ColumnSpecifier) -> Result<bool, GenerativeProgramRuntimeError> {
+    pub fn check(&self, row: &TableRow, column: &ColumnSpecifier, context: &mut ExecutionContext) -> Result<bool, GenerativeProgramRuntimeError> {
         // Check data type of input
-        let descriptor = match row {
-            TableRow::PopulatedTableRow { descriptor, .. } => descriptor,
+        let (descriptor, contents) = match row {
+            TableRow::PopulatedTableRow { descriptor, contents, .. } => (descriptor, contents),
             TableRow::UnpopulatedTableRow { descriptor, .. } => {
-                println!("Attempting to interact with an unpopulated row...");
-                descriptor
+                return Err(GenerativeProgramRuntimeError::OutOfOrderExecution);
             },
         };
         let input_data_type = &descriptor.column_descriptors[column.column_id].data_type;
+        
+        // Crazy multi-level match statement
         match self {
-            FilterPredicate::EnumCompare(_, _, _) => match input_data_type {
-                super::table::TableDataTypeDescriptor::Enum(_) => todo!(),
+            FilterPredicate::EnumCompare(comp_type, node) => match input_data_type {
+                super::table::TableDataTypeDescriptor::Enum(_) => match contents[column.column_id] {
+                    super::table::TableContents::Enum(v) => todo!(),
+                    // Assuming that the creation of the descriptor is done correctly,
+                    // this will never happen and will be unreachable
+                    _ => unreachable!(),
+                },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::StringCompare(_, _, _) => match input_data_type {
-                super::table::TableDataTypeDescriptor::String => todo!(),
+            FilterPredicate::StringCompare(comp_type, node) => match input_data_type {
+                super::table::TableDataTypeDescriptor::String => match &contents[column.column_id] {
+                    super::table::TableContents::String(v) => {
+                        let eval = enforce_single_string(node.eval(context)?)?;
+                        return match comp_type {
+                            SimpleComparisionType::Equals => Ok(eval == *v),
+                            SimpleComparisionType::NotEquals => Ok(eval != *v),
+                        };
+                    },
+                    // Assuming that the creation of the descriptor is done correctly,
+                    // this will never happen and will be unreachable
+                    _ => unreachable!(),
+                },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::IntCompare(_, _, _) => match input_data_type {
-                super::table::TableDataTypeDescriptor::Int => todo!(),
+            FilterPredicate::IntCompare(comp_type, node) => match input_data_type {
+                super::table::TableDataTypeDescriptor::Int => match contents[column.column_id] {
+                    super::table::TableContents::Int(v) => todo!(),
+                    // Assuming that the creation of the descriptor is done correctly,
+                    // this will never happen and will be unreachable
+                    _ => unreachable!(),
+                },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::UIntCompare(_, _, _) => match input_data_type {
-                super::table::TableDataTypeDescriptor::UInt => todo!(),
+            FilterPredicate::UIntCompare(comp_type, node) => match input_data_type {
+                super::table::TableDataTypeDescriptor::UInt => match contents[column.column_id] {
+                    super::table::TableContents::UInt(v) => todo!(),
+                    // Assuming that the creation of the descriptor is done correctly,
+                    // this will never happen and will be unreachable
+                    _ => unreachable!(),
+                },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
         }
+    }
+}
+
+fn enforce_single_string(input: Vec<String>) -> Result<String, GenerativeProgramRuntimeError> {
+    if input.len() == 1 {
+        Ok(input[0].clone())
+    } else {
+        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+    }
+}
+
+// TODO: Figure out exactly how to represents enums
+fn enforce_single_usize(input: Vec<usize>) -> Result<usize, GenerativeProgramRuntimeError> {
+    if input.len() == 1 {
+        Ok(input[0])
+    } else {
+        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+    }
+}
+
+fn enforce_single_i32(input: Vec<i32>) -> Result<i32, GenerativeProgramRuntimeError> {
+    if input.len() == 1 {
+        Ok(input[0])
+    } else {
+        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+    }
+}
+
+fn enforce_single_u32(input: Vec<u32>) -> Result<u32, GenerativeProgramRuntimeError> {
+    if input.len() == 1 {
+        Ok(input[0])
+    } else {
+        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
     }
 }
