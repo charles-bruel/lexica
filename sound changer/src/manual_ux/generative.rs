@@ -51,6 +51,7 @@ table (id=1), and appends "ka" to the word
    This must be called directly after a foreach, filter, etc., because once it
    is used, it loses the multi-element properties.
    Note how the selection parameter can be different than the contents parameter
+   Note that enums literals have their source specified with the : operator
 9. A row selection can be saved with the save(selection, name) command, which can then
    be loaded with the saved(name, <new base column>) command. Note how the column used
    can change
@@ -59,17 +60,17 @@ table (id=1), and appends "ka" to the word
 Example:
 POS|word|translation
 ...|String|String
-:={=foreach(1:POS).filter(:POS==Noun).save(a)|=saved(a,:word)+lit(ka)|=saved(a,:translation)}
-:={=foreach(1:POS).filter(:POS!=Noun).save(a)|=saved(a,:word)|=saved(a,:translation)}
+:={=foreach(1:POS).filter(:POS==POS:Noun).save(a)|=saved(a,:word)+lit(ka)|=saved(a,:translation)}
+:={=foreach(1:POS).filter(:POS!=POS:Noun).save(a)|=saved(a,:word)|=saved(a,:translation)}
 
 The above code creates an entry in the table for every entry in the previous
 table (id=1), and appends "ka" to every noun
 
 */
 
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
-use super::table::TableRow;
+use super::{table::{TableRow, TableColumnDescriptor, TableDescriptor}, project::Project};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeLine {
@@ -80,6 +81,8 @@ pub enum GenerativeProgramRuntimeError {
     MismatchedRangeLengths,
     TypeMismatch,
     OutOfOrderExecution,
+    TableNotFound,
+    EnumNotFound,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -88,8 +91,11 @@ pub struct GenerativeProgram {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-struct ExecutionContext {
+struct ExecutionContext<'a> {
     pub saved_ranges: HashMap<String, Range>,
+    pub table_descriptor: Rc<TableDescriptor>,
+    pub table_specifer: TableSpecifier,
+    pub project: &'a Project,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -123,7 +129,7 @@ enum UIntNode {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum EnumNode {
-    LiteralNode,
+    LiteralNode(String, ColumnSpecifier, Option<TableSpecifier>),
     ConversionNode(RangeNode)
 }
 
@@ -141,12 +147,12 @@ struct Range {
     pub column_id: Option<usize>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 struct TableSpecifier {
     pub table_id: usize,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 struct ColumnSpecifier {
     pub column_id: usize,
 }
@@ -167,6 +173,13 @@ enum SimpleComparisionType {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum ComplexComparisionType {
     Equals, NotEquals, Greater, Less, GreaterEquals, LessEquals
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct RuntimeEnum {
+    index: usize,
+    table: TableSpecifier,
+    column: ColumnSpecifier,
 }
 
 impl StringNode {
@@ -287,6 +300,38 @@ impl UIntNode {
                 return Ok(operand1);
             },
             UIntNode::ConversionNode(_) => todo!(),
+        }
+    }
+}
+
+impl EnumNode {
+    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<RuntimeEnum>, GenerativeProgramRuntimeError> {
+        match self {
+            EnumNode::LiteralNode(key, column_specifier, table_specifier) => {
+                let (table, table_specifer) = match table_specifier {
+                    Some(index) => match &context.project.tables[index.table_id] {
+                        Some(table) => (table.table_descriptor.clone(), *index),
+                        None => return Err(GenerativeProgramRuntimeError::TableNotFound),
+                    },
+                    None => (context.table_descriptor.clone(), context.table_specifer),
+                };
+                let data_type = &table.column_descriptors[column_specifier.column_id].data_type;
+                let values = match data_type {
+                    crate::manual_ux::table::TableDataTypeDescriptor::Enum(v) => v,
+                    // Assuming that the creation of the node is done correctly,
+                    // this will never happen and will be unreachable
+                    _ => unreachable!()
+                };
+                match values.iter().position(|elem| elem == key) {
+                    Some(index) => Ok(vec!(RuntimeEnum {
+                        index,
+                        table: table_specifer,
+                        column: *column_specifier,
+                    })),
+                    None => Err(GenerativeProgramRuntimeError::EnumNotFound),
+                }
+            },
+            EnumNode::ConversionNode(_) => todo!(),
         }
     }
 }

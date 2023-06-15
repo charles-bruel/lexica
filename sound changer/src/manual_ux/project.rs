@@ -2,6 +2,7 @@ use crate::{manual_ux::table, io};
 
 use super::table::{Table, TableLoadingError};
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Project {
     pub tables: Vec<Option<Table>>,
 }
