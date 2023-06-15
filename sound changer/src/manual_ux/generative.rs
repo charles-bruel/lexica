@@ -176,7 +176,8 @@ impl StringNode {
             StringNode::AdditionNode(a, b) => {
                 let mut operand1 = a.eval(context)?;
                 let mut operand2 = b.eval(context)?;
-                
+
+                // TODO: Work out DRY here
                 if operand1.len() != operand2.len() {
                     if operand1.len() == 1 {
                         let mut i = 0;
@@ -205,6 +206,87 @@ impl StringNode {
                 return Ok(operand1);
             },
             StringNode::ConversionNode(_) => todo!(),
+        }
+    }
+}
+
+impl IntNode {
+    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<i32>, GenerativeProgramRuntimeError> {
+        match self {
+            IntNode::LiteralNode(contents) => Ok(vec!(*contents)),
+            IntNode::AdditionNode(a, b) => {
+                let mut operand1 = a.eval(context)?;
+                let mut operand2 = b.eval(context)?;
+
+                // TODO: Work out DRY here
+                if operand1.len() != operand2.len() {
+                    if operand1.len() == 1 {
+                        let mut i = 0;
+                        while i < operand2.len() {
+                            operand2[i] += &operand1[0];
+                            i += 1;
+                        } 
+                        return Ok(operand2);
+                    }
+                    if operand2.len() == 1 {
+                        let mut i = 0;
+                        while i < operand1.len() {
+                            operand1[i] += &operand2[0];
+                            i += 1;
+                        } 
+                        return Ok(operand1);
+                    }
+                    return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
+                }
+
+                let mut i = 0;
+                while i < operand1.len() {
+                    operand1[i] += &operand2[i];
+                    i += 1;
+                } 
+                return Ok(operand1);
+            },
+            IntNode::ConversionNode(_) => todo!(),
+        }
+    }
+}
+
+impl UIntNode {
+    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<u32>, GenerativeProgramRuntimeError> {
+        match self {
+            UIntNode::LiteralNode(contents) => Ok(vec!(*contents)),
+            UIntNode::AdditionNode(a, b) => {
+                let mut operand1 = a.eval(context)?;
+                let mut operand2 = b.eval(context)?;
+                
+                if operand1.len() != operand2.len() {
+                    if operand1.len() == 1 {
+                        let mut i = 0;
+                        while i < operand2.len() {
+                            operand2[i] += &operand1[0];
+                            i += 1;
+                        } 
+                        return Ok(operand2);
+                    }
+                    if operand2.len() == 1 {
+                        let mut i = 0;
+                        while i < operand1.len() {
+                            operand1[i] += &operand2[0];
+                            i += 1;
+                        } 
+                        return Ok(operand1);
+                    }
+                    return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
+                }
+
+                let mut i = 0;
+                while i < operand1.len() {
+                    operand1[i] += &operand2[i];
+                    i += 1;
+                } 
+                return Ok(operand1);
+            },
+            UIntNode::ConversionNode(_) => todo!(),
         }
     }
 }
