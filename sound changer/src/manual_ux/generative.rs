@@ -73,7 +73,7 @@ mod tokenizer;
 mod data_types;
 mod construction;
 
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, num::ParseIntError};
 
 use self::execution::OutputNode;
 
@@ -84,7 +84,7 @@ pub struct GenerativeLine {
     pub columns: Vec<GenerativeProgram>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum GenerativeProgramRuntimeError {
     MismatchedRangeLengths,
     TypeMismatch,
@@ -93,12 +93,14 @@ pub enum GenerativeProgramRuntimeError {
     EnumNotFound,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GenerativeProgramCompileError {
    SyntaxError,
-   TokenizationError(),
    TypeMismatch,
+   IntParseError(ParseIntError),
+   IntOutOfRange,
 }
+
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeProgram {

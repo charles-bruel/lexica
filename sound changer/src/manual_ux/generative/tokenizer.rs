@@ -5,7 +5,7 @@
 use fancy_regex::Regex;
 use std::{collections::HashMap, rc::Rc, hint::unreachable_unchecked};
 
-use super::{data_types::{PrimitiveDataTypes, NumericLiteralEncoding, Operator, Keyword, StringLiteralEncoding}};
+use super::data_types::{Operator, Keyword};
 
 /// Stores default settings for tokens, used to reduce verbosity on creation
 const BASE_TOKEN: TokenDefinition = TokenDefinition {
@@ -51,6 +51,7 @@ const TOKENS: &[TokenDefinition] = &[
 
 
     TokenDefinition { token_type: TokenType::Operator(Operator::Comma),     descriptor: ",",  priority: 1, ..BASE_TOKEN  },
+    TokenDefinition { token_type: TokenType::Operator(Operator::Colon), descriptor: ":",  priority: 1, ..BASE_TOKEN  },
     TokenDefinition { token_type: TokenType::Operator(Operator::SemiColon), descriptor: ";",  priority: 1, ..BASE_TOKEN  },
 
     TokenDefinition { token_type: TokenType::Operator(Operator::Dollar), descriptor: "$",  priority: 1, ..BASE_TOKEN  },
@@ -70,10 +71,7 @@ const TOKENS: &[TokenDefinition] = &[
     //Literals
         //(?!\w) is a lookahead sequence; it checks (but doesn't match) that there is NOT a word character
         //after the regex. 
-    TokenDefinition { token_type: TokenType::NumericLiteral(PrimitiveDataTypes::I32, NumericLiteralEncoding::Base), descriptor: r"\d+(?!\w)", priority: 3, match_mode: MatchMode::Regex, ..BASE_TOKEN },
-
-    TokenDefinition { token_type: TokenType::StringLiteral(StringLiteralEncoding::Base), descriptor: "\"",  priority: 3, match_mode: MatchMode::StringLiteral(false), ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::StringLiteral(StringLiteralEncoding::Raw),  descriptor: "r\"", priority: 3, match_mode: MatchMode::StringLiteral(true),  ..BASE_TOKEN },
+    TokenDefinition { token_type: TokenType::NumericLiteral, descriptor: r"\d+(?!\w)", priority: 3, match_mode: MatchMode::Regex, ..BASE_TOKEN },
     
     //Symbols
         //This is a catch-all for any user defined symbols. We enforce some (but not all) of the symbol rules here
@@ -737,9 +735,7 @@ pub enum TokenType {
     /// any word or word-like thing that is not a keyword
     Symbol, //The contents are sent seperate to the type TODO: Maybe make the content come along with this?
     /// A literal is a value, such as "100" in code. Also sometimes called immediates. This stores a number
-    NumericLiteral(PrimitiveDataTypes, NumericLiteralEncoding),
-    /// A literal is a value, such as "100" in code. Also sometimes called immediates. This stores a string
-    StringLiteral(StringLiteralEncoding),
+    NumericLiteral,
 }
 
 /// Stores a grouping type, i.e. {}, [], ()

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
-use super::generative::GenerativeProgramRuntimeError;
+use super::generative::{GenerativeProgramRuntimeError, GenerativeProgramCompileError};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
@@ -61,13 +61,16 @@ pub enum TableContents {
     Int(i32),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TableLoadingError {
     MalformedHeader,
     MalformedDataTypeDescriptor,
     UnknownEnumType,
     ValueParseError,
     TableIDCollision,
+    GenerativeProgramError(GenerativeProgramCompileError),
+
+    Unknown,
 }
 
 pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {

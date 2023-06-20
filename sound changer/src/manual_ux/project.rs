@@ -7,7 +7,7 @@ pub struct Project {
     pub tables: Vec<Option<Table>>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ProjectLoadError {
     TableError(TableLoadingError),
 }
