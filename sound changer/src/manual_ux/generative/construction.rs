@@ -4,6 +4,7 @@ use crate::manual_ux::{
     generative::{
         data_types::{Keyword, Operator},
         tokenizer::TokenType,
+        SyntaxErrorType,
     },
     table::{
         GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
@@ -182,11 +183,19 @@ fn create_generative_program(
                     Keyword::Filter => todo!(),
                     Keyword::Save => todo!(),
                     Keyword::Saved => todo!(),
-                    _ => return Err(GenerativeProgramCompileError::SyntaxError),
+                    _ => {
+                        return Err(GenerativeProgramCompileError::SyntaxError(
+                            SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
+                        ))
+                    }
                 },
                 TokenType::NumericLiteral => todo!(),
                 TokenType::Symbol => todo!(),
-                _ => return Err(GenerativeProgramCompileError::SyntaxError),
+                _ => {
+                    return Err(GenerativeProgramCompileError::SyntaxError(
+                        SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
+                    ))
+                }
             },
             CurrentParsingContext::READY => todo!(),
             CurrentParsingContext::AWAITING_FUNCTION => todo!(),
@@ -246,7 +255,11 @@ fn create_literal_node(
 
             todo!()
         }
-        _ => return Err(GenerativeProgramCompileError::SyntaxError),
+        _ => {
+            return Err(GenerativeProgramCompileError::SyntaxError(
+                SyntaxErrorType::InvalidTokenDuringKeywordParsing,
+            ))
+        }
     }
 }
 
@@ -293,10 +306,14 @@ fn create_table_column_specifier(
                         }
                         Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
                     },
-                    _ => Err(GenerativeProgramCompileError::SyntaxError),
+                    _ => Err(GenerativeProgramCompileError::SyntaxError(
+                        SyntaxErrorType::InvalidTokenDuringTableColumnSpecifierParsing(line!()),
+                    )),
                 }
             } else {
-                Err(GenerativeProgramCompileError::SyntaxError)
+                Err(GenerativeProgramCompileError::SyntaxError(
+                    SyntaxErrorType::InvalidTokenDuringTableColumnSpecifierParsing(line!()),
+                ))
             }
         }
         // Table only or both
@@ -331,15 +348,21 @@ fn create_table_column_specifier(
                                 Ok(TableColumnSpecifier::TABLE(TableSpecifier { table_id }))
                             }
                         }
-                        _ => Err(GenerativeProgramCompileError::SyntaxError),
+                        _ => Err(GenerativeProgramCompileError::SyntaxError(
+                            SyntaxErrorType::InvalidTokenDuringTableColumnSpecifierParsing(line!()),
+                        )),
                     }
                 } else {
-                    Err(GenerativeProgramCompileError::SyntaxError)
+                    Err(GenerativeProgramCompileError::SyntaxError(
+                        SyntaxErrorType::InvalidTokenDuringTableColumnSpecifierParsing(line!()),
+                    ))
                 }
             }
             Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
         },
-        _ => Err(GenerativeProgramCompileError::SyntaxError),
+        _ => Err(GenerativeProgramCompileError::SyntaxError(
+            SyntaxErrorType::InvalidTokenDuringTableColumnSpecifierParsing(line!()),
+        )),
     }
 }
 

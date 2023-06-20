@@ -16,10 +16,16 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     let mut max_id: usize = 0;
     let mut accumulation: Vec<Table> = Vec::new();
     for entry in glob::glob(&(filepath + &String::from("/**/*.ltable"))).unwrap() {
-        let temp = table::load_table(
+        let temp = match table::load_table(
             &io::load_from_file(&entry.unwrap().as_path().display().to_string(), false).unwrap(),
-        )
-        .unwrap();
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("{:?}", e);
+                panic!();
+            }
+        };
+        
         if <u16 as Into<usize>>::into(temp.id) > max_id {
             max_id = temp.id.into();
         }

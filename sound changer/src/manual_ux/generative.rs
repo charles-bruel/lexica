@@ -98,11 +98,20 @@ pub enum GenerativeProgramRuntimeError {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GenerativeProgramCompileError {
-    SyntaxError,
+    SyntaxError(SyntaxErrorType),
     TypeMismatch,
     IntParseError(ParseIntError),
     IntOutOfRange,
     OnlySpecifiedTable,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+pub enum SyntaxErrorType {
+    InvalidKeywordDuringBlankStageParsing,
+    InvalidTokenDuringBlankStageParsing,
+    InvalidTokenDuringKeywordParsing,
+    InvalidTokenDuringTableColumnSpecifierParsing(u32),
+
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
