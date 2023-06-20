@@ -93,14 +93,23 @@ impl UnderspecifiedLiteral {
 
 pub fn parse_generative_table_line(
     descriptor: Rc<TableDescriptor>,
-    line: &str,
+    mut line: &str,
 ) -> Result<TableRow, TableLoadingError> {
-    let tokens = match tokenize(line.to_string()) {
+    // First we need to extract the useful portion of the line which
+    // should be in the form :={<CONTENT>} and tokenize it.
+    line = line.trim();
+    if &line[0..3] != ":={" || line.chars().nth_back(0).unwrap() != '}' {
+        return Err(TableLoadingError::GenerativeProgramCompileError(
+            GenerativeProgramCompileError::SyntaxError(SyntaxErrorType::MissingProgramSurrondings),
+        ));
+    }
+
+    let tokens = match tokenize(line[3..line.len() - 2].to_string()) {
         Some(v) => v,
         None => return Err(TableLoadingError::Unknown),
     };
 
-    // First we extract each column into a vec of tokens
+    // Then we extract each column into a vec of tokens
     // Programs are seperated by `|` tokens, so we just
     // iterate through the list and start a new vector
     // after every `|`.
@@ -166,6 +175,8 @@ fn create_generative_program(
     while queue.len() > 0 {
         // Queue is garunteed to have elements because of while condition
         let current_token = queue.pop_front().unwrap();
+
+        println!("{:?}", current_token);
 
         match context {
             CurrentParsingContext::START => match current_token.token_type {
@@ -306,6 +317,10 @@ fn create_table_column_specifier(
                         }
                         Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
                     },
+                    // Specifying column by name
+                    TokenType::Symbol => {
+                        todo!()
+                    }
                     _ => Err(GenerativeProgramCompileError::SyntaxError(
                         SyntaxErrorType::InvalidTokenDuringTableColumnSpecifierParsing(line!()),
                     )),
@@ -336,6 +351,10 @@ fn create_table_column_specifier(
                                                 GenerativeProgramCompileError::IntParseError(error),
                                             ),
                                         }
+                                    }
+                                    // Specifying column by name
+                                    TokenType::Symbol => {
+                                        todo!()
                                     }
                                     _ => {
                                         // In this case, the specifier is over so we return what

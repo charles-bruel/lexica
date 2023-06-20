@@ -845,10 +845,10 @@ pub fn tokenize(input: String) -> Option<Vec<Token>> {
     let tok_duration = tok_start.elapsed();
     let duration = start.elapsed();
 
-    // println!("Compiled tokens in {:?}", comp_duration);
-    // println!("Pre-proccessed in {:?}", pre_duration);
-    // println!("Tokenized in {:?}", tok_duration);
-    // println!("Total runtime: {:?}", duration);
+    println!("Compiled tokens in {:?}", comp_duration);
+    println!("Pre-proccessed in {:?}", pre_duration);
+    println!("Tokenized in {:?}", tok_duration);
+    println!("Total runtime: {:?}", duration);
 
     return Some(result);
 }
