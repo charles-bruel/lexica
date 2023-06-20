@@ -1,5 +1,5 @@
-use super::*;
 use super::super::table::*;
+use super::*;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ExecutionContext<'a> {
@@ -21,27 +21,27 @@ pub enum OutputNode {
 pub enum StringNode {
     LiteralNode(String),
     AdditionNode(Box<StringNode>, Box<StringNode>),
-    ConversionNode(RangeNode)
+    ConversionNode(RangeNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum IntNode {
     LiteralNode(i32),
     AdditionNode(Box<IntNode>, Box<IntNode>),
-    ConversionNode(RangeNode)
+    ConversionNode(RangeNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum UIntNode {
     LiteralNode(u32),
     AdditionNode(Box<UIntNode>, Box<UIntNode>),
-    ConversionNode(RangeNode)
+    ConversionNode(RangeNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum EnumNode {
     LiteralNode(String, ColumnSpecifier, Option<TableSpecifier>),
-    ConversionNode(RangeNode)
+    ConversionNode(RangeNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -49,7 +49,7 @@ pub enum RangeNode {
     ForeachNode(TableSpecifier, Option<ColumnSpecifier>),
     FilterNode(Box<RangeNode>, ColumnSpecifier, Box<FilterPredicate>),
     Save(Box<RangeNode>, String),
-    Saved(String, Option<ColumnSpecifier>)
+    Saved(String, Option<ColumnSpecifier>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -78,12 +78,18 @@ pub enum FilterPredicate {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SimpleComparisionType {
-    Equals, NotEquals
+    Equals,
+    NotEquals,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum ComplexComparisionType {
-    Equals, NotEquals, Greater, Less, GreaterEquals, LessEquals
+    Equals,
+    NotEquals,
+    Greater,
+    Less,
+    GreaterEquals,
+    LessEquals,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -94,9 +100,12 @@ pub struct RuntimeEnum {
 }
 
 impl StringNode {
-    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
+    pub fn eval(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
         match self {
-            StringNode::LiteralNode(contents) => Ok(vec!(contents.clone())),
+            StringNode::LiteralNode(contents) => Ok(vec![contents.clone()]),
             StringNode::AdditionNode(a, b) => {
                 let mut operand1 = a.eval(context)?;
                 let mut operand2 = b.eval(context)?;
@@ -108,7 +117,7 @@ impl StringNode {
                         while i < operand2.len() {
                             operand2[i] += &operand1[0];
                             i += 1;
-                        } 
+                        }
                         return Ok(operand2);
                     }
                     if operand2.len() == 1 {
@@ -116,7 +125,7 @@ impl StringNode {
                         while i < operand1.len() {
                             operand1[i] += &operand2[0];
                             i += 1;
-                        } 
+                        }
                         return Ok(operand1);
                     }
                     return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
@@ -126,18 +135,21 @@ impl StringNode {
                 while i < operand1.len() {
                     operand1[i] += &operand2[i];
                     i += 1;
-                } 
+                }
                 return Ok(operand1);
-            },
+            }
             StringNode::ConversionNode(_) => todo!(),
         }
     }
 }
 
 impl IntNode {
-    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<i32>, GenerativeProgramRuntimeError> {
+    pub fn eval(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<Vec<i32>, GenerativeProgramRuntimeError> {
         match self {
-            IntNode::LiteralNode(contents) => Ok(vec!(*contents)),
+            IntNode::LiteralNode(contents) => Ok(vec![*contents]),
             IntNode::AdditionNode(a, b) => {
                 let mut operand1 = a.eval(context)?;
                 let mut operand2 = b.eval(context)?;
@@ -149,7 +161,7 @@ impl IntNode {
                         while i < operand2.len() {
                             operand2[i] += &operand1[0];
                             i += 1;
-                        } 
+                        }
                         return Ok(operand2);
                     }
                     if operand2.len() == 1 {
@@ -157,7 +169,7 @@ impl IntNode {
                         while i < operand1.len() {
                             operand1[i] += &operand2[0];
                             i += 1;
-                        } 
+                        }
                         return Ok(operand1);
                     }
                     return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
@@ -167,29 +179,32 @@ impl IntNode {
                 while i < operand1.len() {
                     operand1[i] += &operand2[i];
                     i += 1;
-                } 
+                }
                 return Ok(operand1);
-            },
+            }
             IntNode::ConversionNode(_) => todo!(),
         }
     }
 }
 
 impl UIntNode {
-    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<u32>, GenerativeProgramRuntimeError> {
+    pub fn eval(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<Vec<u32>, GenerativeProgramRuntimeError> {
         match self {
-            UIntNode::LiteralNode(contents) => Ok(vec!(*contents)),
+            UIntNode::LiteralNode(contents) => Ok(vec![*contents]),
             UIntNode::AdditionNode(a, b) => {
                 let mut operand1 = a.eval(context)?;
                 let mut operand2 = b.eval(context)?;
-                
+
                 if operand1.len() != operand2.len() {
                     if operand1.len() == 1 {
                         let mut i = 0;
                         while i < operand2.len() {
                             operand2[i] += &operand1[0];
                             i += 1;
-                        } 
+                        }
                         return Ok(operand2);
                     }
                     if operand2.len() == 1 {
@@ -197,7 +212,7 @@ impl UIntNode {
                         while i < operand1.len() {
                             operand1[i] += &operand2[0];
                             i += 1;
-                        } 
+                        }
                         return Ok(operand1);
                     }
                     return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
@@ -207,16 +222,19 @@ impl UIntNode {
                 while i < operand1.len() {
                     operand1[i] += &operand2[i];
                     i += 1;
-                } 
+                }
                 return Ok(operand1);
-            },
+            }
             UIntNode::ConversionNode(_) => todo!(),
         }
     }
 }
 
 impl EnumNode {
-    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Vec<RuntimeEnum>, GenerativeProgramRuntimeError> {
+    pub fn eval(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<Vec<RuntimeEnum>, GenerativeProgramRuntimeError> {
         match self {
             EnumNode::LiteralNode(key, column_specifier, table_specifier) => {
                 let (table, table_specifer) = match table_specifier {
@@ -231,24 +249,27 @@ impl EnumNode {
                     crate::manual_ux::table::TableDataTypeDescriptor::Enum(v) => v,
                     // Assuming that the creation of the node is done correctly,
                     // this will never happen and will be unreachable
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
                 match values.iter().position(|elem| elem == key) {
-                    Some(index) => Ok(vec!(RuntimeEnum {
+                    Some(index) => Ok(vec![RuntimeEnum {
                         index,
                         table: table_specifer,
                         column: *column_specifier,
-                    })),
+                    }]),
                     None => Err(GenerativeProgramRuntimeError::EnumNotFound),
                 }
-            },
+            }
             EnumNode::ConversionNode(_) => todo!(),
         }
     }
 }
 
 impl RangeNode {
-    pub fn eval(&self, context: &mut ExecutionContext) -> Result<Range, GenerativeProgramRuntimeError> {
+    pub fn eval(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<Range, GenerativeProgramRuntimeError> {
         match self {
             RangeNode::ForeachNode(_, _) => todo!(),
             RangeNode::FilterNode(range, column, predicate) => {
@@ -262,12 +283,12 @@ impl RangeNode {
                 result.rows = new_range;
 
                 return Ok(result);
-            },
+            }
             RangeNode::Save(range, key) => {
                 let evaluated = range.to_owned().eval(context)?;
                 context.saved_ranges.insert(key.clone(), evaluated.clone());
                 return Ok(evaluated);
-            },
+            }
             RangeNode::Saved(key, column) => {
                 let mut result = context.saved_ranges[key].clone();
                 match column {
@@ -276,22 +297,31 @@ impl RangeNode {
                 }
 
                 return Ok(result);
-            },
+            }
         }
     }
 }
 
 impl FilterPredicate {
-    pub fn check(&self, row: &TableRow, column: &ColumnSpecifier, context: &mut ExecutionContext) -> Result<bool, GenerativeProgramRuntimeError> {
+    pub fn check(
+        &self,
+        row: &TableRow,
+        column: &ColumnSpecifier,
+        context: &mut ExecutionContext,
+    ) -> Result<bool, GenerativeProgramRuntimeError> {
         // Check data type of input
         let (descriptor, contents) = match row {
-            TableRow::PopulatedTableRow { descriptor, contents, .. } => (descriptor, contents),
+            TableRow::PopulatedTableRow {
+                descriptor,
+                contents,
+                ..
+            } => (descriptor, contents),
             TableRow::UnpopulatedTableRow { descriptor, .. } => {
                 return Err(GenerativeProgramRuntimeError::OutOfOrderExecution);
-            },
+            }
         };
         let input_data_type = &descriptor.column_descriptors[column.column_id].data_type;
-        
+
         // Crazy multi-level match statement
         match self {
             FilterPredicate::EnumCompare(comp_type, node) => match input_data_type {
@@ -311,7 +341,7 @@ impl FilterPredicate {
                             SimpleComparisionType::Equals => Ok(eval == *v),
                             SimpleComparisionType::NotEquals => Ok(eval != *v),
                         };
-                    },
+                    }
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
                     _ => unreachable!(),

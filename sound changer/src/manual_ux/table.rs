@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
-use super::generative::{GenerativeProgramRuntimeError, GenerativeProgramCompileError};
+use super::generative::{GenerativeProgramCompileError, GenerativeProgramRuntimeError};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
@@ -26,12 +26,13 @@ pub enum TableRow {
     UnpopulatedTableRow {
         procedure: Rc<GenerativeTableRowProcedure>,
         descriptor: Rc<TableDescriptor>,
-    }
+    },
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum PopulatedTableRowSource {
-    EXPLICIT, CACHE(Rc<GenerativeTableRowProcedure>)
+    EXPLICIT,
+    CACHE(Rc<GenerativeTableRowProcedure>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -76,7 +77,7 @@ pub enum TableLoadingError {
 pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {
     let mut lines: Vec<&str> = input.split("\n").collect();
     if lines.len() < 3 {
-        return Err(TableLoadingError::MalformedHeader)
+        return Err(TableLoadingError::MalformedHeader);
     }
     let header1 = lines[0].trim();
     let header2 = lines[1].trim();
@@ -91,7 +92,7 @@ pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {
     let descriptors_names: Vec<&str> = header2.split("|").collect();
     let descriptors_contents: Vec<&str> = header3.split("|").collect();
     if descriptors_names.len() != descriptors_contents.len() {
-        return Err(TableLoadingError::MalformedHeader)
+        return Err(TableLoadingError::MalformedHeader);
     }
 
     let mut descriptors: Vec<TableColumnDescriptor> = Vec::new();
@@ -99,13 +100,18 @@ pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {
     while i < descriptors_names.len() {
         let name = descriptors_names[i];
         let data_type = load_table_data_type(descriptors_contents[i])?;
-        
-        descriptors.push(TableColumnDescriptor { name: name.to_string(), data_type: data_type });
+
+        descriptors.push(TableColumnDescriptor {
+            name: name.to_string(),
+            data_type: data_type,
+        });
 
         i += 1;
     }
 
-    let descriptor = TableDescriptor { column_descriptors: descriptors };
+    let descriptor = TableDescriptor {
+        column_descriptors: descriptors,
+    };
 
     let mut table_rows: Vec<TableRow> = Vec::new();
 
@@ -142,7 +148,7 @@ fn load_table_data_type(input: &str) -> Result<TableDataTypeDescriptor, TableLoa
 
         value = value.trim_start_matches("[").to_string();
         value = value.trim_end_matches("]").to_string();
-        
+
         let enum_values: Vec<&str> = value.split(",").collect();
         let mut enum_final_values: Vec<String> = Vec::new();
         for x in enum_values {
@@ -150,13 +156,15 @@ fn load_table_data_type(input: &str) -> Result<TableDataTypeDescriptor, TableLoa
         }
 
         return Ok(TableDataTypeDescriptor::Enum(enum_final_values));
-        
     }
 
     Err(TableLoadingError::MalformedDataTypeDescriptor)
 }
 
-fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> Result<TableRow, TableLoadingError> {
+fn parse_table_line(
+    descriptor: Rc<TableDescriptor>,
+    line: &str,
+) -> Result<TableRow, TableLoadingError> {
     if line.starts_with(":=") {
         return parse_generative_table_line(descriptor.as_ref(), line);
     }
@@ -167,15 +175,25 @@ fn parse_table_line(descriptor: Rc<TableDescriptor>, line: &str) -> Result<Table
     let mut i = 0;
     let mut cells: Vec<TableContents> = Vec::new();
     while i < values.len() {
-        cells.push(parse_table_cell(values[i], &descriptor.as_ref().column_descriptors[i].data_type)?);
+        cells.push(parse_table_cell(
+            values[i],
+            &descriptor.as_ref().column_descriptors[i].data_type,
+        )?);
 
         i += 1;
     }
 
-    Ok(TableRow::PopulatedTableRow { source: PopulatedTableRowSource::EXPLICIT, descriptor: descriptor, contents: cells })
+    Ok(TableRow::PopulatedTableRow {
+        source: PopulatedTableRowSource::EXPLICIT,
+        descriptor: descriptor,
+        contents: cells,
+    })
 }
 
-fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -> Result<TableContents, TableLoadingError> {
+fn parse_table_cell(
+    cell_contents: &str,
+    descriptor: &TableDataTypeDescriptor,
+) -> Result<TableContents, TableLoadingError> {
     match descriptor {
         TableDataTypeDescriptor::Enum(vec) => {
             let test_string = cell_contents.to_lowercase();
@@ -193,21 +211,15 @@ fn parse_table_cell(cell_contents: &str, descriptor: &TableDataTypeDescriptor) -
             }
 
             Err(TableLoadingError::UnknownEnumType)
+        }
+        TableDataTypeDescriptor::String => Ok(TableContents::String(cell_contents.to_string())),
+        TableDataTypeDescriptor::UInt => match cell_contents.parse::<u32>() {
+            Ok(v) => Ok(TableContents::UInt(v)),
+            Err(_) => Err(TableLoadingError::ValueParseError),
         },
-        TableDataTypeDescriptor::String => {
-            Ok(TableContents::String(cell_contents.to_string()))
-        },
-        TableDataTypeDescriptor::UInt => {
-            match cell_contents.parse::<u32>() { 
-                Ok(v) => Ok(TableContents::UInt(v)),
-                Err(_) => Err(TableLoadingError::ValueParseError),
-            }
-        },
-        TableDataTypeDescriptor::Int => {
-            match cell_contents.parse::<i32>() { 
-                Ok(v) => Ok(TableContents::Int(v)),
-                Err(_) => Err(TableLoadingError::ValueParseError),
-            }
+        TableDataTypeDescriptor::Int => match cell_contents.parse::<i32>() {
+            Ok(v) => Ok(TableContents::Int(v)),
+            Err(_) => Err(TableLoadingError::ValueParseError),
         },
     }
 }

@@ -3,9 +3,9 @@
 // from the author and owner
 
 use fancy_regex::Regex;
-use std::{collections::HashMap, rc::Rc, hint::unreachable_unchecked};
+use std::{collections::HashMap, hint::unreachable_unchecked, rc::Rc};
 
-use super::data_types::{Operator, Keyword};
+use super::data_types::{Keyword, Operator};
 
 /// Stores default settings for tokens, used to reduce verbosity on creation
 const BASE_TOKEN: TokenDefinition = TokenDefinition {
@@ -21,73 +21,279 @@ const BASE_TOKEN: TokenDefinition = TokenDefinition {
 /// I kept it
 const TOKENS: &[TokenDefinition] = &[
     //Grouping types
-    TokenDefinition { token_type: TokenType::OpenGroup(GroupType::Paren),   descriptor: "(", priority: 0, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::CloseGroup(GroupType::Paren),  descriptor: ")", priority: 0, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::OpenGroup(GroupType::Curly),   descriptor: "{", priority: 0, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::CloseGroup(GroupType::Curly),  descriptor: "}", priority: 0, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::OpenGroup(GroupType::Square),  descriptor: "[", priority: 0, ..BASE_TOKEN },
-    TokenDefinition { token_type: TokenType::CloseGroup(GroupType::Square), descriptor: "]", priority: 0, ..BASE_TOKEN },
-
+    TokenDefinition {
+        token_type: TokenType::OpenGroup(GroupType::Paren),
+        descriptor: "(",
+        priority: 0,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::CloseGroup(GroupType::Paren),
+        descriptor: ")",
+        priority: 0,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::OpenGroup(GroupType::Curly),
+        descriptor: "{",
+        priority: 0,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::CloseGroup(GroupType::Curly),
+        descriptor: "}",
+        priority: 0,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::OpenGroup(GroupType::Square),
+        descriptor: "[",
+        priority: 0,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::CloseGroup(GroupType::Square),
+        descriptor: "]",
+        priority: 0,
+        ..BASE_TOKEN
+    },
     //Operators
-    TokenDefinition { token_type: TokenType::Operator(Operator::Arrow),  descriptor: "->", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Plus),   descriptor: "+",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Minus),  descriptor: "-",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Star),   descriptor: "*",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Slash),  descriptor: "/",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Equals), descriptor: "=",  priority: 1, ..BASE_TOKEN  },
-
-    TokenDefinition { token_type: TokenType::Operator(Operator::PlusPlus),    descriptor: "++", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::MinusMinus),  descriptor: "--", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::StarStar),    descriptor: "**", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::PlusEquals),  descriptor: "+=", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::MinusEquals), descriptor: "-=", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::StarEquals),  descriptor: "*=", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::SlashEquals), descriptor: "/=", priority: 1, ..BASE_TOKEN  },
-
-    TokenDefinition { token_type: TokenType::Operator(Operator::Less),          descriptor: "<",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Greater),       descriptor: ">",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::LessEqual),     descriptor: "<=", priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::GreaterEqual),  descriptor: ">=", priority: 1, ..BASE_TOKEN  },
-
-
-    TokenDefinition { token_type: TokenType::Operator(Operator::Comma),     descriptor: ",",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Colon), descriptor: ":",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::SemiColon), descriptor: ";",  priority: 1, ..BASE_TOKEN  },
-
-    TokenDefinition { token_type: TokenType::Operator(Operator::Dollar), descriptor: "$",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Bang),   descriptor: "!",  priority: 1, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Operator(Operator::Pipe),   descriptor: "|",  priority: 1, ..BASE_TOKEN  },
-
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Arrow),
+        descriptor: "->",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Plus),
+        descriptor: "+",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Minus),
+        descriptor: "-",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Star),
+        descriptor: "*",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Slash),
+        descriptor: "/",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Equals),
+        descriptor: "=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::PlusPlus),
+        descriptor: "++",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::MinusMinus),
+        descriptor: "--",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::StarStar),
+        descriptor: "**",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::PlusEquals),
+        descriptor: "+=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::MinusEquals),
+        descriptor: "-=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::StarEquals),
+        descriptor: "*=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::SlashEquals),
+        descriptor: "/=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Less),
+        descriptor: "<",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Greater),
+        descriptor: ">",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::LessEqual),
+        descriptor: "<=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::GreaterEqual),
+        descriptor: ">=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Comma),
+        descriptor: ",",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Colon),
+        descriptor: ":",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::SemiColon),
+        descriptor: ";",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Dollar),
+        descriptor: "$",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Bang),
+        descriptor: "!",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Pipe),
+        descriptor: "|",
+        priority: 1,
+        ..BASE_TOKEN
+    },
     //Keywords
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Foreach), descriptor: "sub",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Filter),  descriptor: "filter", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Save),    descriptor: "save",   priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Saved),   descriptor: "saved",  priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Enum),    descriptor: "enum",   priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::String),  descriptor: "string", priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::Int),     descriptor: "int",    priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-    TokenDefinition { token_type: TokenType::Keyword(Keyword::UInt),    descriptor: "uint",   priority: 2, match_mode: MatchMode::Keyword, ..BASE_TOKEN  },
-
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Foreach),
+        descriptor: "sub",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Filter),
+        descriptor: "filter",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Save),
+        descriptor: "save",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Saved),
+        descriptor: "saved",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Enum),
+        descriptor: "enum",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::String),
+        descriptor: "string",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Int),
+        descriptor: "int",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::UInt),
+        descriptor: "uint",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
     //Literals
-        //(?!\w) is a lookahead sequence; it checks (but doesn't match) that there is NOT a word character
-        //after the regex. 
-    TokenDefinition { token_type: TokenType::NumericLiteral, descriptor: r"\d+(?!\w)", priority: 3, match_mode: MatchMode::Regex, ..BASE_TOKEN },
-    
+    //(?!\w) is a lookahead sequence; it checks (but doesn't match) that there is NOT a word character
+    //after the regex.
+    TokenDefinition {
+        token_type: TokenType::NumericLiteral,
+        descriptor: r"\d+(?!\w)",
+        priority: 3,
+        match_mode: MatchMode::Regex,
+        ..BASE_TOKEN
+    },
     //Symbols
-        //This is a catch-all for any user defined symbols. We enforce some (but not all) of the symbol rules here
-        //[a-z,A-Z]             we have stronger constraints for the beginning of a word, must start with a letter
-        //         [\w]*        relaxed constraints for the middle of the word
-        //              (?!\w)  lookahead, see keywords section
-    TokenDefinition { token_type: TokenType::Symbol, descriptor: r"[a-z,A-Z][\w]*(?!\w)", priority: 4, match_mode: MatchMode::Regex, ..BASE_TOKEN },
-    
+    //This is a catch-all for any user defined symbols. We enforce some (but not all) of the symbol rules here
+    //[a-z,A-Z]             we have stronger constraints for the beginning of a word, must start with a letter
+    //         [\w]*        relaxed constraints for the middle of the word
+    //              (?!\w)  lookahead, see keywords section
+    TokenDefinition {
+        token_type: TokenType::Symbol,
+        descriptor: r"[a-z,A-Z][\w]*(?!\w)",
+        priority: 4,
+        match_mode: MatchMode::Regex,
+        ..BASE_TOKEN
+    },
     //Empty
-        //Empty captures all the random extra whitespace lying around
-        //Priority is kept tight to reduce empty loop cycles
-    TokenDefinition { token_type: TokenType::Empty, descriptor: "", priority: 5, match_mode: MatchMode::Empty, ..BASE_TOKEN },
-
+    //Empty captures all the random extra whitespace lying around
+    //Priority is kept tight to reduce empty loop cycles
+    TokenDefinition {
+        token_type: TokenType::Empty,
+        descriptor: "",
+        priority: 5,
+        match_mode: MatchMode::Empty,
+        ..BASE_TOKEN
+    },
     //Unknown
-        //Unknown normally capture syntax errors and other weird things. If it's unknown, it's a syntax error
-    TokenDefinition { token_type: TokenType::Unknown, descriptor: "", priority: 6, match_mode: MatchMode::Unknown, ..BASE_TOKEN },
+    //Unknown normally capture syntax errors and other weird things. If it's unknown, it's a syntax error
+    TokenDefinition {
+        token_type: TokenType::Unknown,
+        descriptor: "",
+        priority: 6,
+        match_mode: MatchMode::Unknown,
+        ..BASE_TOKEN
+    },
 ];
 
 /// This stores a set of tokens by priority and the maximum priority of said
@@ -141,8 +347,8 @@ pub fn preprocess(mut string: String) -> Option<String> {
     #[derive(PartialEq)]
     enum Status {
         REGULAR,
-        LINE,//Line comment
-        BLOCK,//Block comment
+        LINE,  //Line comment
+        BLOCK, //Block comment
     }
 
     //These are used solely for the purposes of error handling and output
@@ -191,7 +397,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
                                 last_block_comment_start_line_number = line_number;
                             }
                         }
-                    },
+                    }
                     Status::LINE => {
                         //Detect \n
                         if working_string[i] == 0x0A {
@@ -199,7 +405,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
                         } else {
                             flag_modify = true;
                         }
-                    },
+                    }
                     Status::BLOCK => {
                         //Detect */
                         if i < working_string.len() - 1 {
@@ -211,7 +417,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
                             }
                         }
                         flag_modify = true;
-                    },
+                    }
                 }
 
                 if flag_modify {
@@ -270,7 +476,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
         }
 
         //At this point we've replaced the contents of all the comments with spaces
-        //However, if some of those comments contained multibyte characters (such 
+        //However, if some of those comments contained multibyte characters (such
         //as emoji), there are now extra spaces which we must deal with
 
         //First we check if this step is even nessecary. Most codebases will probably
@@ -278,12 +484,11 @@ pub fn preprocess(mut string: String) -> Option<String> {
         let final_result = if num_multi_byte == 0 {
             string
         } else {
-
             //Now we copy the bytes of this string over to a destination string, skipping the ones we
             //don't want. We preallocate the string for maximum performance. To copy into the string,
             //we first create a vec of bytes then copy into it.
             let mut result: Vec<u8> = Vec::with_capacity(working_string.len() - num_multi_byte);
-            
+
             //This contains the index into the array of byte spans to skip. Those are creating in order
             //so we can save execution time by not searching and instead going through them in order.
             let mut index = 0;
@@ -318,7 +523,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
         //EOF is just as valid as \n for ending a line comment,
         //so we don't check it
         if mode == Status::BLOCK {
-            let attribution = Token { 
+            let attribution = Token {
                 token_type: TokenType::Comment,
                 token_contents: String::from("/*"),
                 line: last_block_comment_start_line_number,
@@ -368,7 +573,8 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                             working_vec.push((token.token_type, end));
                                         }
                                     }
-                                    Ok(None) => { /* No match, means it's a different token, no big deal */ }
+                                    Ok(None) => { /* No match, means it's a different token, no big deal */
+                                    }
                                     Err(_) => todo!(), //I'm not sure how a regex would error, but we have to handle this
                                 }
                             }
@@ -389,16 +595,17 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                     }
                                 }
                                 //If we reached here, then all the characters match; we're good
-                                //However, if we're in keyword match mode, we must verify the next 
+                                //However, if we're in keyword match mode, we must verify the next
                                 //character is not a word character
                                 if token.match_mode == MatchMode::Keyword {
                                     let next = iter_test_case.next();
                                     match next {
                                         Some('a'..='z' | 'A'..='Z' | '0'..='9' | '_') => {
                                             continue 'inner;
-                                        },
+                                        }
                                         None => { /* EOF also counts as a non-word character */ }
-                                        _ => { /* Not none, and not a invalid character, all good */}
+                                        _ => { /* Not none, and not a invalid character, all good */
+                                        }
                                     }
                                 }
 
@@ -417,7 +624,7 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                 if end > 0 {
                                     working_vec.push((token.token_type, end));
                                 }
-                            },
+                            }
                             MatchMode::StringLiteral(raw_mode) => {
                                 if current_string.len() < token.descriptor.len() {
                                     continue 'inner;
@@ -426,7 +633,7 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                 let mut iter_main = current_string.chars();
                                 let mut iter_reference = token.descriptor.chars();
                                 let mut length = 0;
-                                
+
                                 while let Some(v) = iter_reference.next() {
                                     //We can blindly advance the current string iterator because we
                                     //checked the length to be less than the one which we are bounds
@@ -485,13 +692,13 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
 
                                 //Send this entire thing as a token
                                 working_vec.push((token.token_type, length));
-                            },
+                            }
                             MatchMode::Unknown => {
                                 //Always matches. If we get here it's garunteed that there is *something* and
                                 //we aren't at the EOF, so this is fine. This is last priority, so we aren't
                                 //overwriting anything else
                                 working_vec.push((token.token_type, 1));
-                            },
+                            }
                         }
                     }
                     if working_vec.len() >= 1 {
@@ -556,7 +763,7 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                         column_number = 0;
                                         line_number += 1;
                                     }
-                                },
+                                }
                                 //It is safe to panic here becuase it cannot be reached. The end of the
                                 //selected match must be within the bounds of the string. A panic here
                                 //would indicate the token extends beyond the end of the string which is
@@ -578,14 +785,16 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
             }
         }
 
-        //If we get to here, we had a full loop cycle with no progress. In 
+        //If we get to here, we had a full loop cycle with no progress. In
         //addition, the catch-all unknown hasn't triggered. This should be
         //completely unreachable if an unknown is included in the tokens, which
         //it should be
         if cfg!(debug_assertions) {
             unreachable!();
         } else {
-            unsafe { unreachable_unchecked(); }
+            unsafe {
+                unreachable_unchecked();
+            }
         }
     }
     return result;
@@ -647,7 +856,7 @@ pub fn tokenize(input: String) -> Option<Vec<Token>> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Token {
     /// Stores the [TokenType], so that for tokens which have limited variants,
-    /// such as a keyword, don't have to use token_contents 
+    /// such as a keyword, don't have to use token_contents
     pub token_type: TokenType,
     /// Stores the exact text content of this token, used for symbols and literals
     pub token_contents: String,
@@ -655,7 +864,7 @@ pub struct Token {
     /// Tracks the line number in the file this token is from. If the token
     /// crosses multiple lines, it references the start line
     pub line: u32,
-    /// Tracks the column of the line in the file this token is from. It 
+    /// Tracks the column of the line in the file this token is from. It
     /// references the start column
     pub column: u16,
 }
@@ -674,7 +883,7 @@ pub struct SourceFile {
 struct TokenDefinition {
     /// This stores the type of the token which this definition matches
     token_type: TokenType,
-    /// This stores what this definition matches in the input. The exact 
+    /// This stores what this definition matches in the input. The exact
     /// behaviour depends on the [MatchMode] in match_mode
     descriptor: &'static str,
     /// If a regex is needed, it is cached and stored here.
@@ -726,7 +935,7 @@ pub enum TokenType {
     OpenGroup(GroupType),
     /// A token that closes a grouping section, either a ")", "]", or "}"
     CloseGroup(GroupType),
-    /// An operator. The word operator is very vague and covers things like "+", "-", as well 
+    /// An operator. The word operator is very vague and covers things like "+", "-", as well
     /// as "->" and even ";", ","
     Operator(Operator),
     /// A keyword, pretty much any reserved word. Also contains the exact keyword

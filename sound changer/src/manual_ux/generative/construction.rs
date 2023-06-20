@@ -1,8 +1,22 @@
-use std::{rc::Rc, collections::VecDeque, thread::current};
+use std::{collections::VecDeque, rc::Rc, thread::current};
 
-use crate::manual_ux::{project::Project, table::{TableDescriptor, TableLoadingError, TableRow, TableDataTypeDescriptor}, generative::{data_types::{Operator, Keyword}, tokenizer::TokenType}};
+use crate::manual_ux::{
+    generative::{
+        data_types::{Keyword, Operator},
+        tokenizer::TokenType,
+    },
+    project::Project,
+    table::{TableDataTypeDescriptor, TableDescriptor, TableLoadingError, TableRow},
+};
 
-use super::{tokenizer::{Token, self, tokenize}, GenerativeProgram, execution::{OutputNode, EnumNode, StringNode, RangeNode, IntNode, UIntNode, ColumnSpecifier, TableSpecifier, RuntimeEnum}, GenerativeProgramCompileError};
+use super::{
+    execution::{
+        ColumnSpecifier, EnumNode, IntNode, OutputNode, RangeNode, RuntimeEnum, StringNode,
+        TableSpecifier, UIntNode,
+    },
+    tokenizer::{self, tokenize, Token},
+    GenerativeProgram, GenerativeProgramCompileError,
+};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum Node {
@@ -31,9 +45,9 @@ enum TableColumnSpecifier {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 struct EnumSpecifier {
-    name: String, 
-    column: ColumnSpecifier, 
-    table: Option<TableSpecifier>
+    name: String,
+    column: ColumnSpecifier,
+    table: Option<TableSpecifier>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -43,11 +57,14 @@ enum UnderspecifiedLiteral {
     Int(i32),
     UInt(u32),
     Number(u32, i32),
-    StringOrShortEnum(String, ColumnSpecifier, TableSpecifier)
+    StringOrShortEnum(String, ColumnSpecifier, TableSpecifier),
 }
 
 impl UnderspecifiedLiteral {
-    fn try_convert_enum(self, data_type: TableDataTypeDescriptor) -> Result<EnumNode, GenerativeProgramCompileError> {
+    fn try_convert_enum(
+        self,
+        data_type: TableDataTypeDescriptor,
+    ) -> Result<EnumNode, GenerativeProgramCompileError> {
         todo!()
     }
 
@@ -63,17 +80,23 @@ impl UnderspecifiedLiteral {
         todo!()
     }
 
-    fn try_convert_output_node(self, data_type: TableDataTypeDescriptor) -> Result<OutputNode, GenerativeProgramCompileError> {
+    fn try_convert_output_node(
+        self,
+        data_type: TableDataTypeDescriptor,
+    ) -> Result<OutputNode, GenerativeProgramCompileError> {
         todo!()
     }
 }
 
-pub fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> Result<TableRow, TableLoadingError> {
+pub fn parse_generative_table_line(
+    descriptor: &TableDescriptor,
+    line: &str,
+) -> Result<TableRow, TableLoadingError> {
     let tokens = match tokenize(line.to_string()) {
         Some(v) => v,
-        None => return Err(TableLoadingError::Unknown)
+        None => return Err(TableLoadingError::Unknown),
     };
-    
+
     let mut token_sets = Vec::new();
     token_sets.push(Vec::new());
     for x in tokens {
@@ -81,7 +104,7 @@ pub fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> 
             tokenizer::TokenType::Operator(operator) => match operator {
                 crate::manual_ux::generative::data_types::Operator::Pipe => {
                     token_sets.push(Vec::new());
-                },
+                }
                 _ => {
                     token_sets.last_mut().unwrap().push(x);
                 }
@@ -95,7 +118,10 @@ pub fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> 
     todo!()
 }
 
-fn create_generative_program(tokens: Vec<Token>, output_type: TableDataTypeDescriptor) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
+fn create_generative_program(
+    tokens: Vec<Token>,
+    output_type: TableDataTypeDescriptor,
+) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
     let mut context = CurrentParsingContext::START;
     let mut previous_node: Option<Node> = None;
 
@@ -106,25 +132,26 @@ fn create_generative_program(tokens: Vec<Token>, output_type: TableDataTypeDescr
         let current_token = queue.pop_front().unwrap();
 
         match context {
-            CurrentParsingContext::START => {
-                match current_token.token_type {
-                    TokenType::Operator(Operator::Equals) => context = CurrentParsingContext::BLANK,
-                    _ => return Ok(GenerativeProgram { output_node: (create_literal_node(current_token, &mut queue)?).try_convert_output_node(output_type)? }),
+            CurrentParsingContext::START => match current_token.token_type {
+                TokenType::Operator(Operator::Equals) => context = CurrentParsingContext::BLANK,
+                _ => {
+                    return Ok(GenerativeProgram {
+                        output_node: (create_literal_node(current_token, &mut queue)?)
+                            .try_convert_output_node(output_type)?,
+                    })
                 }
             },
-            CurrentParsingContext::BLANK => {
-                match current_token.token_type {
-                    TokenType::Keyword(word) => match word {
-                        Keyword::Foreach => todo!(),
-                        Keyword::Filter => todo!(),
-                        Keyword::Save => todo!(),
-                        Keyword::Saved => todo!(),
-                        _ => return Err(GenerativeProgramCompileError::SyntaxError),
-                    },
-                    TokenType::NumericLiteral => todo!(),
-                    TokenType::Symbol => todo!(),
+            CurrentParsingContext::BLANK => match current_token.token_type {
+                TokenType::Keyword(word) => match word {
+                    Keyword::Foreach => todo!(),
+                    Keyword::Filter => todo!(),
+                    Keyword::Save => todo!(),
+                    Keyword::Saved => todo!(),
                     _ => return Err(GenerativeProgramCompileError::SyntaxError),
-                }
+                },
+                TokenType::NumericLiteral => todo!(),
+                TokenType::Symbol => todo!(),
+                _ => return Err(GenerativeProgramCompileError::SyntaxError),
             },
             CurrentParsingContext::READY => todo!(),
             CurrentParsingContext::AWAITING_FUNCTION => todo!(),
@@ -137,12 +164,15 @@ fn create_generative_program(tokens: Vec<Token>, output_type: TableDataTypeDescr
 
 /// Returns underspecified literal node based on the tokens. Assumes the
 /// context is correct for a literal, will error if not.
-fn create_literal_node(current_token: Token, other_tokens: &mut VecDeque<Token>) -> Result<UnderspecifiedLiteral, GenerativeProgramCompileError> {
+fn create_literal_node(
+    current_token: Token,
+    other_tokens: &mut VecDeque<Token>,
+) -> Result<UnderspecifiedLiteral, GenerativeProgramCompileError> {
     match current_token.token_type {
         // String or enum
         TokenType::Symbol => todo!(),
         // Int or uint or enum
-        TokenType::NumericLiteral => {  
+        TokenType::NumericLiteral => {
             // First we check if it's an enum definition with a
             // table-column specifier out the front. We will attempt
             // to form a table-column specifier to do this. Since
@@ -158,18 +188,19 @@ fn create_literal_node(current_token: Token, other_tokens: &mut VecDeque<Token>)
                     // queue.
                     // This operation should return successfully, as it
                     // did previous with clones of the parameters given.
-                    let table_column = create_table_column_specifier(current_token, other_tokens).unwrap();
-                    
+                    let table_column =
+                        create_table_column_specifier(current_token, other_tokens).unwrap();
+
                     todo!()
-                },
+                }
                 Err(_) => {
-                    // This is fine; it's not an enum with a 
+                    // This is fine; it's not an enum with a
                     // table column specifier, so at this point we can
                     // just treat it like a numeric literal.
                     return create_int_or_uint_literal(current_token);
-                },
+                }
             }
-        },
+        }
         // Int
         TokenType::Operator(Operator::Minus) => todo!(),
         // Enum
@@ -178,9 +209,12 @@ fn create_literal_node(current_token: Token, other_tokens: &mut VecDeque<Token>)
     }
 }
 
-/// Creates a table-column specifier (`table:column`, `table:`, or `column:`). 
+/// Creates a table-column specifier (`table:column`, `table:`, or `column:`).
 /// Assumes the context is correct for a literal, will error if not.
-fn create_table_column_specifier(current_token: Token, other_tokens: &mut VecDeque<Token>) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
+fn create_table_column_specifier(
+    current_token: Token,
+    other_tokens: &mut VecDeque<Token>,
+) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
     match current_token.token_type {
         // Column only
         TokenType::Operator(Operator::Colon) => {
@@ -188,15 +222,17 @@ fn create_table_column_specifier(current_token: Token, other_tokens: &mut VecDeq
                 let next_token = other_tokens.pop_front().unwrap();
                 match next_token.token_type {
                     TokenType::NumericLiteral => match next_token.token_contents.parse::<usize>() {
-                        Ok(column_id) => Ok(TableColumnSpecifier::COLUMN(ColumnSpecifier { column_id })),
+                        Ok(column_id) => {
+                            Ok(TableColumnSpecifier::COLUMN(ColumnSpecifier { column_id }))
+                        }
                         Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
                     },
-                    _ => Err(GenerativeProgramCompileError::SyntaxError)
+                    _ => Err(GenerativeProgramCompileError::SyntaxError),
                 }
             } else {
                 Err(GenerativeProgramCompileError::SyntaxError)
             }
-        },
+        }
         // Table only or both
         TokenType::NumericLiteral => match current_token.token_contents.parse::<usize>() {
             Ok(table_id) => {
@@ -207,12 +243,16 @@ fn create_table_column_specifier(current_token: Token, other_tokens: &mut VecDeq
                             if other_tokens.len() > 0 {
                                 let next_token = other_tokens.pop_front().unwrap();
                                 match next_token.token_type {
-                                    TokenType::NumericLiteral => match next_token.token_contents.parse::<usize>() {
-                                        Ok(column_id) => Ok(TableColumnSpecifier::BOTH(
-                                            TableSpecifier { table_id },
-                                            ColumnSpecifier { column_id }
-                                        )),
-                                        Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
+                                    TokenType::NumericLiteral => {
+                                        match next_token.token_contents.parse::<usize>() {
+                                            Ok(column_id) => Ok(TableColumnSpecifier::BOTH(
+                                                TableSpecifier { table_id },
+                                                ColumnSpecifier { column_id },
+                                            )),
+                                            Err(error) => Err(
+                                                GenerativeProgramCompileError::IntParseError(error),
+                                            ),
+                                        }
                                     }
                                     _ => {
                                         // In this case, the specifier is over so we return what
@@ -224,13 +264,13 @@ fn create_table_column_specifier(current_token: Token, other_tokens: &mut VecDeq
                                 // This is probably an error but not our responsibility
                                 Ok(TableColumnSpecifier::TABLE(TableSpecifier { table_id }))
                             }
-                        },
+                        }
                         _ => Err(GenerativeProgramCompileError::SyntaxError),
                     }
                 } else {
                     Err(GenerativeProgramCompileError::SyntaxError)
                 }
-            },
+            }
             Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
         },
         _ => Err(GenerativeProgramCompileError::SyntaxError),
@@ -241,7 +281,9 @@ fn create_table_column_specifier(current_token: Token, other_tokens: &mut VecDeq
 /// containing a number. It does not attempt to do anything other than that and
 /// will return an error if given the wrong input type. This is to be used after
 /// verifying the type and use of the token.
-fn create_int_or_uint_literal(token: Token) -> Result<UnderspecifiedLiteral, GenerativeProgramCompileError> {
+fn create_int_or_uint_literal(
+    token: Token,
+) -> Result<UnderspecifiedLiteral, GenerativeProgramCompileError> {
     // We will parse into an i64, and check to ensure the
     // value is within the bounds of u32 and i32, and return
     // the proper type (i.e. 3 billion would just return as
@@ -273,8 +315,8 @@ fn create_int_or_uint_literal(token: Token) -> Result<UnderspecifiedLiteral, Gen
         // internet and I don't where rust put it's int limit
         // constants
         // i32 max
-        if value > 2147483647 {  
-            // u32 max      
+        if value > 2147483647 {
+            // u32 max
             if value > 4294967295 {
                 // Out of range
                 return Err(GenerativeProgramCompileError::IntOutOfRange);

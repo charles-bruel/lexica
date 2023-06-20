@@ -32,7 +32,7 @@ After that operator, columns are seperated like normal, with the | symbol
 4. Literals are placed into equations
 5. To reference another table, use this format: TABLE_ID:COLUMN_NAME.
    You can omit one of the values if appropiate
-6. The foreach function creates an entry for each row in the the table, 
+6. The foreach function creates an entry for each row in the the table,
    with the contents given by the specified column
 Example:
 POS|word|translation
@@ -44,10 +44,10 @@ table (id=1), and appends "ka" to the word
 
 7. To run a word through a sound change program, use the sc(word, PROGRAM_NAME)
    function
-   A function called (.fun()) will use the thing it is called on as the first 
+   A function called (.fun()) will use the thing it is called on as the first
    parameter
-8. A selection can be filtered based on several conditionals using the 
-   filter(items, condition) command. 
+8. A selection can be filtered based on several conditionals using the
+   filter(items, condition) command.
    This must be called directly after a foreach, filter, etc., because once it
    is used, it loses the multi-element properties.
    Note how the selection parameter can be different than the contents parameter
@@ -68,16 +68,19 @@ table (id=1), and appends "ka" to every noun
 
 */
 
+mod construction;
+mod data_types;
 mod execution;
 mod tokenizer;
-mod data_types;
-mod construction;
 
-use std::{collections::HashMap, rc::Rc, num::ParseIntError};
+use std::{collections::HashMap, num::ParseIntError, rc::Rc};
 
 use self::execution::OutputNode;
 
-use super::{project::Project, table::{TableDescriptor, TableRow, TableLoadingError}};
+use super::{
+    project::Project,
+    table::{TableDescriptor, TableLoadingError, TableRow},
+};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeLine {
@@ -95,18 +98,20 @@ pub enum GenerativeProgramRuntimeError {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GenerativeProgramCompileError {
-   SyntaxError,
-   TypeMismatch,
-   IntParseError(ParseIntError),
-   IntOutOfRange,
+    SyntaxError,
+    TypeMismatch,
+    IntParseError(ParseIntError),
+    IntOutOfRange,
 }
-
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeProgram {
     output_node: OutputNode,
 }
 
-pub fn parse_generative_table_line(descriptor: &TableDescriptor, line: &str) -> Result<TableRow, TableLoadingError> {
-   construction::parse_generative_table_line(descriptor, line)
+pub fn parse_generative_table_line(
+    descriptor: &TableDescriptor,
+    line: &str,
+) -> Result<TableRow, TableLoadingError> {
+    construction::parse_generative_table_line(descriptor, line)
 }

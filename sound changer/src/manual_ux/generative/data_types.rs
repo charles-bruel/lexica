@@ -18,7 +18,7 @@ pub enum Keyword {
     Enum,
     String,
     Int,
-    UInt
+    UInt,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

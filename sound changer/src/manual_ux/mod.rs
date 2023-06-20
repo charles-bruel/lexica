@@ -1,4 +1,4 @@
-pub mod table;
+pub mod generative;
 pub mod project;
 pub mod rebuilder;
-pub mod generative;
+pub mod table;

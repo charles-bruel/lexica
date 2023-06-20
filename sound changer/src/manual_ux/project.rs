@@ -1,4 +1,4 @@
-use crate::{manual_ux::table, io};
+use crate::{io, manual_ux::table};
 
 use super::table::{Table, TableLoadingError};
 
@@ -16,7 +16,10 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     let mut max_id: usize = 0;
     let mut accumulation: Vec<Table> = Vec::new();
     for entry in glob::glob(&(filepath + &String::from("/**/*.ltable"))).unwrap() {
-        let temp = table::load_table(&io::load_from_file(&entry.unwrap().as_path().display().to_string(), false).unwrap()).unwrap();
+        let temp = table::load_table(
+            &io::load_from_file(&entry.unwrap().as_path().display().to_string(), false).unwrap(),
+        )
+        .unwrap();
         if <u16 as Into<usize>>::into(temp.id) > max_id {
             max_id = temp.id.into();
         }
@@ -38,10 +41,12 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     for table in accumulation {
         let id: usize = table.id.into();
         if tables[id].is_some() {
-            return Err(ProjectLoadError::TableError(TableLoadingError::TableIDCollision));
+            return Err(ProjectLoadError::TableError(
+                TableLoadingError::TableIDCollision,
+            ));
         }
         tables[id] = Option::Some(table);
     }
 
     Ok(Project { tables })
-}   
+}
