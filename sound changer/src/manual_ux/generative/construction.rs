@@ -1,11 +1,10 @@
-use std::{collections::VecDeque, rc::Rc, thread::current};
+use std::{collections::VecDeque, rc::Rc};
 
 use crate::manual_ux::{
     generative::{
         data_types::{Keyword, Operator},
         tokenizer::TokenType,
     },
-    project::Project,
     table::{
         GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
         TableRow,
@@ -240,9 +239,40 @@ fn create_literal_node(
         // Int
         TokenType::Operator(Operator::Minus) => todo!(),
         // Enum
-        TokenType::Operator(Operator::Colon) => todo!(),
+        TokenType::Operator(Operator::Colon) => {
+            // It's an enum with a column specified
+            // Or it could be a syntax error
+            let column_specifier = create_table_column_specifier(current_token, other_tokens)?;
+
+            todo!()
+        }
         _ => return Err(GenerativeProgramCompileError::SyntaxError),
     }
+}
+
+fn create_enum_literal(
+    contents: String,
+    specifier: Option<TableColumnSpecifier>,
+    current_column: ColumnSpecifier,
+) -> Result<EnumSpecifier, GenerativeProgramCompileError> {
+    let column = match specifier {
+        Some(TableColumnSpecifier::BOTH(_, v)) | Some(TableColumnSpecifier::COLUMN(v)) => v,
+        Some(TableColumnSpecifier::TABLE(_)) => {
+            return Err(GenerativeProgramCompileError::OnlySpecifiedTable)
+        }
+        None => current_column,
+    };
+
+    let table = match specifier {
+        Some(TableColumnSpecifier::BOTH(v, _)) | Some(TableColumnSpecifier::TABLE(v)) => Some(v),
+        _ => None,
+    };
+
+    return Ok(EnumSpecifier {
+        name: contents,
+        column,
+        table,
+    });
 }
 
 /// Creates a table-column specifier (`table:column`, `table:`, or `column:`).

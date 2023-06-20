@@ -102,6 +102,7 @@ pub enum GenerativeProgramCompileError {
     TypeMismatch,
     IntParseError(ParseIntError),
     IntOutOfRange,
+    OnlySpecifiedTable,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
