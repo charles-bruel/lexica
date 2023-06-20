@@ -199,7 +199,7 @@ const TOKENS: &[TokenDefinition] = &[
     //Keywords
     TokenDefinition {
         token_type: TokenType::Keyword(Keyword::Foreach),
-        descriptor: "sub",
+        descriptor: "foreach",
         priority: 2,
         match_mode: MatchMode::Keyword,
         ..BASE_TOKEN

@@ -3,7 +3,7 @@ use std::{collections::VecDeque, rc::Rc};
 use crate::manual_ux::{
     generative::{
         data_types::{Keyword, Operator},
-        tokenizer::TokenType,
+        tokenizer::{TokenType, GroupType},
         SyntaxErrorType,
     },
     table::{
@@ -23,6 +23,7 @@ use super::{
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum Node {
+    // TODO: Also add a way to specify enum definition here
     Enum(EnumNode),
     UInt(UIntNode),
     Int(IntNode),
@@ -30,13 +31,39 @@ enum Node {
     Range(RangeNode),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-enum CurrentParsingContext {
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+enum ParsingContext {
+    /// Indicates that the parser is awaiting the initial `=` sign
     START,
-    BLANK,
-    READY,
-    AWAITING_FUNCTION,
-    AWAITING_PARAMETERS,
+    /// Indicates there is no relevant context in the parser and that
+    /// it should receive a value of the given type.
+    /// Occurs after the start state, and after an operator such as `+`
+    /// (not `.`). The code associated with this state is also called from
+    /// the `AWAITING_PARAMETERS` state.
+    AWAITING_VALUE(TableDataTypeDescriptor),
+    /// Indicates that there is a valid construction of the given
+    /// data type and the operation can be finished or expanded with
+    /// any number of operators or symbols, such as `.` or ` + `
+    READY(TableDataTypeDescriptor),
+    /// Indicates that a `.` symbol was correctly used so a function
+    /// call should follow.
+    /// The value it stores is the node that precedes the dot, i.e. that
+    /// will be passed as the first parameter, or `NONE` if the function
+    /// is being called statically.
+    AWAITING_FUNCTION(Option<Node>),
+    /// Indicates that function keyword was used and we now need the
+    /// opening `(` of the function.
+    /// The value stored is the eventual parameters of the function
+    /// (it will be determined when this is set, so it is transfer
+    /// through here to it's final destination).
+    AWAITING_FUNCTION_BRACKET(VecDeque<TableDataTypeDescriptor>),
+    /// Indicates that we are in a function and awaiting some number of
+    /// parameters, or that the function has concluded and we are awaiting
+    /// the closing `)`.
+    /// The value it stores is the types of the upcoming parameters;
+    /// it is also how the system keeps track of the number of parameters
+    /// left.
+    AWAITING_PARAMETERS(VecDeque<TableDataTypeDescriptor>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -167,8 +194,7 @@ fn create_generative_program(
     tokens: Vec<Token>,
     output_type: &TableDataTypeDescriptor,
 ) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
-    let mut context = CurrentParsingContext::START;
-    let mut previous_node: Option<Node> = None;
+    let mut context = ParsingContext::START;
 
     let mut queue = VecDeque::from(tokens);
 
@@ -179,8 +205,11 @@ fn create_generative_program(
         println!("{:?}", current_token);
 
         match context {
-            CurrentParsingContext::START => match current_token.token_type {
-                TokenType::Operator(Operator::Equals) => context = CurrentParsingContext::BLANK,
+            // TODO: Split into own function
+            ParsingContext::START => match current_token.token_type {
+                TokenType::Operator(Operator::Equals) => {
+                    context = ParsingContext::AWAITING_VALUE(output_type.clone())
+                }
                 _ => {
                     return Ok(GenerativeProgram {
                         output_node: (create_literal_node(current_token, &mut queue)?)
@@ -188,33 +217,64 @@ fn create_generative_program(
                     })
                 }
             },
-            CurrentParsingContext::BLANK => match current_token.token_type {
-                TokenType::Keyword(word) => match word {
-                    Keyword::Foreach => todo!(),
-                    Keyword::Filter => todo!(),
-                    Keyword::Save => todo!(),
-                    Keyword::Saved => todo!(),
-                    _ => {
-                        return Err(GenerativeProgramCompileError::SyntaxError(
-                            SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
-                        ))
-                    }
-                },
-                TokenType::NumericLiteral => todo!(),
-                TokenType::Symbol => todo!(),
-                _ => {
-                    return Err(GenerativeProgramCompileError::SyntaxError(
-                        SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
-                    ))
+            ParsingContext::AWAITING_VALUE(ref target_data_type) => {
+                let mut clone = context.clone();
+                parser_awaiting_value(&mut clone, current_token, &mut queue, target_data_type.clone())?;
+                context = clone;
+            },
+            ParsingContext::READY(data_type) => todo!(),
+            ParsingContext::AWAITING_FUNCTION(caller_node) => todo!(),
+            ParsingContext::AWAITING_PARAMETERS(ref mut parameter_queue) => {
+                if parameter_queue.len() == 0 {
+                    todo!()
+                } else {
+                    // Safe to unwrap because len is non-zero
+                    let target_data_type = parameter_queue.pop_front().unwrap();
+                    let mut clone = context.clone();
+                    parser_awaiting_value(&mut clone, current_token, &mut queue, target_data_type)?;
+                    context = clone;
                 }
             },
-            CurrentParsingContext::READY => todo!(),
-            CurrentParsingContext::AWAITING_FUNCTION => todo!(),
-            CurrentParsingContext::AWAITING_PARAMETERS => todo!(),
+            ParsingContext::AWAITING_FUNCTION_BRACKET(params) => match current_token.token_type {
+                TokenType::OpenGroup(GroupType::Paren) => {
+                    context = ParsingContext::AWAITING_PARAMETERS(params)
+                },
+                _ => return Err(GenerativeProgramCompileError::SyntaxError(SyntaxErrorType::ExpectedOpenParethesis))
+            },
         }
     }
 
     todo!()
+}
+
+fn parser_awaiting_value(
+    context: &mut ParsingContext,
+    current_token: Token,
+    other_tokens: &mut VecDeque<Token>,
+    target_data_type: TableDataTypeDescriptor,
+) -> Result<(), GenerativeProgramCompileError> {
+    match current_token.token_type {
+        TokenType::Keyword(word) => match word {
+            Keyword::Foreach => {
+                todo!()
+            }
+            Keyword::Filter => todo!(),
+            Keyword::Save => todo!(),
+            Keyword::Saved => todo!(),
+            _ => {
+                return Err(GenerativeProgramCompileError::SyntaxError(
+                    SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
+                ))
+            }
+        },
+        TokenType::NumericLiteral => todo!(),
+        TokenType::Symbol => todo!(),
+        _ => {
+            return Err(GenerativeProgramCompileError::SyntaxError(
+                SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
+            ))
+        }
+    }
 }
 
 /// Returns underspecified literal node based on the tokens. Assumes the

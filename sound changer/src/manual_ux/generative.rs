@@ -112,6 +112,7 @@ pub enum SyntaxErrorType {
     InvalidTokenDuringKeywordParsing,
     InvalidTokenDuringTableColumnSpecifierParsing(u32),
     MissingProgramSurrondings,
+    ExpectedOpenParethesis,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
