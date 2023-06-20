@@ -6,7 +6,10 @@ use crate::manual_ux::{
         tokenizer::TokenType,
     },
     project::Project,
-    table::{TableDataTypeDescriptor, TableDescriptor, TableLoadingError, TableRow},
+    table::{
+        GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
+        TableRow,
+    },
 };
 
 use super::{
@@ -63,7 +66,7 @@ enum UnderspecifiedLiteral {
 impl UnderspecifiedLiteral {
     fn try_convert_enum(
         self,
-        data_type: TableDataTypeDescriptor,
+        data_type: &TableDataTypeDescriptor,
     ) -> Result<EnumNode, GenerativeProgramCompileError> {
         todo!()
     }
@@ -82,14 +85,14 @@ impl UnderspecifiedLiteral {
 
     fn try_convert_output_node(
         self,
-        data_type: TableDataTypeDescriptor,
+        data_type: &TableDataTypeDescriptor,
     ) -> Result<OutputNode, GenerativeProgramCompileError> {
         todo!()
     }
 }
 
 pub fn parse_generative_table_line(
-    descriptor: &TableDescriptor,
+    descriptor: Rc<TableDescriptor>,
     line: &str,
 ) -> Result<TableRow, TableLoadingError> {
     let tokens = match tokenize(line.to_string()) {
@@ -97,30 +100,63 @@ pub fn parse_generative_table_line(
         None => return Err(TableLoadingError::Unknown),
     };
 
+    // First we extract each column into a vec of tokens
+    // Programs are seperated by `|` tokens, so we just
+    // iterate through the list and start a new vector
+    // after every `|`.
     let mut token_sets = Vec::new();
     token_sets.push(Vec::new());
     for x in tokens {
         match x.token_type {
-            tokenizer::TokenType::Operator(operator) => match operator {
-                crate::manual_ux::generative::data_types::Operator::Pipe => {
-                    token_sets.push(Vec::new());
-                }
-                _ => {
-                    token_sets.last_mut().unwrap().push(x);
-                }
-            },
+            TokenType::Operator(Operator::Pipe) => {
+                token_sets.push(Vec::new());
+            }
             _ => {
                 token_sets.last_mut().unwrap().push(x);
             }
         }
     }
 
+    return Ok(TableRow::UnpopulatedTableRow {
+        procedure: Rc::new(convert_error(create_generative_table_row_procedure(
+            token_sets,
+            descriptor.clone(),
+        ))?),
+        descriptor: descriptor,
+    });
+}
+
+fn convert_error<T>(
+    result: Result<T, GenerativeProgramCompileError>,
+) -> Result<T, TableLoadingError> {
+    match result {
+        Ok(v) => Ok(v),
+        Err(e) => Err(TableLoadingError::GenerativeProgramCompileError(e)),
+    }
+}
+
+/// This assumes that there are a number of token sets equal to the number
+/// of columns, and it will panic if not. That error handling should be
+/// dealt with by the caller.
+fn create_generative_table_row_procedure(
+    token_sets: Vec<Vec<Token>>,
+    descriptor: Rc<TableDescriptor>,
+) -> Result<GenerativeTableRowProcedure, GenerativeProgramCompileError> {
+    let mut result: Vec<GenerativeProgram> = Vec::with_capacity(token_sets.len());
+    let mut index = 0;
+    for tokens in token_sets {
+        result.push(create_generative_program(
+            tokens,
+            &descriptor.column_descriptors[index].data_type,
+        )?);
+        index += 1;
+    }
     todo!()
 }
 
 fn create_generative_program(
     tokens: Vec<Token>,
-    output_type: TableDataTypeDescriptor,
+    output_type: &TableDataTypeDescriptor,
 ) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
     let mut context = CurrentParsingContext::START;
     let mut previous_node: Option<Node> = None;
@@ -299,7 +335,7 @@ fn create_int_or_uint_literal(
 
         // TODO: Replace with a proper constant
         // It's a magic number right now because I don't have
-        // internet and I don't where rust put it's int limit
+        // internet and I don't where rust put its int limit
         // constants
         // i32 min
         if value < -2147483648 {
@@ -312,7 +348,7 @@ fn create_int_or_uint_literal(
     } else {
         // TODO: Replace with a proper constants
         // It's a magic number right now because I don't have
-        // internet and I don't where rust put it's int limit
+        // internet and I don't where rust put its int limit
         // constants
         // i32 max
         if value > 2147483647 {

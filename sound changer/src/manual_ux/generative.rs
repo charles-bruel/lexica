@@ -110,7 +110,7 @@ pub struct GenerativeProgram {
 }
 
 pub fn parse_generative_table_line(
-    descriptor: &TableDescriptor,
+    descriptor: Rc<TableDescriptor>,
     line: &str,
 ) -> Result<TableRow, TableLoadingError> {
     construction::parse_generative_table_line(descriptor, line)

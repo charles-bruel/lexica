@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
-use super::generative::{GenerativeProgramCompileError, GenerativeProgramRuntimeError};
+use super::generative::{GenerativeProgramCompileError, GenerativeProgram};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
@@ -37,7 +37,7 @@ pub enum PopulatedTableRowSource {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeTableRowProcedure {
-    // TODO
+    programs: Vec<GenerativeProgram>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -69,7 +69,7 @@ pub enum TableLoadingError {
     UnknownEnumType,
     ValueParseError,
     TableIDCollision,
-    GenerativeProgramError(GenerativeProgramCompileError),
+    GenerativeProgramCompileError(GenerativeProgramCompileError),
 
     Unknown,
 }
@@ -166,7 +166,7 @@ fn parse_table_line(
     line: &str,
 ) -> Result<TableRow, TableLoadingError> {
     if line.starts_with(":=") {
-        return parse_generative_table_line(descriptor.as_ref(), line);
+        return parse_generative_table_line(descriptor, line);
     }
 
     let values: Vec<&str> = line.split("|").collect();
