@@ -46,7 +46,7 @@ pub enum EnumNode {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RangeNode {
-    ForeachNode(TableSpecifier, Option<ColumnSpecifier>),
+    ForeachNode(TableSpecifier, ColumnSpecifier),
     FilterNode(Box<RangeNode>, ColumnSpecifier, Box<FilterPredicate>),
     Save(Box<RangeNode>, String),
     Saved(String, Option<ColumnSpecifier>),

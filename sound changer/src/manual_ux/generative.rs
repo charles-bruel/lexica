@@ -72,6 +72,7 @@ mod construction;
 mod data_types;
 mod execution;
 mod tokenizer;
+mod node_builder;
 
 use std::{collections::HashMap, num::ParseIntError, rc::Rc};
 
@@ -103,6 +104,8 @@ pub enum GenerativeProgramCompileError {
     IntParseError(ParseIntError),
     IntOutOfRange,
     OnlySpecifiedTable,
+    ColumnNotFound,
+    FoundValueWhileNotMakingCombinationNode,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -112,7 +115,8 @@ pub enum SyntaxErrorType {
     InvalidTokenDuringKeywordParsing,
     InvalidTokenDuringTableColumnSpecifierParsing(u32),
     MissingProgramSurrondings,
-    ExpectedOpenParethesis,
+    ExpectedOpenParenthesis,
+    ExpectedCloseParenthesis,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
