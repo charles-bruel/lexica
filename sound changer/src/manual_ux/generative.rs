@@ -106,6 +106,7 @@ pub enum GenerativeProgramCompileError {
     OnlySpecifiedTable,
     ColumnNotFound,
     FoundValueWhileNotMakingCombinationNode,
+    MainNodeHasNoValue,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -117,6 +118,8 @@ pub enum SyntaxErrorType {
     MissingProgramSurrondings,
     ExpectedOpenParenthesis,
     ExpectedCloseParenthesis,
+    FunctionRequiresObject,
+    FunctionForbidsObject,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

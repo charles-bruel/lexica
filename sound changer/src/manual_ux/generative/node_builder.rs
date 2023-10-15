@@ -11,6 +11,7 @@ use super::{execution::{RangeNode, StringNode, IntNode, UIntNode, EnumNode, Filt
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum FunctionType {
+    UnknownFunction,
     Addition,
     Conversion,
     Foreach,

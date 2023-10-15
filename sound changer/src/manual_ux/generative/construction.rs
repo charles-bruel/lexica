@@ -1,14 +1,17 @@
 use std::{collections::VecDeque, rc::Rc};
 
-use crate::manual_ux::{
-    generative::{
-        data_types::{Keyword, Operator},
-        tokenizer::{TokenType, GroupType},
-        SyntaxErrorType,
-    },
-    table::{
-        GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
-        TableRow,
+use crate::{
+    main,
+    manual_ux::{
+        generative::{
+            data_types::{Keyword, Operator},
+            tokenizer::{GroupType, TokenType},
+            SyntaxErrorType,
+        },
+        table::{
+            GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor,
+            TableLoadingError, TableRow,
+        },
     },
 };
 
@@ -17,8 +20,9 @@ use super::{
         ColumnSpecifier, EnumNode, IntNode, OutputNode, RangeNode, RuntimeEnum, StringNode,
         TableSpecifier, UIntNode,
     },
+    node_builder::{BuilderNode, FunctionType},
     tokenizer::{self, tokenize, Token},
-    GenerativeProgram, GenerativeProgramCompileError, node_builder::BuilderNode,
+    GenerativeProgram, GenerativeProgramCompileError,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -35,7 +39,7 @@ enum Node {
 pub enum DataTypeDescriptor {
     TableDataType(TableDataTypeDescriptor),
     TableColumnSpecifier,
-    Expression
+    FilterPredicate,
 }
 
 #[allow(non_camel_case_types)]
@@ -55,10 +59,7 @@ enum ParsingContext {
     READY,
     /// Indicates that a `.` symbol was correctly used so a function
     /// call should follow.
-    /// The value it stores is the node that precedes the dot, i.e. that
-    /// will be passed as the first parameter, or `NONE` if the function
-    /// is being called statically.
-    AWAITING_FUNCTION(Option<Node>),
+    AWAITING_FUNCTION,
     /// Indicates that function keyword was used and we now need the
     /// opening `(` of the function.
     /// The value stored is the eventual parameters of the function
@@ -119,10 +120,11 @@ impl UnderspecifiedLiteral {
         todo!()
     }
 
-    fn try_convert_table_column(self) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
+    fn try_convert_table_column(
+        self,
+    ) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
         todo!()
     }
-
 }
 
 pub fn parse_generative_table_line(
@@ -201,19 +203,20 @@ fn create_generative_table_row_procedure(
 fn create_generative_program(
     tokens: Vec<Token>,
     output_type: &TableDataTypeDescriptor,
-    descriptor: Rc<TableDescriptor>
+    descriptor: Rc<TableDescriptor>,
 ) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
     let main_segment = parse_generative_segment(tokens, output_type, descriptor)?;
 
     Ok(GenerativeProgram {
-        output_node: main_segment.try_convert_output_node(&DataTypeDescriptor::TableDataType(output_type.clone()))?,
+        output_node: main_segment
+            .try_convert_output_node(&DataTypeDescriptor::TableDataType(output_type.clone()))?,
     })
 }
 
 fn parse_generative_segment(
     tokens: Vec<Token>,
     output_type: &TableDataTypeDescriptor,
-    descriptor: Rc<TableDescriptor>
+    descriptor: Rc<TableDescriptor>,
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
     let mut context = ParsingContext::START;
 
@@ -231,21 +234,50 @@ fn parse_generative_segment(
             // TODO: Split into own function
             ParsingContext::START => match current_token.token_type {
                 TokenType::Operator(Operator::Equals) => {
-                    context = ParsingContext::AWAITING_VALUE(DataTypeDescriptor::TableDataType(output_type.clone()))
+                    context = ParsingContext::AWAITING_VALUE(DataTypeDescriptor::TableDataType(
+                        output_type.clone(),
+                    ))
                 }
                 _ => {
-                    return Ok(
-                        BuilderNode::GenericLiteral(create_literal_node(current_token, &mut queue, descriptor.clone())?)
-                    )
+                    return Ok(BuilderNode::GenericLiteral(create_literal_node(
+                        current_token,
+                        &mut queue,
+                        descriptor.clone(),
+                    )?))
                 }
             },
             ParsingContext::AWAITING_VALUE(ref target_data_type) => {
                 let mut clone = context.clone();
-                main_node = Some(parser_awaiting_value(&mut clone, current_token, &mut queue, target_data_type.clone(), descriptor.clone())?);
+                main_node = Some(parse_awaiting_value(
+                    &mut clone,
+                    current_token,
+                    &mut queue,
+                    descriptor.clone(),
+                )?);
+                context = clone;
+            }
+            ParsingContext::READY => {
+                let mut clone = context.clone();
+                main_node = Some(parse_new_segment_ready(
+                    &mut clone,
+                    current_token,
+                    main_node,
+                )?);
+                context = clone;
+            }
+            ParsingContext::AWAITING_FUNCTION => {
+                let mut clone = context.clone();
+                match &mut main_node {
+                    Some(BuilderNode::CombinationNode(function_type, _)) => {
+                        *function_type = parse_function(
+                            &mut clone,
+                            current_token,
+                        )?;
+                    },
+                    _ => todo!(),
+                }
                 context = clone;
             },
-            ParsingContext::READY => todo!(),
-            ParsingContext::AWAITING_FUNCTION(caller_node) => todo!(),
             ParsingContext::AWAITING_PARAMETERS(ref mut parameter_queue) => {
                 if parameter_queue.len() == 0 {
                     // In this case, we know we have finished the function.
@@ -257,7 +289,9 @@ fn parse_generative_segment(
                             context = ParsingContext::READY;
                         }
                         _ => {
-                            return Err(GenerativeProgramCompileError::SyntaxError(SyntaxErrorType::ExpectedCloseParenthesis));
+                            return Err(GenerativeProgramCompileError::SyntaxError(
+                                SyntaxErrorType::ExpectedCloseParenthesis,
+                            ));
                         }
                     }
                 } else {
@@ -266,21 +300,30 @@ fn parse_generative_segment(
                     let mut clone = context.clone();
                     match &mut main_node {
                         Some(BuilderNode::CombinationNode(_, vec)) => {
-                            vec.push(parser_awaiting_value(&mut clone, current_token, &mut queue, target_data_type, descriptor.clone())?);
+                            vec.push(parse_awaiting_value(
+                                &mut clone,
+                                current_token,
+                                &mut queue,
+                                descriptor.clone(),
+                            )?);
                         }
-                        _ => {
-                            return Err(GenerativeProgramCompileError::FoundValueWhileNotMakingCombinationNode)
-                        }
+                        _ => return Err(
+                            GenerativeProgramCompileError::FoundValueWhileNotMakingCombinationNode,
+                        ),
                     }
-                    
+
                     context = clone;
                 }
-            },
+            }
             ParsingContext::AWAITING_FUNCTION_BRACKET(params) => match current_token.token_type {
                 TokenType::OpenGroup(GroupType::Paren) => {
                     context = ParsingContext::AWAITING_PARAMETERS(params)
-                },
-                _ => return Err(GenerativeProgramCompileError::SyntaxError(SyntaxErrorType::ExpectedOpenParenthesis))
+                }
+                _ => {
+                    return Err(GenerativeProgramCompileError::SyntaxError(
+                        SyntaxErrorType::ExpectedOpenParenthesis,
+                    ))
+                }
             },
         }
     }
@@ -288,21 +331,51 @@ fn parse_generative_segment(
     todo!()
 }
 
-fn parser_awaiting_value(
+/// This function handles the ready state of parsing.
+/// There are two ways out of the ready state - a combination
+/// symbol (`+` or sometimes `-`) or a function starter (.)
+fn parse_new_segment_ready(
     context: &mut ParsingContext,
     current_token: Token,
-    other_tokens: &mut VecDeque<Token>,
-    target_data_type: DataTypeDescriptor,
-    descriptor: Rc<TableDescriptor>,
+    main_node: Option<BuilderNode>,
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
     match current_token.token_type {
+        TokenType::Operator(Operator::Plus | Operator::Minus) => {
+            todo!()
+        }
+        TokenType::Operator(Operator::Period) => {
+            // We have a function and the first parameter
+            // will be the current main node
+            *context = ParsingContext::AWAITING_FUNCTION;
+            Ok(BuilderNode::CombinationNode(
+                super::node_builder::FunctionType::UnknownFunction,
+                vec![match main_node {
+                    Some(v) => v,
+                    None => return Err(GenerativeProgramCompileError::MainNodeHasNoValue),
+                }],
+            ))
+        }
+        _ => {
+            todo!()
+        }
+    }
+}
+
+fn parse_function(
+    context: &mut ParsingContext,
+    current_token: Token,
+) -> Result<FunctionType, GenerativeProgramCompileError> {
+    match current_token.token_type {
         TokenType::Keyword(word) => match word {
-            Keyword::Foreach => {
-                *context = ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(vec![DataTypeDescriptor::TableColumnSpecifier]));
-                Ok(BuilderNode::CombinationNode(super::node_builder::FunctionType::Foreach, Vec::new()))
+            Keyword::Foreach | Keyword::Saved => {
+                Err(GenerativeProgramCompileError::SyntaxError(SyntaxErrorType::FunctionForbidsObject))
             }
-            Keyword::Filter => todo!(),
-            Keyword::Save => todo!(),
+            Keyword::Filter => {
+                *context = ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(vec![
+                    DataTypeDescriptor::FilterPredicate,
+                ]));
+                Ok(FunctionType::Filter)
+            },
             Keyword::Saved => todo!(),
             _ => {
                 return Err(GenerativeProgramCompileError::SyntaxError(
@@ -310,9 +383,45 @@ fn parser_awaiting_value(
                 ))
             }
         },
-        TokenType::NumericLiteral | TokenType::Symbol => {
-            Ok(BuilderNode::GenericLiteral(create_literal_node(current_token, other_tokens, descriptor)?))
+        _ => {
+            return Err(GenerativeProgramCompileError::SyntaxError(
+                SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
+            ))
+        }
+    }
+}
+
+
+fn parse_awaiting_value(
+    context: &mut ParsingContext,
+    current_token: Token,
+    other_tokens: &mut VecDeque<Token>,
+    descriptor: Rc<TableDescriptor>,
+) -> Result<BuilderNode, GenerativeProgramCompileError> {
+    match current_token.token_type {
+        TokenType::Keyword(word) => match word {
+            Keyword::Foreach => {
+                *context = ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(vec![
+                    DataTypeDescriptor::TableColumnSpecifier,
+                ]));
+                Ok(BuilderNode::CombinationNode(
+                    super::node_builder::FunctionType::Foreach,
+                    Vec::new(),
+                ))
+            }
+            Keyword::Filter | Keyword::Save => {
+                Err(GenerativeProgramCompileError::SyntaxError(SyntaxErrorType::FunctionRequiresObject))
+            },
+            Keyword::Saved => todo!(),
+            _ => {
+                Err(GenerativeProgramCompileError::SyntaxError(
+                    SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
+                ))
+            }
         },
+        TokenType::NumericLiteral | TokenType::Symbol => Ok(BuilderNode::GenericLiteral(
+            create_literal_node(current_token, other_tokens, descriptor)?,
+        )),
         _ => {
             return Err(GenerativeProgramCompileError::SyntaxError(
                 SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
@@ -340,7 +449,11 @@ fn create_literal_node(
             // need to clone it first, and only if the operation
             // suceeds do we update the main variable.
             let mut secondary_queue = other_tokens.clone();
-            match create_table_column_specifier(current_token.clone(), &mut secondary_queue, descriptor.clone()) {
+            match create_table_column_specifier(
+                current_token.clone(),
+                &mut secondary_queue,
+                descriptor.clone(),
+            ) {
                 Ok(_) => {
                     // We need to apply the changes to the main
                     // queue. Unfortunately the easiest way to do
@@ -348,10 +461,14 @@ fn create_literal_node(
                     // queue.
                     // This operation should return successfully, as it
                     // did previous with clones of the parameters given.
-                    let table_column =
-                        create_table_column_specifier(current_token, other_tokens, descriptor.clone()).unwrap();
+                    let table_column = create_table_column_specifier(
+                        current_token,
+                        other_tokens,
+                        descriptor.clone(),
+                    )
+                    .unwrap();
 
-                    return Ok(UnderspecifiedLiteral::TableColumnSpecifier(table_column))
+                    return Ok(UnderspecifiedLiteral::TableColumnSpecifier(table_column));
                 }
                 Err(_) => {
                     // This is fine; it's not an enum with a
@@ -367,7 +484,8 @@ fn create_literal_node(
         TokenType::Operator(Operator::Colon) => {
             // It's an enum with a column specified
             // Or it could be a syntax error
-            let column_specifier = create_table_column_specifier(current_token, other_tokens, descriptor.clone())?;
+            let column_specifier =
+                create_table_column_specifier(current_token, other_tokens, descriptor.clone())?;
 
             todo!()
         }
@@ -459,12 +577,15 @@ fn create_table_column_specifier(
                                         }
                                     }
                                     // Specifying column by name
-                                    TokenType::Symbol => {
-                                        Ok(TableColumnSpecifier::BOTH(
-                                            TableSpecifier { table_id },
-                                            ColumnSpecifier { column_id: column_id_from_symbol(&next_token.token_contents, descriptor)? },
-                                        ))
-                                    }
+                                    TokenType::Symbol => Ok(TableColumnSpecifier::BOTH(
+                                        TableSpecifier { table_id },
+                                        ColumnSpecifier {
+                                            column_id: column_id_from_symbol(
+                                                &next_token.token_contents,
+                                                descriptor,
+                                            )?,
+                                        },
+                                    )),
                                     _ => {
                                         // In this case, the specifier is over so we return what
                                         // we have
@@ -494,16 +615,19 @@ fn create_table_column_specifier(
     }
 }
 
-/// This functions turns a symbol which should contain a column id into a 
+/// This functions turns a symbol which should contain a column id into a
 /// column id to put into a descriptor
-fn column_id_from_symbol(symbol: &str, descriptor: Rc<TableDescriptor>) -> Result<usize, GenerativeProgramCompileError> {
+fn column_id_from_symbol(
+    symbol: &str,
+    descriptor: Rc<TableDescriptor>,
+) -> Result<usize, GenerativeProgramCompileError> {
     for (i, column) in descriptor.column_descriptors.iter().enumerate() {
         if column.name == symbol {
-            return Ok(i)
+            return Ok(i);
         }
     }
-    
-    return Err(GenerativeProgramCompileError::ColumnNotFound)
+
+    return Err(GenerativeProgramCompileError::ColumnNotFound);
 }
 
 /// This function creates an `UnderspecifiedLiteral` given a token with contents

@@ -161,6 +161,12 @@ const TOKENS: &[TokenDefinition] = &[
         ..BASE_TOKEN
     },
     TokenDefinition {
+        token_type: TokenType::Operator(Operator::Period),
+        descriptor: ".",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
         token_type: TokenType::Operator(Operator::Comma),
         descriptor: ",",
         priority: 1,

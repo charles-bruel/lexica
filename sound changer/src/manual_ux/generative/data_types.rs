@@ -40,6 +40,7 @@ pub enum Operator {
     Less,
     GreaterEqual,
     LessEqual,
+    Period,
     Comma,
     Colon,
     SemiColon,
