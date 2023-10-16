@@ -1,8 +1,8 @@
-use std::{rc::Rc, collections::HashMap};
+use std::{collections::HashMap, rc::Rc, time::Instant};
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
-use super::generative::{GenerativeProgramCompileError, GenerativeProgram};
+use super::generative::{GenerativeProgram, GenerativeProgramCompileError};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
@@ -37,7 +37,7 @@ pub enum PopulatedTableRowSource {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeTableRowProcedure {
-    programs: Vec<GenerativeProgram>,
+    pub programs: Vec<GenerativeProgram>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -74,7 +74,10 @@ pub enum TableLoadingError {
     Unknown,
 }
 
-pub fn load_table(input: &String, previous_descriptors: &mut HashMap<usize, Rc<TableDescriptor>>) -> Result<Table, TableLoadingError> {
+pub fn load_table(
+    input: &String,
+    previous_descriptors: &mut HashMap<usize, Rc<TableDescriptor>>,
+) -> Result<Table, TableLoadingError> {
     let mut lines: Vec<&str> = input.split("\n").collect();
     if lines.len() < 3 {
         return Err(TableLoadingError::MalformedHeader);
@@ -120,7 +123,15 @@ pub fn load_table(input: &String, previous_descriptors: &mut HashMap<usize, Rc<T
     previous_descriptors.insert(id.into(), table_descriptor.clone());
 
     for line in lines {
-        table_rows.push(parse_table_line(table_descriptor.clone(), previous_descriptors.clone(), id.into(), line)?);
+        let start = Instant::now();
+        table_rows.push(parse_table_line(
+            table_descriptor.clone(),
+            previous_descriptors.clone(),
+            id.into(),
+            line,
+        )?);
+        let elapsed = start.elapsed();
+        println!("Loaded line in {:?}", elapsed)
     }
 
     Ok(Table {

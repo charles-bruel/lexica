@@ -33,9 +33,11 @@ pub enum UnderspecifiedLiteral {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum FunctionType {
+    // We skip conversion nodes here because those are constructed
+    // during this step.
     UnknownFunction,
     Addition,
-    Conversion,
+    Subtraction,
     Foreach,
     Filter,
     Save,
@@ -230,6 +232,26 @@ impl BuilderNode {
                 Ok(TypedNode::RangeNode(RangeNode::Save(
                     Box::new(target),
                     Box::new(name),
+                )))
+            }
+            BuilderNode::CombinationNode(FunctionType::Saved, v) => {
+                if v.len() < 2 {
+                    todo!()
+                } else if v.len() > 2 {
+                    todo!()
+                }
+                let name = v[0].clone().try_convert_string(context)?;
+                let table_column = v[1].clone().try_convert_table_column(context)?;
+                let column = match table_column {
+                    TableColumnSpecifier::TABLE(_) => {
+                        return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
+                    }
+                    TableColumnSpecifier::COLUMN(c) => c,
+                    TableColumnSpecifier::BOTH(_, c) => c,
+                };
+                Ok(TypedNode::RangeNode(RangeNode::Saved(
+                    Box::new(name),
+                    column,
                 )))
             }
             BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v) => {

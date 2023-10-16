@@ -49,7 +49,7 @@ pub enum RangeNode {
     ForeachNode(TableSpecifier, ColumnSpecifier),
     FilterNode(Box<RangeNode>, Box<FilterPredicate>),
     Save(Box<RangeNode>, Box<StringNode>),
-    Saved(String, ColumnSpecifier),
+    Saved(Box<StringNode>, ColumnSpecifier),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -290,7 +290,8 @@ impl RangeNode {
                 return Ok(evaluated);
             }
             RangeNode::Saved(key, column) => {
-                let mut result = context.saved_ranges[key].clone();
+                let key_value = &key.eval(context)?[0];
+                let mut result = context.saved_ranges[key_value].clone();
                 result.column_id = Some(column.column_id);
 
                 return Ok(result);

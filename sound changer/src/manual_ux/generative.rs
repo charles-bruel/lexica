@@ -126,6 +126,7 @@ pub enum SyntaxErrorType {
     FunctionForbidsObject,
     FilterPredicateEndsEarly,
     UnbalancedFunctions,
+    ExpectedComma,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

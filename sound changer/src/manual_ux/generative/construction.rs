@@ -22,10 +22,7 @@ use crate::{
 };
 
 use super::{
-    execution::{
-        ColumnSpecifier, EnumNode, FilterPredicate, IntNode, RangeNode, StringNode, TableSpecifier,
-        UIntNode,
-    },
+    execution::{ColumnSpecifier, FilterPredicate, TableSpecifier},
     node_builder::{BuilderNode, FunctionType, UnderspecifiedLiteral},
     tokenizer::{tokenize, Token},
     GenerativeProgram, GenerativeProgramCompileError,
@@ -49,7 +46,7 @@ enum ParsingContext {
     /// Occurs after the start state, and after an operator such as `+`
     /// (not `.`). The code associated with this state is also called from
     /// the `AWAITING_PARAMETERS` state.
-    AWAITING_VALUE(DataTypeDescriptor),
+    AWAITING_VALUE(Option<DataTypeDescriptor>),
     /// Indicates that there is a valid construction of the given
     /// data type and the operation can be finished or expanded with
     /// any number of operators or symbols, such as `.` or ` + `
@@ -180,7 +177,8 @@ fn create_generative_table_row_procedure(
         context.current_column_id += 1;
         index += 1;
     }
-    todo!()
+
+    return Ok(GenerativeTableRowProcedure { programs: result });
 }
 
 fn create_generative_program(
@@ -204,9 +202,9 @@ fn parse_generative_segment(
     let mut context: VecDeque<ParsingContext> = if require_equals {
         VecDeque::from(vec![ParsingContext::START])
     } else {
-        VecDeque::from(vec![ParsingContext::AWAITING_VALUE(
+        VecDeque::from(vec![ParsingContext::AWAITING_VALUE(Some(
             DataTypeDescriptor::TableDataType(output_type.clone()),
-        )])
+        ))])
     };
 
     let mut queue = VecDeque::from(tokens);
@@ -217,14 +215,12 @@ fn parse_generative_segment(
         // Queue is garunteed to have elements because of while condition
         let current_token = queue.pop_front().unwrap();
 
-        println!("{:?}:\n\t{:?}\n\t{:?}", context, current_token, main_node);
-
         match &mut context[0] {
             // TODO: Split into own function
             ParsingContext::START => match current_token.token_type {
                 TokenType::Operator(Operator::Equals) => {
-                    context[0] = ParsingContext::AWAITING_VALUE(DataTypeDescriptor::TableDataType(
-                        output_type.clone(),
+                    context[0] = ParsingContext::AWAITING_VALUE(Some(
+                        DataTypeDescriptor::TableDataType(output_type.clone()),
                     ))
                 }
                 _ => {
@@ -301,7 +297,7 @@ fn parse_generative_segment(
                             let (node, parsing_context) = parse_awaiting_value(
                                 current_token,
                                 &mut queue,
-                                &target_data_type,
+                                &Some(target_data_type),
                                 project_context,
                             )?;
                             if cloned_queue.len() != 0 {
@@ -328,7 +324,16 @@ fn parse_generative_segment(
                     ))
                 }
             },
-            ParsingContext::AWAITING_FUNCTION_COMMA(_) => todo!(),
+            ParsingContext::AWAITING_FUNCTION_COMMA(params) => match current_token.token_type {
+                TokenType::Operator(Operator::Comma) => {
+                    context[0] = ParsingContext::AWAITING_PARAMETERS(params.clone())
+                }
+                _ => {
+                    return Err(GenerativeProgramCompileError::SyntaxError(
+                        SyntaxErrorType::ExpectedComma,
+                    ))
+                }
+            },
         }
     }
 
@@ -346,9 +351,23 @@ fn parse_new_segment_ready(
     current_token: Token,
     main_node: Option<BuilderNode>,
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
-    match current_token.token_type {
-        TokenType::Operator(Operator::Plus | Operator::Minus) => {
-            todo!()
+    match &current_token.token_type {
+        TokenType::Operator(v @ (Operator::Plus | Operator::Minus)) => {
+            *context = ParsingContext::AWAITING_VALUE(None);
+
+            let function_type = if v == &Operator::Plus {
+                FunctionType::Addition
+            } else {
+                FunctionType::Subtraction
+            };
+
+            Ok(BuilderNode::CombinationNode(
+                function_type,
+                vec![match main_node {
+                    Some(v) => v,
+                    None => return Err(GenerativeProgramCompileError::MainNodeHasNoValue),
+                }],
+            ))
         }
         TokenType::Operator(Operator::Period) => {
             // We have a function and the first parameter
@@ -527,7 +546,7 @@ fn parse_filter_predicate_expression(
         parse_generative_segment(false, predicate, &output_type.clone(), project_context)?;
 
     match output_type {
-        TableDataTypeDescriptor::Enum(enum_values) => {
+        TableDataTypeDescriptor::Enum(_) => {
             let final_predicate = predicate_segment.try_convert_enum(project_context)?;
             let simple_comparision_type = match comparision_type {
                 Operator::Equality => SimpleComparisionType::Equals,
@@ -622,11 +641,11 @@ fn check_if_column_specifier(tokens: Vec<Token>, project_context: &mut ProjectCo
 fn parse_awaiting_value(
     current_token: Token,
     other_tokens: &mut VecDeque<Token>,
-    target_data_type: &DataTypeDescriptor,
+    target_data_type: &Option<DataTypeDescriptor>,
     project_context: &mut ProjectContext,
 ) -> Result<(BuilderNode, Option<ParsingContext>), GenerativeProgramCompileError> {
     match target_data_type {
-        DataTypeDescriptor::FilterPredicate => {
+        Some(DataTypeDescriptor::FilterPredicate) => {
             // We have to return a filter predicate for the program to be valid,
             // so unlike the case with the table column specifier literal, we can
             // pull elements from the token queue without any checks or backups.
@@ -652,15 +671,23 @@ fn parse_awaiting_value(
                     vec![DataTypeDescriptor::TableColumnSpecifier],
                 ))),
             )),
+            Keyword::Saved => Ok((
+                BuilderNode::CombinationNode(super::node_builder::FunctionType::Saved, Vec::new()),
+                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                    vec![
+                        DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::String),
+                        DataTypeDescriptor::TableColumnSpecifier,
+                    ],
+                ))),
+            )),
             Keyword::Filter | Keyword::Save => Err(GenerativeProgramCompileError::SyntaxError(
                 SyntaxErrorType::FunctionRequiresObject,
             )),
-            Keyword::Saved => todo!(),
             _ => Err(GenerativeProgramCompileError::SyntaxError(
                 SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
             )),
         },
-        TokenType::NumericLiteral | TokenType::Symbol => Ok((
+        TokenType::NumericLiteral | TokenType::Symbol | TokenType::Operator(_) => Ok((
             BuilderNode::GenericLiteral(create_literal_node(
                 current_token,
                 other_tokens,
@@ -735,10 +762,10 @@ fn create_literal_node(
         TokenType::Operator(Operator::Colon) => {
             // It's an enum with a column specified
             // Or it could be a syntax error
-            let column_specifier =
-                create_table_column_specifier(current_token, other_tokens, project_context)?;
 
-            todo!()
+            Ok(UnderspecifiedLiteral::TableColumnSpecifier(
+                create_table_column_specifier(current_token, other_tokens, project_context)?,
+            ))
         }
         _ => {
             return Err(GenerativeProgramCompileError::SyntaxError(
@@ -882,7 +909,7 @@ fn column_id_from_symbol(
         .iter()
         .enumerate()
     {
-        if column.name == symbol {
+        if column.name.to_lowercase() == symbol.to_lowercase() {
             return Ok(i);
         }
     }
@@ -909,13 +936,7 @@ fn create_int_or_uint_literal(
     if value < 0 {
         // This probably shouldn't happen, as negative numbers should
         // appear as two tokens, but it never hurts to include.
-
-        // TODO: Replace with a proper constant
-        // It's a magic number right now because I don't have
-        // internet and I don't where rust put its int limit
-        // constants
-        // i32 min
-        if value < -2147483648 {
+        if value < i32::MIN as i64 {
             // Out of range
             return Err(GenerativeProgramCompileError::IntOutOfRange);
         } else {
