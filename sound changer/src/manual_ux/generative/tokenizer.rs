@@ -161,6 +161,18 @@ const TOKENS: &[TokenDefinition] = &[
         ..BASE_TOKEN
     },
     TokenDefinition {
+        token_type: TokenType::Operator(Operator::Equality),
+        descriptor: "==",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::Operator(Operator::Inequality),
+        descriptor: "!=",
+        priority: 1,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
         token_type: TokenType::Operator(Operator::Period),
         descriptor: ".",
         priority: 1,

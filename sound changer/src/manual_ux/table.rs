@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, collections::HashMap};
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
@@ -74,7 +74,7 @@ pub enum TableLoadingError {
     Unknown,
 }
 
-pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {
+pub fn load_table(input: &String, previous_descriptors: &mut HashMap<usize, Rc<TableDescriptor>>) -> Result<Table, TableLoadingError> {
     let mut lines: Vec<&str> = input.split("\n").collect();
     if lines.len() < 3 {
         return Err(TableLoadingError::MalformedHeader);
@@ -117,8 +117,10 @@ pub fn load_table(input: &String) -> Result<Table, TableLoadingError> {
 
     let table_descriptor = Rc::new(descriptor);
 
+    previous_descriptors.insert(id.into(), table_descriptor.clone());
+
     for line in lines {
-        table_rows.push(parse_table_line(table_descriptor.clone(), line)?);
+        table_rows.push(parse_table_line(table_descriptor.clone(), previous_descriptors.clone(), id.into(), line)?);
     }
 
     Ok(Table {
@@ -163,10 +165,12 @@ fn load_table_data_type(input: &str) -> Result<TableDataTypeDescriptor, TableLoa
 
 fn parse_table_line(
     descriptor: Rc<TableDescriptor>,
+    all_descriptors: HashMap<usize, Rc<TableDescriptor>>,
+    table_id: usize,
     line: &str,
 ) -> Result<TableRow, TableLoadingError> {
     if line.starts_with(":=") {
-        return parse_generative_table_line(descriptor, line);
+        return parse_generative_table_line(all_descriptors, table_id, line);
     }
 
     let values: Vec<&str> = line.split("|").collect();

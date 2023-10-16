@@ -107,6 +107,10 @@ pub enum GenerativeProgramCompileError {
     ColumnNotFound,
     FoundValueWhileNotMakingCombinationNode,
     MainNodeHasNoValue,
+    FilterPredicateSpecifierColumnOnly,
+    OnlyEqualsAndNotEqualsValidHere,
+    NoValueFromSegment,
+    RequiresColumnSpecifier,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -120,6 +124,8 @@ pub enum SyntaxErrorType {
     ExpectedCloseParenthesis,
     FunctionRequiresObject,
     FunctionForbidsObject,
+    FilterPredicateEndsEarly,
+    UnbalancedFunctions,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -128,8 +134,9 @@ pub struct GenerativeProgram {
 }
 
 pub fn parse_generative_table_line(
-    descriptor: Rc<TableDescriptor>,
+    all_descriptors: HashMap<usize, Rc<TableDescriptor>>,
+    table_id: usize,
     line: &str,
 ) -> Result<TableRow, TableLoadingError> {
-    construction::parse_generative_table_line(descriptor, line)
+    construction::parse_generative_table_line(all_descriptors, table_id, line)
 }

@@ -40,14 +40,14 @@ pub enum UIntNode {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum EnumNode {
-    LiteralNode(String, ColumnSpecifier, Option<TableSpecifier>),
+    LiteralNode(String, ColumnSpecifier, TableSpecifier),
     ConversionNode(RangeNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RangeNode {
     ForeachNode(TableSpecifier, ColumnSpecifier),
-    FilterNode(Box<RangeNode>, ColumnSpecifier, Box<FilterPredicate>),
+    FilterNode(Box<RangeNode>, Box<FilterPredicate>),
     Save(Box<RangeNode>, String),
     Saved(String, Option<ColumnSpecifier>),
 }
@@ -70,10 +70,10 @@ pub struct ColumnSpecifier {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum FilterPredicate {
-    EnumCompare(SimpleComparisionType, EnumNode),
-    StringCompare(SimpleComparisionType, StringNode),
-    IntCompare(ComplexComparisionType, IntNode),
-    UIntCompare(ComplexComparisionType, UIntNode),
+    EnumCompare(ColumnSpecifier, SimpleComparisionType, EnumNode),
+    StringCompare(ColumnSpecifier, SimpleComparisionType, StringNode),
+    IntCompare(ColumnSpecifier, ComplexComparisionType, IntNode),
+    UIntCompare(ColumnSpecifier, ComplexComparisionType, UIntNode),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -237,12 +237,9 @@ impl EnumNode {
     ) -> Result<Vec<RuntimeEnum>, GenerativeProgramRuntimeError> {
         match self {
             EnumNode::LiteralNode(key, column_specifier, table_specifier) => {
-                let (table, table_specifer) = match table_specifier {
-                    Some(index) => match &context.project.tables[index.table_id] {
-                        Some(table) => (table.table_descriptor.clone(), *index),
-                        None => return Err(GenerativeProgramRuntimeError::TableNotFound),
-                    },
-                    None => (context.table_descriptor.clone(), context.table_specifer),
+                let (table, table_specifer) = match &context.project.tables[table_specifier.table_id] {
+                    Some(table) => (table.table_descriptor.clone(), *table_specifier),
+                    None => return Err(GenerativeProgramRuntimeError::TableNotFound),
                 };
                 let data_type = &table.column_descriptors[column_specifier.column_id].data_type;
                 let values = match data_type {
@@ -272,11 +269,11 @@ impl RangeNode {
     ) -> Result<Range, GenerativeProgramRuntimeError> {
         match self {
             RangeNode::ForeachNode(_, _) => todo!(),
-            RangeNode::FilterNode(range, column, predicate) => {
+            RangeNode::FilterNode(range, predicate) => {
                 let mut result = range.eval(context)?;
                 let mut new_range: Vec<TableRow> = Vec::with_capacity(result.rows.len());
                 for x in result.rows {
-                    if (&predicate).check(&x, &column, context)? {
+                    if (&predicate).check(&x, context)? {
                         new_range.push(x);
                     }
                 }
@@ -306,7 +303,6 @@ impl FilterPredicate {
     pub fn check(
         &self,
         row: &TableRow,
-        column: &ColumnSpecifier,
         context: &mut ExecutionContext,
     ) -> Result<bool, GenerativeProgramRuntimeError> {
         // Check data type of input
@@ -320,12 +316,20 @@ impl FilterPredicate {
                 return Err(GenerativeProgramRuntimeError::OutOfOrderExecution);
             }
         };
-        let input_data_type = &descriptor.column_descriptors[column.column_id].data_type;
+
+        let column_id = match self {
+            FilterPredicate::EnumCompare(column, _, _) => column.column_id,
+            FilterPredicate::StringCompare(column, _, _) => column.column_id,
+            FilterPredicate::IntCompare(column, _, _) => column.column_id,
+            FilterPredicate::UIntCompare(column, _, _) => column.column_id,
+        };
+
+        let input_data_type = &descriptor.column_descriptors[column_id].data_type;
 
         // Crazy multi-level match statement
         match self {
-            FilterPredicate::EnumCompare(comp_type, node) => match input_data_type {
-                TableDataTypeDescriptor::Enum(_) => match contents[column.column_id] {
+            FilterPredicate::EnumCompare(_, comp_type, node) => match input_data_type {
+                TableDataTypeDescriptor::Enum(_) => match contents[column_id] {
                     TableContents::Enum(v) => todo!(),
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
@@ -333,8 +337,8 @@ impl FilterPredicate {
                 },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::StringCompare(comp_type, node) => match input_data_type {
-                TableDataTypeDescriptor::String => match &contents[column.column_id] {
+            FilterPredicate::StringCompare(_, comp_type, node) => match input_data_type {
+                TableDataTypeDescriptor::String => match &contents[column_id] {
                     TableContents::String(v) => {
                         let eval = enforce_single_string(node.eval(context)?)?;
                         return match comp_type {
@@ -348,8 +352,8 @@ impl FilterPredicate {
                 },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::IntCompare(comp_type, node) => match input_data_type {
-                TableDataTypeDescriptor::Int => match contents[column.column_id] {
+            FilterPredicate::IntCompare(_, comp_type, node) => match input_data_type {
+                TableDataTypeDescriptor::Int => match contents[column_id] {
                     TableContents::Int(v) => todo!(),
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
@@ -357,8 +361,8 @@ impl FilterPredicate {
                 },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::UIntCompare(comp_type, node) => match input_data_type {
-                TableDataTypeDescriptor::UInt => match contents[column.column_id] {
+            FilterPredicate::UIntCompare(_, comp_type, node) => match input_data_type {
+                TableDataTypeDescriptor::UInt => match contents[column_id] {
                     TableContents::UInt(v) => todo!(),
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable

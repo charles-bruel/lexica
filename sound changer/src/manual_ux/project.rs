@@ -1,6 +1,8 @@
+use std::{rc::Rc, collections::HashMap};
+
 use crate::{io, manual_ux::table};
 
-use super::table::{Table, TableLoadingError};
+use super::table::{Table, TableLoadingError, TableDescriptor};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Project {
@@ -15,10 +17,11 @@ pub enum ProjectLoadError {
 pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     let mut max_id: usize = 0;
     let mut accumulation: Vec<Table> = Vec::new();
+    let mut previous_descriptors: HashMap<usize, Rc<TableDescriptor>> = HashMap::new();
+    // TODO: Sort table load order so they get loaded in order even if the names are bad
     for entry in glob::glob(&(filepath + &String::from("/**/*.ltable"))).unwrap() {
         let temp = match table::load_table(
-            &io::load_from_file(&entry.unwrap().as_path().display().to_string(), false).unwrap(),
-        ) {
+            &io::load_from_file(&entry.unwrap().as_path().display().to_string(), false).unwrap(), &mut previous_descriptors) {
             Ok(v) => v,
             Err(e) => {
                 println!("{:?}", e);
