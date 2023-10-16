@@ -48,8 +48,8 @@ pub enum EnumNode {
 pub enum RangeNode {
     ForeachNode(TableSpecifier, ColumnSpecifier),
     FilterNode(Box<RangeNode>, Box<FilterPredicate>),
-    Save(Box<RangeNode>, String),
-    Saved(String, Option<ColumnSpecifier>),
+    Save(Box<RangeNode>, Box<StringNode>),
+    Saved(String, ColumnSpecifier),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -237,10 +237,11 @@ impl EnumNode {
     ) -> Result<Vec<RuntimeEnum>, GenerativeProgramRuntimeError> {
         match self {
             EnumNode::LiteralNode(key, column_specifier, table_specifier) => {
-                let (table, table_specifer) = match &context.project.tables[table_specifier.table_id] {
-                    Some(table) => (table.table_descriptor.clone(), *table_specifier),
-                    None => return Err(GenerativeProgramRuntimeError::TableNotFound),
-                };
+                let (table, table_specifer) =
+                    match &context.project.tables[table_specifier.table_id] {
+                        Some(table) => (table.table_descriptor.clone(), *table_specifier),
+                        None => return Err(GenerativeProgramRuntimeError::TableNotFound),
+                    };
                 let data_type = &table.column_descriptors[column_specifier.column_id].data_type;
                 let values = match data_type {
                     crate::manual_ux::table::TableDataTypeDescriptor::Enum(v) => v,
@@ -283,15 +284,14 @@ impl RangeNode {
             }
             RangeNode::Save(range, key) => {
                 let evaluated = range.to_owned().eval(context)?;
-                context.saved_ranges.insert(key.clone(), evaluated.clone());
+                // TODO: Work out vector string results
+                let key = key.eval(context)?[0].clone();
+                context.saved_ranges.insert(key, evaluated.clone());
                 return Ok(evaluated);
             }
             RangeNode::Saved(key, column) => {
                 let mut result = context.saved_ranges[key].clone();
-                match column {
-                    Some(v) => result.column_id = Some(v.column_id),
-                    None => (),
-                }
+                result.column_id = Some(column.column_id);
 
                 return Ok(result);
             }

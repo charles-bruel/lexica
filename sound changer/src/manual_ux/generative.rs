@@ -71,8 +71,8 @@ table (id=1), and appends "ka" to every noun
 mod construction;
 mod data_types;
 mod execution;
-mod tokenizer;
 mod node_builder;
+mod tokenizer;
 
 use std::{collections::HashMap, num::ParseIntError, rc::Rc};
 
@@ -100,7 +100,7 @@ pub enum GenerativeProgramRuntimeError {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum GenerativeProgramCompileError {
     SyntaxError(SyntaxErrorType),
-    TypeMismatch,
+    TypeMismatch(&'static str),
     IntParseError(ParseIntError),
     IntOutOfRange,
     OnlySpecifiedTable,

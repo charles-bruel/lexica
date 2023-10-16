@@ -7,9 +7,18 @@
 // If possible, the final, strong, "true" versions of each node
 // will be used.
 
-use crate::manual_ux::table::TableDataTypeDescriptor;
+use std::ops::Range;
 
-use super::{execution::{RangeNode, StringNode, IntNode, UIntNode, EnumNode, FilterPredicate, OutputNode, TableSpecifier, ColumnSpecifier, Range}, construction::{DataTypeDescriptor, EnumSpecifier, TableColumnSpecifier, ProjectContext}, GenerativeProgramCompileError};
+use crate::{data, manual_ux::table::TableDataTypeDescriptor};
+
+use super::{
+    construction::{DataTypeDescriptor, EnumSpecifier, ProjectContext, TableColumnSpecifier},
+    execution::{
+        ColumnSpecifier, EnumNode, FilterPredicate, IntNode, OutputNode, RangeNode, StringNode,
+        TableSpecifier, UIntNode,
+    },
+    GenerativeProgramCompileError,
+};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum UnderspecifiedLiteral {
@@ -64,42 +73,112 @@ enum TypedNode {
 impl BuilderNode {
     pub fn try_convert_output_node(
         self,
-        data_type: &DataTypeDescriptor, 
+        data_type: &TableDataTypeDescriptor,
         context: &ProjectContext,
     ) -> Result<OutputNode, GenerativeProgramCompileError> {
-        todo!() // Check data type
-        // self.convert_to_node(context)?.try_convert_output_node()
+        let output_node = self
+            .convert_to_node(
+                context,
+                &Some(DataTypeDescriptor::TableDataType(data_type.clone())),
+            )?
+            .try_convert_output_node(context)?;
+        match output_node {
+            OutputNode::String(_) => match data_type {
+                TableDataTypeDescriptor::String => Ok(output_node),
+                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got string")),
+            },
+            OutputNode::Int(_) => match data_type {
+                TableDataTypeDescriptor::Int => Ok(output_node),
+                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got int")),
+            },
+            OutputNode::UInt(_) => match data_type {
+                TableDataTypeDescriptor::UInt => Ok(output_node),
+                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got uint")),
+            },
+            // TODO: Verify enum type
+            OutputNode::Enum(_) => match data_type {
+                TableDataTypeDescriptor::Enum(_) => Ok(output_node),
+                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got enum")),
+            },
+        }
     }
 
-    pub fn try_convert_enum(self, context: &ProjectContext,) -> Result<EnumNode, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_enum()
+    pub fn try_convert_enum(
+        self,
+        context: &ProjectContext,
+    ) -> Result<EnumNode, GenerativeProgramCompileError> {
+        // TODO: Enum data types in type hints
+        let type_hint = &Some(DataTypeDescriptor::TableDataType(
+            TableDataTypeDescriptor::Enum(vec![]),
+        ));
+        self.convert_to_node(context, type_hint)?.try_convert_enum()
     }
 
-    pub fn try_convert_string(self, context: &ProjectContext,) -> Result<StringNode, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_string()
+    pub fn try_convert_string(
+        self,
+        context: &ProjectContext,
+    ) -> Result<StringNode, GenerativeProgramCompileError> {
+        let type_hint = &Some(DataTypeDescriptor::TableDataType(
+            TableDataTypeDescriptor::String,
+        ));
+        self.convert_to_node(context, type_hint)?
+            .try_convert_string()
     }
 
-    pub fn try_convert_int(self, context: &ProjectContext,) -> Result<IntNode, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_int()
+    pub fn try_convert_int(
+        self,
+        context: &ProjectContext,
+    ) -> Result<IntNode, GenerativeProgramCompileError> {
+        let type_hint = &Some(DataTypeDescriptor::TableDataType(
+            TableDataTypeDescriptor::Int,
+        ));
+        self.convert_to_node(context, type_hint)?.try_convert_int()
     }
 
-    pub fn try_convert_uint(self, context: &ProjectContext,) -> Result<UIntNode, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_uint()
+    pub fn try_convert_uint(
+        self,
+        context: &ProjectContext,
+    ) -> Result<UIntNode, GenerativeProgramCompileError> {
+        let type_hint = &Some(DataTypeDescriptor::TableDataType(
+            TableDataTypeDescriptor::UInt,
+        ));
+        self.convert_to_node(context, type_hint)?.try_convert_uint()
     }
 
-    pub fn try_convert_range(self, context: &ProjectContext,) -> Result<RangeNode, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_range()
+    pub fn try_convert_range(
+        self,
+        context: &ProjectContext,
+    ) -> Result<RangeNode, GenerativeProgramCompileError> {
+        let type_hint = &Some(DataTypeDescriptor::Range);
+        self.convert_to_node(context, type_hint)?
+            .try_convert_range()
     }
 
-    pub fn try_convert_filter_predicate(self, context: &ProjectContext,) -> Result<FilterPredicate, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_filter_predicate()
+    pub fn try_convert_filter_predicate(
+        self,
+        context: &ProjectContext,
+    ) -> Result<FilterPredicate, GenerativeProgramCompileError> {
+        let type_hint = &Some(DataTypeDescriptor::FilterPredicate);
+        self.convert_to_node(context, type_hint)?
+            .try_convert_filter_predicate()
     }
 
-    pub fn try_convert_table_column(self, context: &ProjectContext,) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
-        self.convert_to_node(context)?.try_convert_table_column()
+    pub fn try_convert_table_column(
+        self,
+        context: &ProjectContext,
+    ) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
+        let type_hint = &Some(DataTypeDescriptor::TableColumnSpecifier);
+        self.convert_to_node(context, type_hint)?
+            .try_convert_table_column()
     }
 
-    fn convert_to_node(self, context: &ProjectContext) -> Result<TypedNode, GenerativeProgramCompileError> {
+    /// Note that type hints are just hints, and are only sometimes used. If you want strict
+    /// typing, check the output of this function yourself.
+    fn convert_to_node(
+        self,
+        context: &ProjectContext,
+        type_hint: &Option<DataTypeDescriptor>,
+    ) -> Result<TypedNode, GenerativeProgramCompileError> {
         match self {
             // Easy
             BuilderNode::TrueStringNode(v) => Ok(TypedNode::StringNode(v)),
@@ -107,7 +186,7 @@ impl BuilderNode {
             BuilderNode::TrueUIntNode(v) => Ok(TypedNode::UIntNode(v)),
             BuilderNode::TrueEnumNode(v) => Ok(TypedNode::EnumNode(v)),
             BuilderNode::TrueRangeNode(v) => Ok(TypedNode::RangeNode(v)),
-            BuilderNode::GenericLiteral(v) => Ok(v.convert(context)),
+            BuilderNode::GenericLiteral(v) => Ok(v.convert(context, type_hint)?),
             BuilderNode::FilterPredicate(v) => Ok(TypedNode::FilterPredicate(v)),
 
             // Hard
@@ -119,8 +198,11 @@ impl BuilderNode {
                 }
                 let range = v[0].clone().try_convert_range(context)?;
                 let predicate = v[1].clone().try_convert_filter_predicate(context)?;
-                Ok(TypedNode::RangeNode(RangeNode::FilterNode(Box::new(range), Box::new(predicate))))
-            },
+                Ok(TypedNode::RangeNode(RangeNode::FilterNode(
+                    Box::new(range),
+                    Box::new(predicate),
+                )))
+            }
             BuilderNode::CombinationNode(FunctionType::Foreach, v) => {
                 if v.len() < 1 {
                     todo!()
@@ -129,12 +211,27 @@ impl BuilderNode {
                 }
                 let specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table, column) = match specifier {
-                    TableColumnSpecifier::TABLE(_) => return Err(GenerativeProgramCompileError::RequiresColumnSpecifier),
+                    TableColumnSpecifier::TABLE(_) => {
+                        return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
+                    }
                     TableColumnSpecifier::COLUMN(_) => todo!(),
                     TableColumnSpecifier::BOTH(t, c) => (t, c),
                 };
                 Ok(TypedNode::RangeNode(RangeNode::ForeachNode(table, column)))
-            },
+            }
+            BuilderNode::CombinationNode(FunctionType::Save, v) => {
+                if v.len() < 2 {
+                    todo!()
+                } else if v.len() > 2 {
+                    todo!()
+                }
+                let target = v[0].clone().try_convert_range(context)?;
+                let name = v[1].clone().try_convert_string(context)?;
+                Ok(TypedNode::RangeNode(RangeNode::Save(
+                    Box::new(target),
+                    Box::new(name),
+                )))
+            }
             BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v) => {
                 if v.len() < 1 {
                     todo!()
@@ -143,11 +240,16 @@ impl BuilderNode {
                 }
                 let table_column_specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table_id, column_id) = match table_column_specifier {
-                    TableColumnSpecifier::TABLE(_) => return Err(GenerativeProgramCompileError::RequiresColumnSpecifier),
+                    TableColumnSpecifier::TABLE(_) => {
+                        return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
+                    }
                     TableColumnSpecifier::COLUMN(c) => (context.table_id, c.column_id),
                     TableColumnSpecifier::BOTH(t, c) => (t.table_id, c.column_id),
                 };
-                let data_type_descriptor = context.all_descriptors[&table_id].column_descriptors[column_id].clone().data_type;
+                let data_type_descriptor = context.all_descriptors[&table_id].column_descriptors
+                    [column_id]
+                    .clone()
+                    .data_type;
                 match data_type_descriptor {
                     TableDataTypeDescriptor::Enum(v) => {
                         let mut found_flag = false;
@@ -157,19 +259,26 @@ impl BuilderNode {
                             }
                         }
                         if !found_flag {
-                            return  Err(GenerativeProgramCompileError::TypeMismatch);
+                            return Err(GenerativeProgramCompileError::TypeMismatch(
+                                "Couldn't find symbol",
+                            ));
                         }
 
-
-                        Ok(TypedNode::EnumNode(EnumNode::LiteralNode(name, ColumnSpecifier { column_id }, TableSpecifier { table_id })))
-                    },
-                    _ => Err(GenerativeProgramCompileError::TypeMismatch),
+                        Ok(TypedNode::EnumNode(EnumNode::LiteralNode(
+                            name,
+                            ColumnSpecifier { column_id },
+                            TableSpecifier { table_id },
+                        )))
+                    }
+                    _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                        "Not an enum column",
+                    )),
                 }
             }
             _ => {
                 println!("{:?}", self);
                 todo!()
-            },
+            }
         }
     }
 }
@@ -178,82 +287,151 @@ impl TypedNode {
     fn try_convert_enum(self) -> Result<EnumNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::EnumNode(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected enum")),
         }
     }
 
     fn try_convert_string(self) -> Result<StringNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::StringNode(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                "Expected string",
+            )),
         }
     }
 
     fn try_convert_uint(self) -> Result<UIntNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::UIntNode(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected uint")),
         }
     }
 
     fn try_convert_int(self) -> Result<IntNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::IntNode(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected int")),
         }
     }
 
     fn try_convert_range(self) -> Result<RangeNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::RangeNode(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                "Expected range",
+            )),
         }
     }
 
-    fn try_convert_filter_predicate(self) -> Result<FilterPredicate, GenerativeProgramCompileError> {
+    fn try_convert_filter_predicate(
+        self,
+    ) -> Result<FilterPredicate, GenerativeProgramCompileError> {
         match self {
             TypedNode::FilterPredicate(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                "Expected filter predicate",
+            )),
         }
     }
 
-    fn try_convert_table_column(self) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
+    fn try_convert_table_column(
+        self,
+    ) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
         match self {
             TypedNode::TableColumn(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch)
+            _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                "Expected table column specifier",
+            )),
         }
     }
 
-
-    fn try_convert_output_node(self) -> Result<OutputNode, GenerativeProgramCompileError> {
+    fn try_convert_output_node(
+        self,
+        context: &ProjectContext,
+    ) -> Result<OutputNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::StringNode(v) => Ok(OutputNode::String(v)),
             TypedNode::IntNode(v) => Ok(OutputNode::Int(v)),
             TypedNode::UIntNode(v) => Ok(OutputNode::UInt(v)),
             TypedNode::EnumNode(v) => Ok(OutputNode::Enum(v)),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch),
+            TypedNode::RangeNode(v) => {
+                let data_type = v.get_data_type(context);
+
+                match data_type {
+                    TableDataTypeDescriptor::Enum(_) => {
+                        Ok(OutputNode::Enum(EnumNode::ConversionNode(v)))
+                    }
+                    TableDataTypeDescriptor::String => {
+                        Ok(OutputNode::String(StringNode::ConversionNode(v)))
+                    }
+                    TableDataTypeDescriptor::UInt => {
+                        Ok(OutputNode::UInt(UIntNode::ConversionNode(v)))
+                    }
+                    TableDataTypeDescriptor::Int => Ok(OutputNode::Int(IntNode::ConversionNode(v))),
+                }
+            }
+            _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                "Expected an output node",
+            )),
+        }
+    }
+}
+
+impl RangeNode {
+    fn get_data_type(&self, context: &ProjectContext) -> TableDataTypeDescriptor {
+        match self {
+            RangeNode::FilterNode(prev, _) | RangeNode::Save(prev, _) => {
+                prev.get_data_type(context)
+            }
+            RangeNode::Saved(_, column) => context.descriptor.column_descriptors[column.column_id]
+                .data_type
+                .clone(),
+            RangeNode::ForeachNode(table, column) => context.all_descriptors[&table.table_id]
+                .column_descriptors[column.column_id]
+                .data_type
+                .clone(),
         }
     }
 }
 
 impl UnderspecifiedLiteral {
     // TODO: Specific types
-    fn convert(self, context: &ProjectContext) -> TypedNode {
+    fn convert(
+        self,
+        context: &ProjectContext,
+        type_hint: &Option<DataTypeDescriptor>,
+    ) -> Result<TypedNode, GenerativeProgramCompileError> {
         match self {
-            UnderspecifiedLiteral::String(v) => TypedNode::StringNode(StringNode::LiteralNode(v)),
+            UnderspecifiedLiteral::String(v) => {
+                Ok(TypedNode::StringNode(StringNode::LiteralNode(v)))
+            }
             UnderspecifiedLiteral::Enum(v) => {
                 let table = match v.table {
                     Some(v) => v,
-                    None => TableSpecifier { table_id: context.table_id },
+                    None => TableSpecifier {
+                        table_id: context.table_id,
+                    },
                 };
 
-                TypedNode::EnumNode(EnumNode::LiteralNode(v.name, v.column, table))
-            },
+                Ok(TypedNode::EnumNode(EnumNode::LiteralNode(
+                    v.name, v.column, table,
+                )))
+            }
             UnderspecifiedLiteral::Int(_) => todo!(),
             UnderspecifiedLiteral::UInt(_) => todo!(),
             UnderspecifiedLiteral::Number(_, _) => todo!(),
-            UnderspecifiedLiteral::TableColumnSpecifier(v) => TypedNode::TableColumn(v),
-            UnderspecifiedLiteral::StringOrShortEnum(_, _, _) => todo!(),
+            UnderspecifiedLiteral::TableColumnSpecifier(v) => Ok(TypedNode::TableColumn(v)),
+            UnderspecifiedLiteral::StringOrShortEnum(string, column, table) => match type_hint {
+                Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::Enum(_))) => {
+                    todo!()
+                }
+                None | Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::String)) => {
+                    Ok(TypedNode::StringNode(StringNode::LiteralNode(string)))
+                }
+                _ => Err(GenerativeProgramCompileError::TypeMismatch(
+                    "Invalid type hint for node type",
+                )),
+            },
         }
     }
 }
