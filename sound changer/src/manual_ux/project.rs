@@ -20,8 +20,9 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     let mut previous_descriptors: HashMap<usize, Rc<TableDescriptor>> = HashMap::new();
     // TODO: Sort table load order so they get loaded in order even if the names are bad
     for entry in glob::glob(&(filepath + &String::from("/**/*.ltable"))).unwrap() {
+        let path_str = &entry.unwrap().as_path().display().to_string();
         let temp = match table::load_table(
-            &io::load_from_file(&entry.unwrap().as_path().display().to_string(), false).unwrap(), &mut previous_descriptors) {
+            &io::load_from_file(path_str, false).unwrap(), &mut previous_descriptors, path_str.clone()) {
             Ok(v) => v,
             Err(e) => {
                 println!("{:?}", e);

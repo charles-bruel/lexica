@@ -83,10 +83,6 @@ pub fn save_to_file(path_str: &String, data: &String, overwrite: bool, restrict_
         if !overwrite {
             return Some(IOError::FileExists(format!("file already exists: {}", display)));
         }
-    } else {
-        if overwrite {
-            return Some(IOError::FileNotFound(format!("file doesn't exist but overwrite still specified: {}", display)));
-        }
     }
 
     let mut file = match File::create(&path) {

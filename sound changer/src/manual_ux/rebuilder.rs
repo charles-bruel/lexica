@@ -1,6 +1,6 @@
-use std::collections::{VecDeque, HashMap};
+use std::{collections::{VecDeque, HashMap}, time::Instant};
 
-use crate::manual_ux::{generative::{GenerativeProgramRuntimeError, execution::GenerativeProgramExecutionOutput}, table::{PopulatedTableRowSource, TableContents}};
+use crate::{manual_ux::{generative::{GenerativeProgramRuntimeError, execution::GenerativeProgramExecutionOutput}, table::{PopulatedTableRowSource, TableContents}}, io};
 
 use super::{
     project::Project,
@@ -24,6 +24,8 @@ pub fn rebuild(project: &mut Project, start: u16) {
 impl Table {
     fn rebuild(&mut self, project: &Project) -> Result<(), GenerativeProgramRuntimeError> {
         // 1) Execute all unpopulated table rows
+
+        let start = Instant::now();
 
         let new_rows = Vec::with_capacity(self.table_rows.len());
         let old_rows = VecDeque::from(std::mem::replace(&mut self.table_rows, new_rows));
@@ -123,9 +125,16 @@ impl Table {
             }
         }
 
+        let elapsed = start.elapsed();
+
         // 2) Output
         println!();
-        println!("{}", self.output());
+        let output = self.output(project);
+        println!("{}", output);
+        let path_str = self.source_path.clone() + ".out";
+        println!("Rebuilt table in {:?}", elapsed);
+
+        io::save_to_file(&path_str, &output, true, false);
 
         Ok(())
     }

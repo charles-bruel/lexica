@@ -1,9 +1,9 @@
 use tabled::{builder::Builder, settings::Style};
 
-use super::table::{Table, TableRow};
+use super::{table::{Table, TableRow}, project::Project};
 
 impl Table {
-    pub fn output(&self) -> String {
+    pub fn output(&self, project: &Project) -> String {
         let mut builder = Builder::default();
 
         let mut headers = Vec::new();
@@ -20,7 +20,7 @@ impl Table {
             } = row {
                 let mut strings = Vec::new();
                 for content in contents {
-                    strings.push(content.to_string());
+                    strings.push(content.to_string(project));
                 }
                 builder.push_record(strings);
             }

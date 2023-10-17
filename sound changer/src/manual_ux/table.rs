@@ -1,14 +1,21 @@
-use std::{collections::HashMap, rc::Rc, time::Instant, fmt};
+use std::{collections::HashMap, fmt, rc::Rc, time::Instant};
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
-use super::generative::{GenerativeProgram, GenerativeProgramCompileError, execution::{RuntimeEnum, TableSpecifier, ColumnSpecifier}};
+use super::{
+    generative::{
+        execution::{ColumnSpecifier, RuntimeEnum, TableSpecifier},
+        GenerativeProgram, GenerativeProgramCompileError,
+    },
+    project::Project,
+};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
     pub id: u16,
     pub table_descriptor: Rc<TableDescriptor>,
     pub table_rows: Vec<TableRow>,
+    pub source_path: String,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -74,6 +81,28 @@ impl fmt::Display for TableContents {
     }
 }
 
+impl TableContents {
+    pub fn to_string(&self, project: &Project) -> String {
+        match self {
+            TableContents::Enum(v) => {
+                let data_type = &project.tables[v.table.table_id]
+                    .as_ref()
+                    .unwrap()
+                    .table_descriptor
+                    .column_descriptors[v.column.column_id]
+                    .data_type;
+                match data_type {
+                    TableDataTypeDescriptor::Enum(v2) => v2[v.index].clone(),
+                    _ => panic!(),
+                }
+            }
+            TableContents::String(v) => v.clone(),
+            TableContents::UInt(v) => v.to_string(),
+            TableContents::Int(v) => v.to_string(),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum TableLoadingError {
     MalformedHeader,
@@ -89,29 +118,29 @@ pub enum TableLoadingError {
 impl TableDataTypeDescriptor {
     pub fn assert_string(&self) {
         match self {
-            TableDataTypeDescriptor::String => {},
-            _ => assert!(false, "Type mismatch; expected string")
+            TableDataTypeDescriptor::String => {}
+            _ => assert!(false, "Type mismatch; expected string"),
         }
     }
 
     pub fn assert_uint(&self) {
         match self {
-            TableDataTypeDescriptor::UInt => {},
-            _ => assert!(false, "Type mismatch; expected string")
+            TableDataTypeDescriptor::UInt => {}
+            _ => assert!(false, "Type mismatch; expected string"),
         }
     }
 
     pub fn assert_int(&self) {
         match self {
-            TableDataTypeDescriptor::Int => {},
-            _ => assert!(false, "Type mismatch; expected string")
+            TableDataTypeDescriptor::Int => {}
+            _ => assert!(false, "Type mismatch; expected string"),
         }
     }
 
     pub fn assert_enum(&self) {
         match self {
-            TableDataTypeDescriptor::Enum(_) => {},
-            _ => assert!(false, "Type mismatch; expected string")
+            TableDataTypeDescriptor::Enum(_) => {}
+            _ => assert!(false, "Type mismatch; expected string"),
         }
     }
 }
@@ -119,7 +148,9 @@ impl TableDataTypeDescriptor {
 pub fn load_table(
     input: &String,
     previous_descriptors: &mut HashMap<usize, Rc<TableDescriptor>>,
+    source_path: String,
 ) -> Result<Table, TableLoadingError> {
+    let table_start = Instant::now();
     let mut lines: Vec<&str> = input.split("\n").collect();
     if lines.len() < 3 {
         return Err(TableLoadingError::MalformedHeader);
@@ -165,21 +196,25 @@ pub fn load_table(
     previous_descriptors.insert(id.into(), table_descriptor.clone());
 
     for line in lines {
-        let start = Instant::now();
+        let line_start = Instant::now();
         table_rows.push(parse_table_line(
             table_descriptor.clone(),
             previous_descriptors.clone(),
             id.into(),
             line,
         )?);
-        let elapsed = start.elapsed();
-        println!("Loaded line in {:?}", elapsed)
+        let line_elapsed = line_start.elapsed();
+        println!("Loaded line in {:?}", line_elapsed)
     }
+
+    let table_elapsed = table_start.elapsed();
+    println!("Loaded table in {:?}", table_elapsed);
 
     Ok(Table {
         id,
         table_descriptor,
         table_rows,
+        source_path,
     })
 }
 
@@ -266,10 +301,10 @@ fn parse_table_cell(
             let mut i = 0;
             while i < vec.len() {
                 if test_string == vec[i] {
-                    return Ok(TableContents::Enum(RuntimeEnum { 
+                    return Ok(TableContents::Enum(RuntimeEnum {
                         index: i,
-                        table: TableSpecifier { table_id }, 
-                        column: ColumnSpecifier { column_id }, 
+                        table: TableSpecifier { table_id },
+                        column: ColumnSpecifier { column_id },
                     }));
                 }
 
