@@ -248,7 +248,31 @@ impl IntNode {
                 }
                 return Ok(operand1);
             }
-            IntNode::ConversionNode(_) => todo!(),
+            IntNode::ConversionNode(v) => {
+                let range = v.eval(context)?;
+                let column = range.column_id.unwrap();
+                let mut result = Vec::new();
+
+                for row in range.rows {
+                    match row {
+                        TableRow::PopulatedTableRow {
+                            source: _,
+                            descriptor: _,
+                            contents,
+                        } => {
+                            let content = &contents[column];
+                            match content {
+                                TableContents::Int(v) => result.push(v.clone()),
+                                _ => todo!(),
+                            }
+                        }
+                        // No range should have an unpopulated row
+                        _ => unreachable!(),
+                    }
+                }
+
+                Ok(result)
+            }
         }
     }
 }
@@ -291,7 +315,31 @@ impl UIntNode {
                 }
                 return Ok(operand1);
             }
-            UIntNode::ConversionNode(_) => todo!(),
+            UIntNode::ConversionNode(v) => {
+                let range = v.eval(context)?;
+                let column = range.column_id.unwrap();
+                let mut result = Vec::new();
+
+                for row in range.rows {
+                    match row {
+                        TableRow::PopulatedTableRow {
+                            source: _,
+                            descriptor: _,
+                            contents,
+                        } => {
+                            let content = &contents[column];
+                            match content {
+                                TableContents::UInt(v) => result.push(v.clone()),
+                                _ => todo!(),
+                            }
+                        }
+                        // No range should have an unpopulated row
+                        _ => unreachable!(),
+                    }
+                }
+
+                Ok(result)
+            }
         }
     }
 }
