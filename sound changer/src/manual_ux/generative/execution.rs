@@ -92,11 +92,47 @@ pub enum ComplexComparisionType {
     LessEquals,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub struct RuntimeEnum {
-    index: usize,
-    table: TableSpecifier,
-    column: ColumnSpecifier,
+    pub index: usize,
+    pub table: TableSpecifier,
+    pub column: ColumnSpecifier,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum GenerativeProgramExecutionOutput {
+    String(Vec<String>),
+    Int(Vec<i32>),
+    UInt(Vec<u32>),
+    Enum(Vec<RuntimeEnum>),
+}
+
+impl GenerativeProgramExecutionOutput {
+    pub fn len(&self) -> usize {
+        match self {
+            GenerativeProgramExecutionOutput::String(v) => v.len(),
+            GenerativeProgramExecutionOutput::Int(v) => v.len(),
+            GenerativeProgramExecutionOutput::UInt(v) => v.len(),
+            GenerativeProgramExecutionOutput::Enum(v) => v.len(),
+        }
+    }
+}
+
+impl GenerativeProgram {
+    pub fn evaluate(&self, context: &mut ExecutionContext) -> Result<GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError> {
+        self.output_node.eval(context)
+    }
+}
+
+impl OutputNode {
+    pub fn eval(&self, context: &mut ExecutionContext) -> Result<GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError> {
+        match self {
+            OutputNode::String(v) => Ok(GenerativeProgramExecutionOutput::String(v.eval(context)?)),
+            OutputNode::Int(v) => Ok(GenerativeProgramExecutionOutput::Int(v.eval(context)?)),
+            OutputNode::UInt(v) => Ok(GenerativeProgramExecutionOutput::UInt(v.eval(context)?)),
+            OutputNode::Enum(v) => Ok(GenerativeProgramExecutionOutput::Enum(v.eval(context)?)),
+        }
+    }
 }
 
 impl StringNode {
@@ -138,7 +174,31 @@ impl StringNode {
                 }
                 return Ok(operand1);
             }
-            StringNode::ConversionNode(_) => todo!(),
+            StringNode::ConversionNode(v) => {
+                let range = v.eval(context)?;
+                let column = range.column_id.unwrap();
+                let mut result = Vec::new();
+
+                for row in range.rows {
+                    match row {
+                        TableRow::PopulatedTableRow { 
+                            source: _, 
+                            descriptor: _, 
+                            contents 
+                        } => {
+                            let content = &contents[column];
+                            match content {
+                                TableContents::String(v) => result.push(v.clone()),
+                                _ => todo!(),
+                            }
+                        },
+                        // No range should have an unpopulated row
+                        _ => unreachable!(),
+                    }
+                }
+
+                Ok(result)
+            },
         }
     }
 }
@@ -249,7 +309,7 @@ impl EnumNode {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 };
-                match values.iter().position(|elem| elem == key) {
+                match values.iter().position(|elem| elem.to_lowercase() == key.to_lowercase()) {
                     Some(index) => Ok(vec![RuntimeEnum {
                         index,
                         table: table_specifer,
@@ -258,7 +318,31 @@ impl EnumNode {
                     None => Err(GenerativeProgramRuntimeError::EnumNotFound),
                 }
             }
-            EnumNode::ConversionNode(_) => todo!(),
+            EnumNode::ConversionNode(v) => {
+                let range = v.eval(context)?;
+                let column = range.column_id.unwrap();
+                let mut result = Vec::new();
+
+                for row in range.rows {
+                    match row {
+                        TableRow::PopulatedTableRow { 
+                            source: _, 
+                            descriptor: _, 
+                            contents 
+                        } => {
+                            let content = &contents[column];
+                            match content {
+                                TableContents::Enum(v) => result.push(v.clone()),
+                                _ => todo!(),
+                            }
+                        },
+                        // No range should have an unpopulated row
+                        _ => unreachable!(),
+                    }
+                }
+
+                Ok(result)
+            },
         }
     }
 }
@@ -269,7 +353,17 @@ impl RangeNode {
         context: &mut ExecutionContext,
     ) -> Result<Range, GenerativeProgramRuntimeError> {
         match self {
-            RangeNode::ForeachNode(_, _) => todo!(),
+            RangeNode::ForeachNode(table, column) => {
+                let table = match &context.project.tables[table.table_id] {
+                    Some(v) => v,
+                    None => return Err(GenerativeProgramRuntimeError::TableNotFound),
+                };
+
+                Ok(Range { 
+                    rows: table.table_rows.clone(), 
+                    column_id: Some(column.column_id) 
+                })
+            },
             RangeNode::FilterNode(range, predicate) => {
                 let mut result = range.eval(context)?;
                 let mut new_range: Vec<TableRow> = Vec::with_capacity(result.rows.len());
@@ -331,7 +425,18 @@ impl FilterPredicate {
         match self {
             FilterPredicate::EnumCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::Enum(_) => match contents[column_id] {
-                    TableContents::Enum(v) => todo!(),
+                    TableContents::Enum(v) => {
+                        let check_value = node.eval(context)?;
+                        if check_value.len() == 1 {
+                            match comp_type {
+                                SimpleComparisionType::Equals => Ok(v == check_value[0]),
+                                SimpleComparisionType::NotEquals => Ok(v != check_value[0]),
+                            }
+                        } else {
+                            // Check to see if it matches with any of the given values
+                            todo!()
+                        }
+                    },
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
                     _ => unreachable!(),

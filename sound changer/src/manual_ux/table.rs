@@ -1,8 +1,8 @@
-use std::{collections::HashMap, rc::Rc, time::Instant};
+use std::{collections::HashMap, rc::Rc, time::Instant, fmt};
 
 use crate::manual_ux::generative::parse_generative_table_line;
 
-use super::generative::{GenerativeProgram, GenerativeProgramCompileError};
+use super::generative::{GenerativeProgram, GenerativeProgramCompileError, execution::{RuntimeEnum, TableSpecifier, ColumnSpecifier}};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
@@ -56,10 +56,22 @@ pub enum TableDataTypeDescriptor {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableContents {
-    Enum(usize),
+    Enum(RuntimeEnum),
     String(String),
     UInt(u32),
     Int(i32),
+}
+
+impl fmt::Display for TableContents {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let str = match self {
+            TableContents::Enum(v) => v.index.to_string(),
+            TableContents::String(v) => v.clone(),
+            TableContents::UInt(v) => v.to_string(),
+            TableContents::Int(v) => v.to_string(),
+        };
+        write!(f, "{}", str)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -72,6 +84,36 @@ pub enum TableLoadingError {
     GenerativeProgramCompileError(GenerativeProgramCompileError),
 
     Unknown,
+}
+
+impl TableDataTypeDescriptor {
+    pub fn assert_string(&self) {
+        match self {
+            TableDataTypeDescriptor::String => {},
+            _ => assert!(false, "Type mismatch; expected string")
+        }
+    }
+
+    pub fn assert_uint(&self) {
+        match self {
+            TableDataTypeDescriptor::UInt => {},
+            _ => assert!(false, "Type mismatch; expected string")
+        }
+    }
+
+    pub fn assert_int(&self) {
+        match self {
+            TableDataTypeDescriptor::Int => {},
+            _ => assert!(false, "Type mismatch; expected string")
+        }
+    }
+
+    pub fn assert_enum(&self) {
+        match self {
+            TableDataTypeDescriptor::Enum(_) => {},
+            _ => assert!(false, "Type mismatch; expected string")
+        }
+    }
 }
 
 pub fn load_table(
@@ -178,8 +220,9 @@ fn parse_table_line(
     descriptor: Rc<TableDescriptor>,
     all_descriptors: HashMap<usize, Rc<TableDescriptor>>,
     table_id: usize,
-    line: &str,
+    mut line: &str,
 ) -> Result<TableRow, TableLoadingError> {
+    line = line.trim();
     if line.starts_with(":=") {
         return parse_generative_table_line(all_descriptors, table_id, line);
     }
@@ -193,6 +236,8 @@ fn parse_table_line(
         cells.push(parse_table_cell(
             values[i],
             &descriptor.as_ref().column_descriptors[i].data_type,
+            i,
+            table_id,
         )?);
 
         i += 1;
@@ -208,6 +253,8 @@ fn parse_table_line(
 fn parse_table_cell(
     cell_contents: &str,
     descriptor: &TableDataTypeDescriptor,
+    column_id: usize,
+    table_id: usize,
 ) -> Result<TableContents, TableLoadingError> {
     match descriptor {
         TableDataTypeDescriptor::Enum(vec) => {
@@ -219,7 +266,11 @@ fn parse_table_cell(
             let mut i = 0;
             while i < vec.len() {
                 if test_string == vec[i] {
-                    return Ok(TableContents::Enum(i));
+                    return Ok(TableContents::Enum(RuntimeEnum { 
+                        index: i,
+                        table: TableSpecifier { table_id }, 
+                        column: ColumnSpecifier { column_id }, 
+                    }));
                 }
 
                 i += 1;

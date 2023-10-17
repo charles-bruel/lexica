@@ -7,9 +7,7 @@
 // If possible, the final, strong, "true" versions of each node
 // will be used.
 
-use std::ops::Range;
-
-use crate::{data, manual_ux::table::TableDataTypeDescriptor};
+use crate::manual_ux::table::TableDataTypeDescriptor;
 
 use super::{
     construction::{DataTypeDescriptor, EnumSpecifier, ProjectContext, TableColumnSpecifier},

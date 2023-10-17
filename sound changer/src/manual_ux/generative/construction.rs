@@ -5,9 +5,7 @@ use std::{
     rc::Rc,
 };
 
-use crate::{
-    main,
-    manual_ux::{
+use crate::manual_ux::{
         generative::{
             data_types::{Keyword, Operator},
             execution::{ComplexComparisionType, SimpleComparisionType},
@@ -18,8 +16,7 @@ use crate::{
             GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor,
             TableLoadingError, TableRow,
         },
-    },
-};
+    };
 
 use super::{
     execution::{ColumnSpecifier, FilterPredicate, TableSpecifier},

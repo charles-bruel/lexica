@@ -8,6 +8,7 @@ extern crate priority_queue;
 extern crate no_panic;
 extern crate serde;
 extern crate clap;
+extern crate tabled;
 
 pub mod manual_ux;
 pub mod args;

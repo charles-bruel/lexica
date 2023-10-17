@@ -68,11 +68,11 @@ table (id=1), and appends "ka" to every noun
 
 */
 
-mod construction;
-mod data_types;
-mod execution;
-mod node_builder;
-mod tokenizer;
+pub mod construction;
+pub mod data_types;
+pub mod execution;
+pub mod node_builder;
+pub mod tokenizer;
 
 use std::{collections::HashMap, num::ParseIntError, rc::Rc};
 
@@ -131,7 +131,7 @@ pub enum SyntaxErrorType {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeProgram {
-    output_node: OutputNode,
+    pub output_node: OutputNode,
 }
 
 pub fn parse_generative_table_line(
