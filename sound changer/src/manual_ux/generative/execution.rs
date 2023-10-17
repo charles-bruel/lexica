@@ -119,13 +119,19 @@ impl GenerativeProgramExecutionOutput {
 }
 
 impl GenerativeProgram {
-    pub fn evaluate(&self, context: &mut ExecutionContext) -> Result<GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError> {
+    pub fn evaluate(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError> {
         self.output_node.eval(context)
     }
 }
 
 impl OutputNode {
-    pub fn eval(&self, context: &mut ExecutionContext) -> Result<GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError> {
+    pub fn eval(
+        &self,
+        context: &mut ExecutionContext,
+    ) -> Result<GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError> {
         match self {
             OutputNode::String(v) => Ok(GenerativeProgramExecutionOutput::String(v.eval(context)?)),
             OutputNode::Int(v) => Ok(GenerativeProgramExecutionOutput::Int(v.eval(context)?)),
@@ -181,24 +187,24 @@ impl StringNode {
 
                 for row in range.rows {
                     match row {
-                        TableRow::PopulatedTableRow { 
-                            source: _, 
-                            descriptor: _, 
-                            contents 
+                        TableRow::PopulatedTableRow {
+                            source: _,
+                            descriptor: _,
+                            contents,
                         } => {
                             let content = &contents[column];
                             match content {
                                 TableContents::String(v) => result.push(v.clone()),
                                 _ => todo!(),
                             }
-                        },
+                        }
                         // No range should have an unpopulated row
                         _ => unreachable!(),
                     }
                 }
 
                 Ok(result)
-            },
+            }
         }
     }
 }
@@ -309,7 +315,10 @@ impl EnumNode {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 };
-                match values.iter().position(|elem| elem.to_lowercase() == key.to_lowercase()) {
+                match values
+                    .iter()
+                    .position(|elem| elem.to_lowercase() == key.to_lowercase())
+                {
                     Some(index) => Ok(vec![RuntimeEnum {
                         index,
                         table: table_specifer,
@@ -325,24 +334,24 @@ impl EnumNode {
 
                 for row in range.rows {
                     match row {
-                        TableRow::PopulatedTableRow { 
-                            source: _, 
-                            descriptor: _, 
-                            contents 
+                        TableRow::PopulatedTableRow {
+                            source: _,
+                            descriptor: _,
+                            contents,
                         } => {
                             let content = &contents[column];
                             match content {
                                 TableContents::Enum(v) => result.push(v.clone()),
                                 _ => todo!(),
                             }
-                        },
+                        }
                         // No range should have an unpopulated row
                         _ => unreachable!(),
                     }
                 }
 
                 Ok(result)
-            },
+            }
         }
     }
 }
@@ -359,11 +368,11 @@ impl RangeNode {
                     None => return Err(GenerativeProgramRuntimeError::TableNotFound),
                 };
 
-                Ok(Range { 
-                    rows: table.table_rows.clone(), 
-                    column_id: Some(column.column_id) 
+                Ok(Range {
+                    rows: table.table_rows.clone(),
+                    column_id: Some(column.column_id),
                 })
-            },
+            }
             RangeNode::FilterNode(range, predicate) => {
                 let mut result = range.eval(context)?;
                 let mut new_range: Vec<TableRow> = Vec::with_capacity(result.rows.len());
@@ -407,7 +416,7 @@ impl FilterPredicate {
                 contents,
                 ..
             } => (descriptor, contents),
-            TableRow::UnpopulatedTableRow { descriptor, .. } => {
+            TableRow::UnpopulatedTableRow { .. } => {
                 return Err(GenerativeProgramRuntimeError::OutOfOrderExecution);
             }
         };
@@ -436,7 +445,7 @@ impl FilterPredicate {
                             // Check to see if it matches with any of the given values
                             todo!()
                         }
-                    },
+                    }
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
@@ -458,18 +467,18 @@ impl FilterPredicate {
                 },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::IntCompare(_, comp_type, node) => match input_data_type {
+            FilterPredicate::IntCompare(_, _comp_type, _node) => match input_data_type {
                 TableDataTypeDescriptor::Int => match contents[column_id] {
-                    TableContents::Int(v) => todo!(),
+                    TableContents::Int(_v) => todo!(),
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
                 _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
-            FilterPredicate::UIntCompare(_, comp_type, node) => match input_data_type {
+            FilterPredicate::UIntCompare(_, _comp_type, _node) => match input_data_type {
                 TableDataTypeDescriptor::UInt => match contents[column_id] {
-                    TableContents::UInt(v) => todo!(),
+                    TableContents::UInt(_v) => todo!(),
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
@@ -489,7 +498,7 @@ fn enforce_single_string(input: Vec<String>) -> Result<String, GenerativeProgram
 }
 
 // TODO: Figure out exactly how to represents enums
-fn enforce_single_usize(input: Vec<usize>) -> Result<usize, GenerativeProgramRuntimeError> {
+fn _enforce_single_usize(input: Vec<usize>) -> Result<usize, GenerativeProgramRuntimeError> {
     if input.len() == 1 {
         Ok(input[0])
     } else {
@@ -497,7 +506,7 @@ fn enforce_single_usize(input: Vec<usize>) -> Result<usize, GenerativeProgramRun
     }
 }
 
-fn enforce_single_i32(input: Vec<i32>) -> Result<i32, GenerativeProgramRuntimeError> {
+fn _enforce_single_i32(input: Vec<i32>) -> Result<i32, GenerativeProgramRuntimeError> {
     if input.len() == 1 {
         Ok(input[0])
     } else {
@@ -505,7 +514,7 @@ fn enforce_single_i32(input: Vec<i32>) -> Result<i32, GenerativeProgramRuntimeEr
     }
 }
 
-fn enforce_single_u32(input: Vec<u32>) -> Result<u32, GenerativeProgramRuntimeError> {
+fn _enforce_single_u32(input: Vec<u32>) -> Result<u32, GenerativeProgramRuntimeError> {
     if input.len() == 1 {
         Ok(input[0])
     } else {

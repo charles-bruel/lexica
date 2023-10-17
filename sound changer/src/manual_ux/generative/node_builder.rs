@@ -7,7 +7,7 @@
 // If possible, the final, strong, "true" versions of each node
 // will be used.
 
-use crate::{data, manual_ux::table::TableDataTypeDescriptor};
+use crate::manual_ux::table::TableDataTypeDescriptor;
 
 use super::{
     construction::{DataTypeDescriptor, EnumSpecifier, ProjectContext, TableColumnSpecifier},
@@ -477,7 +477,7 @@ impl UnderspecifiedLiteral {
             UnderspecifiedLiteral::UInt(_) => todo!(),
             UnderspecifiedLiteral::Number(_, _) => todo!(),
             UnderspecifiedLiteral::TableColumnSpecifier(v) => Ok(TypedNode::TableColumn(v)),
-            UnderspecifiedLiteral::StringOrShortEnum(string, column, table) => match type_hint {
+            UnderspecifiedLiteral::StringOrShortEnum(string, _column, _table) => match type_hint {
                 Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::Enum(_))) => {
                     todo!()
                 }
