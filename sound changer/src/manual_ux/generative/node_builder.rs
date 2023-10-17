@@ -7,7 +7,7 @@
 // If possible, the final, strong, "true" versions of each node
 // will be used.
 
-use crate::manual_ux::table::TableDataTypeDescriptor;
+use crate::{data, manual_ux::table::TableDataTypeDescriptor};
 
 use super::{
     construction::{DataTypeDescriptor, EnumSpecifier, ProjectContext, TableColumnSpecifier},
@@ -295,6 +295,38 @@ impl BuilderNode {
                     )),
                 }
             }
+            BuilderNode::CombinationNode(FunctionType::Addition, v) => {
+                if v.len() < 2 {
+                    todo!()
+                } else if v.len() > 2 {
+                    todo!()
+                }
+
+                let data_type = match type_hint {
+                    Some(DataTypeDescriptor::TableDataType(v)) => v,
+                    _ => todo!(),
+                };
+
+                match data_type {
+                    TableDataTypeDescriptor::Enum(_) => todo!(),
+                    TableDataTypeDescriptor::String => {
+                        Ok(TypedNode::StringNode(StringNode::AdditionNode(
+                            Box::new(v[0].clone().try_convert_string(context)?),
+                            Box::new(v[1].clone().try_convert_string(context)?),
+                        )))
+                    }
+                    TableDataTypeDescriptor::UInt => {
+                        Ok(TypedNode::UIntNode(UIntNode::AdditionNode(
+                            Box::new(v[0].clone().try_convert_uint(context)?),
+                            Box::new(v[1].clone().try_convert_uint(context)?),
+                        )))
+                    }
+                    TableDataTypeDescriptor::Int => Ok(TypedNode::IntNode(IntNode::AdditionNode(
+                        Box::new(v[0].clone().try_convert_int(context)?),
+                        Box::new(v[1].clone().try_convert_int(context)?),
+                    ))),
+                }
+            }
             _ => {
                 println!("{:?}", self);
                 todo!()
@@ -307,6 +339,7 @@ impl TypedNode {
     fn try_convert_enum(self) -> Result<EnumNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::EnumNode(v) => Ok(v),
+            TypedNode::RangeNode(v) => Ok(EnumNode::ConversionNode(v)),
             _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected enum")),
         }
     }
@@ -314,6 +347,7 @@ impl TypedNode {
     fn try_convert_string(self) -> Result<StringNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::StringNode(v) => Ok(v),
+            TypedNode::RangeNode(v) => Ok(StringNode::ConversionNode(v)),
             _ => Err(GenerativeProgramCompileError::TypeMismatch(
                 "Expected string",
             )),
@@ -323,6 +357,7 @@ impl TypedNode {
     fn try_convert_uint(self) -> Result<UIntNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::UIntNode(v) => Ok(v),
+            TypedNode::RangeNode(v) => Ok(UIntNode::ConversionNode(v)),
             _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected uint")),
         }
     }
@@ -330,6 +365,7 @@ impl TypedNode {
     fn try_convert_int(self) -> Result<IntNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::IntNode(v) => Ok(v),
+            TypedNode::RangeNode(v) => Ok(IntNode::ConversionNode(v)),
             _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected int")),
         }
     }

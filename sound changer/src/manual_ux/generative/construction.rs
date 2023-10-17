@@ -6,17 +6,17 @@ use std::{
 };
 
 use crate::manual_ux::{
-        generative::{
-            data_types::{Keyword, Operator},
-            execution::{ComplexComparisionType, SimpleComparisionType},
-            tokenizer::{GroupType, TokenType},
-            SyntaxErrorType,
-        },
-        table::{
-            GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor,
-            TableLoadingError, TableRow,
-        },
-    };
+    generative::{
+        data_types::{Keyword, Operator},
+        execution::{ComplexComparisionType, SimpleComparisionType},
+        tokenizer::{GroupType, TokenType},
+        SyntaxErrorType,
+    },
+    table::{
+        GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
+        TableRow,
+    },
+};
 
 use super::{
     execution::{ColumnSpecifier, FilterPredicate, TableSpecifier},
@@ -235,7 +235,12 @@ fn parse_generative_segment(
                     &target_data_type,
                     project_context,
                 )?;
-                main_node = Some(node);
+                match &mut main_node {
+                    Some(BuilderNode::CombinationNode(_, v)) => v.push(node),
+                    None => main_node = Some(node),
+                    _ => {}
+                }
+
                 context[0] = ParsingContext::READY;
                 if let Some(v) = optional_addition {
                     context.push_front(v);
@@ -772,7 +777,7 @@ fn create_literal_node(
     }
 }
 
-fn create_enum_literal(
+fn _create_enum_literal(
     contents: String,
     specifier: Option<TableColumnSpecifier>,
     current_column: ColumnSpecifier,
