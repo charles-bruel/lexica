@@ -95,6 +95,8 @@ pub enum GenerativeProgramRuntimeError {
     OutOfOrderExecution,
     TableNotFound,
     EnumNotFound,
+    SoundChangeCompileError,
+    IOError,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

@@ -2,24 +2,24 @@
 
 use manual_ux::project::load_project;
 
-extern crate fancy_regex;
-extern crate tungstenite;
-extern crate priority_queue;
-extern crate no_panic;
-extern crate serde;
 extern crate clap;
+extern crate fancy_regex;
+extern crate no_panic;
+extern crate priority_queue;
+extern crate serde;
 extern crate tabled;
+extern crate tungstenite;
 
-pub mod manual_ux;
-pub mod args;
-pub mod io;
-pub mod constructor;
-pub mod rules;
-pub mod data;
 pub mod applicator;
-pub mod websocket_handler;
+pub mod args;
+pub mod constructor;
+pub mod data;
+pub mod io;
+pub mod manual_ux;
+pub mod rules;
 #[cfg(test)]
 mod tests;
+pub mod websocket_handler;
 
 fn main() {
     use clap::Parser;
@@ -29,8 +29,11 @@ fn main() {
     match args.mode {
         args::LexicaMode::WebIO => io::web_socket_listener(),
         args::LexicaMode::Manual(command) => match command.command {
-            args::ManualSubcommand::Rebuild(v) => 
-                manual_ux::rebuilder::rebuild(&mut load_project(command.path).unwrap(), v.start),
+            args::ManualSubcommand::Rebuild(v) => manual_ux::rebuilder::rebuild(
+                &mut load_project(command.path.clone()).unwrap(),
+                v.start,
+                command.path,
+            ),
         },
     }
 }

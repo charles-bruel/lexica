@@ -1,12 +1,18 @@
+use crate::applicator::from_string;
+use crate::constructor::construct;
+use crate::data::{to_string, Program};
+use crate::io;
+
 use super::super::table::*;
 use super::*;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ExecutionContext<'a> {
     pub saved_ranges: HashMap<String, Range>,
     pub table_descriptor: Rc<TableDescriptor>,
     pub table_specifer: TableSpecifier,
+    pub base_path: String,
     pub project: &'a Project,
+    pub programs: &'a mut HashMap<String, Program>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -206,7 +212,13 @@ impl StringNode {
 
                 Ok(result)
             }
-            StringNode::SoundChangeNode(_, _) => todo!(),
+            StringNode::SoundChangeNode(source, program) => {
+                let program_name = enforce_single_string(program.eval(context)?)?;
+                load_program_if_not_loaded(&program_name, context)?;
+                let inputs = source.eval(context)?;
+
+                Ok(apply_sc(&program_name, inputs, context)?)
+            }
         }
     }
 }
@@ -537,6 +549,50 @@ impl FilterPredicate {
             },
         }
     }
+}
+
+fn load_program_if_not_loaded(
+    name: &String,
+    context: &mut ExecutionContext,
+) -> Result<(), GenerativeProgramRuntimeError> {
+    if context.programs.contains_key(name) {
+        return Ok(());
+    }
+
+    let path_str = &format!("{}\\{}.lsc", context.base_path, name);
+    let contents = match io::load_from_file(path_str, false) {
+        Ok(v) => v,
+        // TODO: Pass along error information
+        Err(_) => return Err(GenerativeProgramRuntimeError::IOError),
+    };
+    let program = match construct(&contents) {
+        Ok(v) => v,
+        // TODO: Pass along error information
+        Err(_) => return Err(GenerativeProgramRuntimeError::SoundChangeCompileError),
+    };
+
+    context.programs.insert(name.clone(), program);
+
+    Ok(())
+}
+
+// TODO: Error handling
+fn apply_sc(
+    program_name: &String,
+    inputs: Vec<String>,
+    context: &mut ExecutionContext,
+) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
+    let program = context.programs.get(program_name).unwrap();
+    let mut results = Vec::with_capacity(inputs.len());
+
+    for input in inputs {
+        let converted_string = from_string(program, &input).unwrap();
+        let changed_word = program.apply(converted_string).unwrap();
+        let result = to_string(program, changed_word).unwrap();
+        results.push(result);
+    }
+
+    Ok(results)
 }
 
 fn enforce_single_string(input: Vec<String>) -> Result<String, GenerativeProgramRuntimeError> {
