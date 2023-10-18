@@ -244,6 +244,13 @@ const TOKENS: &[TokenDefinition] = &[
         ..BASE_TOKEN
     },
     TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::SoundChange),
+        descriptor: "soundchange",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
         token_type: TokenType::Keyword(Keyword::Enum),
         descriptor: "enum",
         priority: 2,
@@ -279,6 +286,13 @@ const TOKENS: &[TokenDefinition] = &[
         descriptor: r"\d+(?!\w)",
         priority: 3,
         match_mode: MatchMode::Regex,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
+        token_type: TokenType::StringLiteral,
+        descriptor: "\"",
+        priority: 3,
+        match_mode: MatchMode::StringLiteral(false),
         ..BASE_TOKEN
     },
     //Symbols
@@ -643,6 +657,74 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                     working_vec.push((token.token_type, end));
                                 }
                             }
+                            MatchMode::StringLiteral(raw_mode) => {
+                                if current_string.len() < token.descriptor.len() {
+                                    continue 'inner;
+                                }
+
+                                let mut iter_main = current_string.chars();
+                                let mut iter_reference = token.descriptor.chars();
+                                let mut length = 0;
+
+                                while let Some(v) = iter_reference.next() {
+                                    //We can blindly advance the current string iterator because we
+                                    //checked the length to be less than the one which we are bounds
+                                    //checking above
+                                    let test_case_char = iter_main.next().unwrap();
+                                    if v != test_case_char {
+                                        //Doesn't match
+                                        continue 'inner;
+                                    }
+                                    length += 1;
+                                }
+
+                                //If we got here, the string has started. Now we need to see if it ends
+                                let mut escape_flag = false;
+                                let mut found_end = false;
+                                while let Some(v) = iter_main.next() {
+                                    length += 1;
+
+                                    //If we have a raw string, we just search for a quote
+                                    if raw_mode {
+                                        if v == '"' {
+                                            found_end = true;
+                                            break;
+                                        }
+                                    }
+                                    //Otherwise we have to find a quote that isn't preceeded by a \
+                                    //Unless of course that actually a \\
+                                    if !raw_mode {
+                                        if escape_flag {
+                                            //The escape flag lasts for one character. If we escape
+                                            //something that isn't valid, again that'll be picked up
+                                            //elsewhere
+                                            escape_flag = false;
+                                        } else {
+                                            //We aren't escaped, so this is the true end of the string
+                                            if v == '"' {
+                                                found_end = true;
+                                                break;
+                                            } else if v == '\\' {
+                                                escape_flag = true;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if !found_end {
+                                    //If we didn't find the string, we ignore it and let the program deal
+                                    //with it elsewhere
+
+                                    //This could cause issues of detecting a raw string as a string, if it
+                                    //couldn't complete a r", then detected the ", but for a raw string not
+                                    //to end there would have to be no quotes between it and the EOF, which
+                                    //would also mean the regular string can't end, so this is perfectly safe
+                                    continue;
+                                }
+
+                                //Send this entire thing as a token
+                                working_vec.push((token.token_type, length));
+                            }
                             MatchMode::Unknown => {
                                 //Always matches. If we get here it's garunteed that there is *something* and
                                 //we aren't at the EOF, so this is fine. This is last priority, so we aren't
@@ -856,6 +938,9 @@ enum MatchMode {
     /// following it is not a word character (so that in substring, it does not detect sub
     /// as a keyword)
     Keyword,
+    /// This matches a string literal. It has special behaviour because string literals need
+    /// be able to match through pretty much anything, and across lines
+    StringLiteral(bool),
     /// This uses a regular expression to match, the descriptor is the regex which will be
     /// used to match
     Regex,
@@ -892,6 +977,8 @@ pub enum TokenType {
     Symbol, //The contents are sent seperate to the type TODO: Maybe make the content come along with this?
     /// A literal is a value, such as "100" in code. Also sometimes called immediates. This stores a number
     NumericLiteral,
+    /// A literal is a value, such as "100" in code. Also sometimes called immediates. This stores a string
+    StringLiteral,
 }
 
 /// Stores a grouping type, i.e. {}, [], ()

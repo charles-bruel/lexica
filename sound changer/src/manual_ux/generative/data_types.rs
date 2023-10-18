@@ -15,6 +15,7 @@ pub enum Keyword {
     Filter,
     Save,
     Saved,
+    SoundChange,
     Enum,
     String,
     Int,

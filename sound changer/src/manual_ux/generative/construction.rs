@@ -411,6 +411,14 @@ fn parse_access(
                     )],
                 ))),
             )),
+            Keyword::SoundChange => Ok((
+                FunctionType::SoundChange,
+                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                    vec![DataTypeDescriptor::TableDataType(
+                        TableDataTypeDescriptor::String,
+                    )],
+                ))),
+            )),
             _ => {
                 return Err(GenerativeProgramCompileError::SyntaxError(
                     SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
@@ -689,7 +697,10 @@ fn parse_awaiting_value(
                 SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
             )),
         },
-        TokenType::NumericLiteral | TokenType::Symbol | TokenType::Operator(_) => Ok((
+        TokenType::NumericLiteral
+        | TokenType::StringLiteral
+        | TokenType::Symbol
+        | TokenType::Operator(_) => Ok((
             BuilderNode::GenericLiteral(create_literal_node(
                 current_token,
                 other_tokens,
@@ -723,6 +734,12 @@ fn create_literal_node(
                 table_id: project_context.table_id,
             },
         )),
+        TokenType::StringLiteral => {
+            let mut chars = current_token.token_contents.chars();
+            chars.next();
+            chars.next_back();
+            Ok(UnderspecifiedLiteral::String(String::from(chars.as_str())))
+        }
         // Int or uint or enum
         TokenType::NumericLiteral => {
             // First we check if it's an enum definition with a

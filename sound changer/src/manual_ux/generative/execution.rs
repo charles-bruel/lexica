@@ -22,6 +22,7 @@ pub enum StringNode {
     LiteralNode(String),
     AdditionNode(Box<StringNode>, Box<StringNode>),
     ConversionNode(RangeNode),
+    SoundChangeNode(Box<StringNode>, Box<StringNode>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -205,6 +206,7 @@ impl StringNode {
 
                 Ok(result)
             }
+            StringNode::SoundChangeNode(_, _) => todo!(),
         }
     }
 }

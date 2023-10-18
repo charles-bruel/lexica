@@ -40,6 +40,7 @@ pub enum FunctionType {
     Filter,
     Save,
     Saved,
+    SoundChange,
     SymbolLookup(String),
 }
 
@@ -326,6 +327,21 @@ impl BuilderNode {
                         Box::new(v[1].clone().try_convert_int(context)?),
                     ))),
                 }
+            }
+            BuilderNode::CombinationNode(FunctionType::SoundChange, v) => {
+                if v.len() < 2 {
+                    todo!()
+                } else if v.len() > 2 {
+                    todo!()
+                }
+
+                let source = v[0].clone().try_convert_string(context)?;
+                let program = v[1].clone().try_convert_string(context)?;
+
+                Ok(TypedNode::StringNode(StringNode::SoundChangeNode(
+                    Box::new(source),
+                    Box::new(program),
+                )))
             }
             _ => {
                 println!("{:?}", self);
