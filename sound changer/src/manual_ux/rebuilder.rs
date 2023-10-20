@@ -102,10 +102,7 @@ impl Table {
                             }
                         }
                     }
-                    let count = match first_not_one_count {
-                        Some(v) => v,
-                        None => 1,
-                    };
+                    let count = first_not_one_count.unwrap_or(1);
 
                     // Put results into table
                     let mut final_result = Vec::with_capacity(count);

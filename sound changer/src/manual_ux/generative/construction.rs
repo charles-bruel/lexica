@@ -37,38 +37,38 @@ pub enum DataTypeDescriptor {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 enum ParsingContext {
     /// Indicates that the parser is awaiting the initial `=` sign
-    START,
+    Start,
     /// Indicates there is no relevant context in the parser and that
     /// it should receive a value of the given type.
     /// Occurs after the start state, and after an operator such as `+`
     /// (not `.`). The code associated with this state is also called from
     /// the `AWAITING_PARAMETERS` state.
-    AWAITING_VALUE(Option<DataTypeDescriptor>),
+    AwaitingValue(Option<DataTypeDescriptor>),
     /// Indicates that there is a valid construction of the given
     /// data type and the operation can be finished or expanded with
     /// any number of operators or symbols, such as `.` or ` + `
-    READY,
+    Ready,
     /// Indicates that a `.` symbol was correctly used so a function
     /// call or member should follow.
     /// The parameter contains the type of the object this was called on
-    AWAITING_ACCESS,
+    AwaitingAccess,
     /// Indicates that function keyword was used and we now need the
     /// opening `(` of the function.
     /// The value stored is the eventual parameters of the function
     /// (it will be determined when this is set, so it is transfer
     /// through here to it's final destination).
-    AWAITING_FUNCTION_BRACKET(VecDeque<DataTypeDescriptor>),
+    AwaitingFunctionBracket(VecDeque<DataTypeDescriptor>),
     /// Indicates that we are in a function and awaiting some number of
     /// parameters, or that the function has concluded and we are awaiting
     /// the closing `)`.
     /// The value it stores is the types of the upcoming parameters;
     /// it is also how the system keeps track of the number of parameters
     /// left.
-    AWAITING_PARAMETERS(VecDeque<DataTypeDescriptor>),
+    AwaitingParameters(VecDeque<DataTypeDescriptor>),
     /// Indicates that we have recieved a function and we have at least 1
     /// left.
     /// TODO: Find a way to allow trailing commas (i.e. `(a, b, c,)`)
-    AWAITING_FUNCTION_COMMA(VecDeque<DataTypeDescriptor>),
+    AwaitingFunctionComma(VecDeque<DataTypeDescriptor>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -129,14 +129,14 @@ pub fn parse_generative_table_line(
         }
     }
 
-    return Ok(TableRow::UnpopulatedTableRow {
+    Ok(TableRow::UnpopulatedTableRow {
         procedure: Rc::new(convert_error(create_generative_table_row_procedure(
             token_sets,
             all_descriptors.clone(),
             table_id,
         ))?),
         descriptor: all_descriptors[&table_id].clone(),
-    });
+    })
 }
 
 fn convert_error<T>(
@@ -164,18 +164,16 @@ fn create_generative_table_row_procedure(
     };
 
     let mut result: Vec<GenerativeProgram> = Vec::with_capacity(token_sets.len());
-    let mut index = 0;
-    for tokens in token_sets {
+    for (index, tokens) in token_sets.into_iter().enumerate() {
         result.push(create_generative_program(
             tokens,
             &context.clone().descriptor.column_descriptors[index].data_type,
             &mut context,
         )?);
         context.current_column_id += 1;
-        index += 1;
     }
 
-    return Ok(GenerativeTableRowProcedure { programs: result });
+    Ok(GenerativeTableRowProcedure { programs: result })
 }
 
 fn create_generative_program(
@@ -186,7 +184,7 @@ fn create_generative_program(
     let main_segment = parse_generative_segment(true, tokens, output_type, project_context)?;
 
     Ok(GenerativeProgram {
-        output_node: main_segment.try_convert_output_node(&output_type, project_context)?,
+        output_node: main_segment.try_convert_output_node(output_type, project_context)?,
     })
 }
 
@@ -197,9 +195,9 @@ fn parse_generative_segment(
     project_context: &mut ProjectContext,
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
     let mut context: VecDeque<ParsingContext> = if require_equals {
-        VecDeque::from(vec![ParsingContext::START])
+        VecDeque::from(vec![ParsingContext::Start])
     } else {
-        VecDeque::from(vec![ParsingContext::AWAITING_VALUE(Some(
+        VecDeque::from(vec![ParsingContext::AwaitingValue(Some(
             DataTypeDescriptor::TableDataType(output_type.clone()),
         ))])
     };
@@ -208,15 +206,15 @@ fn parse_generative_segment(
 
     let mut main_node: Option<BuilderNode> = None;
 
-    while queue.len() > 0 {
+    while !queue.is_empty() {
         // Queue is garunteed to have elements because of while condition
         let current_token = queue.pop_front().unwrap();
 
         match &mut context[0] {
             // TODO: Split into own function
-            ParsingContext::START => match current_token.token_type {
+            ParsingContext::Start => match current_token.token_type {
                 TokenType::Operator(Operator::Equals) => {
-                    context[0] = ParsingContext::AWAITING_VALUE(Some(
+                    context[0] = ParsingContext::AwaitingValue(Some(
                         DataTypeDescriptor::TableDataType(output_type.clone()),
                     ))
                 }
@@ -228,11 +226,11 @@ fn parse_generative_segment(
                     )?))
                 }
             },
-            ParsingContext::AWAITING_VALUE(ref target_data_type) => {
+            ParsingContext::AwaitingValue(ref target_data_type) => {
                 let (node, optional_addition) = parse_awaiting_value(
                     current_token,
                     &mut queue,
-                    &target_data_type,
+                    target_data_type,
                     project_context,
                 )?;
                 match &mut main_node {
@@ -241,12 +239,12 @@ fn parse_generative_segment(
                     _ => {}
                 }
 
-                context[0] = ParsingContext::READY;
+                context[0] = ParsingContext::Ready;
                 if let Some(v) = optional_addition {
                     context.push_front(v);
                 }
             }
-            ParsingContext::READY => {
+            ParsingContext::Ready => {
                 let mut top_context = context[0].clone();
                 main_node = Some(parse_new_segment_ready(
                     &mut top_context,
@@ -255,19 +253,19 @@ fn parse_generative_segment(
                 )?);
                 context[0] = top_context;
             }
-            ParsingContext::AWAITING_ACCESS => match &mut main_node {
+            ParsingContext::AwaitingAccess => match &mut main_node {
                 Some(BuilderNode::CombinationNode(function_type, _)) => {
                     let (returned_function_type, new_context) = parse_access(current_token)?;
                     *function_type = returned_function_type;
-                    context[0] = ParsingContext::READY;
+                    context[0] = ParsingContext::Ready;
                     if let Some(v) = new_context {
                         context.push_front(v);
                     }
                 }
                 _ => todo!(),
             },
-            ParsingContext::AWAITING_PARAMETERS(ref mut parameter_queue) => {
-                if parameter_queue.len() == 0 {
+            ParsingContext::AwaitingParameters(ref mut parameter_queue) => {
+                if !parameter_queue.is_empty() {
                     // In this case, we know we have finished the function.
                     // This is purely a state change and syntax verification,
                     // so the code can stay in the main function
@@ -278,7 +276,7 @@ fn parse_generative_segment(
                             // to the context stack, however this is not 100% safe to assume
                             // and should be checked.
                             context.pop_front();
-                            if context.len() == 0 {
+                            if !context.is_empty() {
                                 return Err(GenerativeProgramCompileError::SyntaxError(
                                     SyntaxErrorType::UnbalancedFunctions,
                                 ));
@@ -302,8 +300,8 @@ fn parse_generative_segment(
                                 &Some(target_data_type),
                                 project_context,
                             )?;
-                            if cloned_queue.len() != 0 {
-                                context[0] = ParsingContext::AWAITING_FUNCTION_COMMA(cloned_queue);
+                            if !cloned_queue.is_empty() {
+                                context[0] = ParsingContext::AwaitingFunctionComma(cloned_queue);
                             }
                             vec.push(node);
                             if let Some(v) = parsing_context {
@@ -316,9 +314,9 @@ fn parse_generative_segment(
                     }
                 }
             }
-            ParsingContext::AWAITING_FUNCTION_BRACKET(params) => match current_token.token_type {
+            ParsingContext::AwaitingFunctionBracket(params) => match current_token.token_type {
                 TokenType::OpenGroup(GroupType::Paren) => {
-                    context[0] = ParsingContext::AWAITING_PARAMETERS(params.clone())
+                    context[0] = ParsingContext::AwaitingParameters(params.clone())
                 }
                 _ => {
                     return Err(GenerativeProgramCompileError::SyntaxError(
@@ -326,9 +324,9 @@ fn parse_generative_segment(
                     ))
                 }
             },
-            ParsingContext::AWAITING_FUNCTION_COMMA(params) => match current_token.token_type {
+            ParsingContext::AwaitingFunctionComma(params) => match current_token.token_type {
                 TokenType::Operator(Operator::Comma) => {
-                    context[0] = ParsingContext::AWAITING_PARAMETERS(params.clone())
+                    context[0] = ParsingContext::AwaitingParameters(params.clone())
                 }
                 _ => {
                     return Err(GenerativeProgramCompileError::SyntaxError(
@@ -355,7 +353,7 @@ fn parse_new_segment_ready(
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
     match &current_token.token_type {
         TokenType::Operator(v @ (Operator::Plus | Operator::Minus)) => {
-            *context = ParsingContext::AWAITING_VALUE(None);
+            *context = ParsingContext::AwaitingValue(None);
 
             let function_type = if v == &Operator::Plus {
                 FunctionType::Addition
@@ -374,7 +372,7 @@ fn parse_new_segment_ready(
         TokenType::Operator(Operator::Period) => {
             // We have a function and the first parameter
             // will be the current main node
-            *context = ParsingContext::AWAITING_ACCESS;
+            *context = ParsingContext::AwaitingAccess;
             Ok(BuilderNode::CombinationNode(
                 super::node_builder::FunctionType::UnknownFunction,
                 vec![match main_node {
@@ -399,13 +397,13 @@ fn parse_access(
             )),
             Keyword::Filter => Ok((
                 FunctionType::Filter,
-                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![DataTypeDescriptor::FilterPredicate],
                 ))),
             )),
             Keyword::Save => Ok((
                 FunctionType::Save,
-                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![DataTypeDescriptor::TableDataType(
                         TableDataTypeDescriptor::String,
                     )],
@@ -413,27 +411,23 @@ fn parse_access(
             )),
             Keyword::SoundChange => Ok((
                 FunctionType::SoundChange,
-                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![DataTypeDescriptor::TableDataType(
                         TableDataTypeDescriptor::String,
                     )],
                 ))),
             )),
-            _ => {
-                return Err(GenerativeProgramCompileError::SyntaxError(
-                    SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
-                ))
-            }
+            _ => Err(GenerativeProgramCompileError::SyntaxError(
+                SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
+            )),
         },
         TokenType::Symbol => Ok((
             FunctionType::SymbolLookup(current_token.token_contents),
             None,
         )),
-        _ => {
-            return Err(GenerativeProgramCompileError::SyntaxError(
-                SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
-            ))
-        }
+        _ => Err(GenerativeProgramCompileError::SyntaxError(
+            SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
+        )),
     }
 }
 
@@ -502,7 +496,7 @@ fn parse_filter_predicate_expression(
         match current_token.token_type {
             TokenType::Operator(Operator::Comma) | TokenType::CloseGroup(GroupType::Paren) => {
                 // We've found the end of the expression. We need to realign the queue
-                other_tokens.push_front(current_token.clone());
+                other_tokens.push_front(current_token);
                 break;
             }
             _ => {
@@ -563,11 +557,11 @@ fn parse_filter_predicate_expression(
                 Operator::Inequality => SimpleComparisionType::NotEquals,
                 _ => return Err(GenerativeProgramCompileError::OnlyEqualsAndNotEqualsValidHere),
             };
-            return Ok(FilterPredicate::EnumCompare(
+            Ok(FilterPredicate::EnumCompare(
                 column,
                 simple_comparision_type,
                 final_predicate,
-            ));
+            ))
         }
         TableDataTypeDescriptor::String => {
             let final_predicate = predicate_segment.try_convert_string(project_context)?;
@@ -576,11 +570,11 @@ fn parse_filter_predicate_expression(
                 Operator::Inequality => SimpleComparisionType::NotEquals,
                 _ => return Err(GenerativeProgramCompileError::OnlyEqualsAndNotEqualsValidHere),
             };
-            return Ok(FilterPredicate::StringCompare(
+            Ok(FilterPredicate::StringCompare(
                 column,
                 simple_comparision_type,
                 final_predicate,
-            ));
+            ))
         }
         TableDataTypeDescriptor::UInt => {
             let final_predicate = predicate_segment.try_convert_uint(project_context)?;
@@ -595,11 +589,11 @@ fn parse_filter_predicate_expression(
                 // the above values, this will be unreachable
                 _ => unreachable!(),
             };
-            return Ok(FilterPredicate::UIntCompare(
+            Ok(FilterPredicate::UIntCompare(
                 column,
                 complex_comparision_type,
                 final_predicate,
-            ));
+            ))
         }
         TableDataTypeDescriptor::Int => {
             let final_predicate = predicate_segment.try_convert_int(project_context)?;
@@ -614,11 +608,11 @@ fn parse_filter_predicate_expression(
                 // the above values, this will be unreachable
                 _ => unreachable!(),
             };
-            return Ok(FilterPredicate::IntCompare(
+            Ok(FilterPredicate::IntCompare(
                 column,
                 complex_comparision_type,
                 final_predicate,
-            ));
+            ))
         }
     }
 }
@@ -633,16 +627,13 @@ fn check_if_column_specifier(tokens: Vec<Token>, project_context: &mut ProjectCo
     };
     let result = create_table_column_specifier(first, &mut deque, project_context);
 
-    if deque.len() != 0 {
+    if !deque.is_empty() {
         // There are tokens left, meaning this expression
         // is not purely a column specifier.
         return false;
     }
 
-    match result {
-        Ok(_) => return true,
-        Err(_) => return false,
-    }
+    result.is_ok()
 }
 
 /// Begins parses any value expressions, whether that be a function
@@ -654,22 +645,20 @@ fn parse_awaiting_value(
     target_data_type: &Option<DataTypeDescriptor>,
     project_context: &mut ProjectContext,
 ) -> Result<(BuilderNode, Option<ParsingContext>), GenerativeProgramCompileError> {
-    match target_data_type {
-        Some(DataTypeDescriptor::FilterPredicate) => {
-            // We have to return a filter predicate for the program to be valid,
-            // so unlike the case with the table column specifier literal, we can
-            // pull elements from the token queue without any checks or backups.
-            return Ok((
-                BuilderNode::FilterPredicate(parse_filter_predicate_expression(
-                    current_token,
-                    other_tokens,
-                    project_context,
-                )?),
-                None,
-            ));
-        }
-        _ => {}
+    if let Some(DataTypeDescriptor::FilterPredicate) = target_data_type {
+        // We have to return a filter predicate for the program to be valid,
+        // so unlike the case with the table column specifier literal, we can
+        // pull elements from the token queue without any checks or backups.
+        return Ok((
+            BuilderNode::FilterPredicate(parse_filter_predicate_expression(
+                current_token,
+                other_tokens,
+                project_context,
+            )?),
+            None,
+        ));
     }
+
     match current_token.token_type {
         TokenType::Keyword(word) => match word {
             Keyword::Foreach => Ok((
@@ -677,13 +666,13 @@ fn parse_awaiting_value(
                     super::node_builder::FunctionType::Foreach,
                     Vec::new(),
                 ),
-                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![DataTypeDescriptor::TableColumnSpecifier],
                 ))),
             )),
             Keyword::Saved => Ok((
                 BuilderNode::CombinationNode(super::node_builder::FunctionType::Saved, Vec::new()),
-                Some(ParsingContext::AWAITING_FUNCTION_BRACKET(VecDeque::from(
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![
                         DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::String),
                         DataTypeDescriptor::TableColumnSpecifier,
@@ -708,11 +697,9 @@ fn parse_awaiting_value(
             )?),
             None,
         )),
-        _ => {
-            return Err(GenerativeProgramCompileError::SyntaxError(
-                SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
-            ))
-        }
+        _ => Err(GenerativeProgramCompileError::SyntaxError(
+            SyntaxErrorType::InvalidTokenDuringBlankStageParsing,
+        )),
     }
 }
 
@@ -765,13 +752,13 @@ fn create_literal_node(
                         create_table_column_specifier(current_token, other_tokens, project_context)
                             .unwrap();
 
-                    return Ok(UnderspecifiedLiteral::TableColumnSpecifier(table_column));
+                    Ok(UnderspecifiedLiteral::TableColumnSpecifier(table_column))
                 }
                 Err(_) => {
                     // This is fine; it's not an enum with a
                     // table column specifier, so at this point we can
                     // just treat it like a numeric literal.
-                    return create_int_or_uint_literal(current_token);
+                    create_int_or_uint_literal(current_token)
                 }
             }
         }
@@ -786,11 +773,9 @@ fn create_literal_node(
                 create_table_column_specifier(current_token, other_tokens, project_context)?,
             ))
         }
-        _ => {
-            return Err(GenerativeProgramCompileError::SyntaxError(
-                SyntaxErrorType::InvalidTokenDuringKeywordParsing,
-            ))
-        }
+        _ => Err(GenerativeProgramCompileError::SyntaxError(
+            SyntaxErrorType::InvalidTokenDuringKeywordParsing,
+        )),
     }
 }
 
@@ -812,11 +797,11 @@ fn _create_enum_literal(
         _ => None,
     };
 
-    return Ok(EnumSpecifier {
+    Ok(EnumSpecifier {
         name: contents,
         column,
         table,
-    });
+    })
 }
 
 /// Creates a table-column specifier (`table:column`, `table:`, or `column:`).
@@ -830,7 +815,7 @@ fn create_table_column_specifier(
     match current_token.token_type {
         // Column only
         TokenType::Operator(Operator::Colon) => {
-            if other_tokens.len() > 0 {
+            if !other_tokens.is_empty() {
                 let next_token = other_tokens.pop_front().unwrap();
                 match next_token.token_type {
                     TokenType::NumericLiteral => match next_token.token_contents.parse::<usize>() {
@@ -859,11 +844,11 @@ fn create_table_column_specifier(
         // Table only or both
         TokenType::NumericLiteral => match current_token.token_contents.parse::<usize>() {
             Ok(table_id) => {
-                if other_tokens.len() > 0 {
+                if !other_tokens.is_empty() {
                     let middle_token = other_tokens.pop_front().unwrap();
                     match middle_token.token_type {
                         TokenType::Operator(Operator::Colon) => {
-                            if other_tokens.len() > 0 {
+                            if !other_tokens.is_empty() {
                                 let next_token = other_tokens.pop_front().unwrap();
                                 match next_token.token_type {
                                     TokenType::NumericLiteral => {
@@ -933,7 +918,7 @@ fn column_id_from_symbol(
         }
     }
 
-    return Err(GenerativeProgramCompileError::ColumnNotFound);
+    Err(GenerativeProgramCompileError::ColumnNotFound)
 }
 
 /// This function creates an `UnderspecifiedLiteral` given a token with contents
@@ -957,9 +942,9 @@ fn create_int_or_uint_literal(
         // appear as two tokens, but it never hurts to include.
         if value < i32::MIN as i64 {
             // Out of range
-            return Err(GenerativeProgramCompileError::IntOutOfRange);
+            Err(GenerativeProgramCompileError::IntOutOfRange)
         } else {
-            return Ok(UnderspecifiedLiteral::Int(value as i32));
+            Ok(UnderspecifiedLiteral::Int(value as i32))
             // Int
         }
     } else {
@@ -968,18 +953,18 @@ fn create_int_or_uint_literal(
         // internet and I don't where rust put its int limit
         // constants
         // i32 max
-        if value > 2147483647 {
+        if value > i32::MAX as i64 {
             // u32 max
-            if value > 4294967295 {
+            if value > u32::MAX as i64 {
                 // Out of range
-                return Err(GenerativeProgramCompileError::IntOutOfRange);
+                Err(GenerativeProgramCompileError::IntOutOfRange)
             } else {
                 // UInt
-                return Ok(UnderspecifiedLiteral::UInt(value as u32));
+                Ok(UnderspecifiedLiteral::UInt(value as u32))
             }
         } else {
             // Int or UInt
-            return Ok(UnderspecifiedLiteral::Number(value as u32, value as i32));
+            Ok(UnderspecifiedLiteral::Number(value as u32, value as i32))
         }
     }
 }

@@ -123,6 +123,10 @@ impl GenerativeProgramExecutionOutput {
             GenerativeProgramExecutionOutput::Enum(v) => v.len(),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl GenerativeProgram {
@@ -185,7 +189,7 @@ impl StringNode {
                     operand1[i] += &operand2[i];
                     i += 1;
                 }
-                return Ok(operand1);
+                Ok(operand1)
             }
             StringNode::ConversionNode(v) => {
                 let range = v.eval(context)?;
@@ -260,7 +264,7 @@ impl IntNode {
                     operand1[i] += &operand2[i];
                     i += 1;
                 }
-                return Ok(operand1);
+                Ok(operand1)
             }
             IntNode::ConversionNode(v) => {
                 let range = v.eval(context)?;
@@ -276,7 +280,7 @@ impl IntNode {
                         } => {
                             let content = &contents[column];
                             match content {
-                                TableContents::Int(v) => result.push(v.clone()),
+                                TableContents::Int(v) => result.push(*v),
                                 _ => todo!(),
                             }
                         }
@@ -327,7 +331,7 @@ impl UIntNode {
                     operand1[i] += &operand2[i];
                     i += 1;
                 }
-                return Ok(operand1);
+                Ok(operand1)
             }
             UIntNode::ConversionNode(v) => {
                 let range = v.eval(context)?;
@@ -343,7 +347,7 @@ impl UIntNode {
                         } => {
                             let content = &contents[column];
                             match content {
-                                TableContents::UInt(v) => result.push(v.clone()),
+                                TableContents::UInt(v) => result.push(*v),
                                 _ => todo!(),
                             }
                         }
@@ -403,7 +407,7 @@ impl EnumNode {
                         } => {
                             let content = &contents[column];
                             match content {
-                                TableContents::Enum(v) => result.push(v.clone()),
+                                TableContents::Enum(v) => result.push(*v),
                                 _ => todo!(),
                             }
                         }
@@ -439,27 +443,27 @@ impl RangeNode {
                 let mut result = range.eval(context)?;
                 let mut new_range: Vec<TableRow> = Vec::with_capacity(result.rows.len());
                 for x in result.rows {
-                    if (&predicate).check(&x, context)? {
+                    if predicate.check(&x, context)? {
                         new_range.push(x);
                     }
                 }
                 result.rows = new_range;
 
-                return Ok(result);
+                Ok(result)
             }
             RangeNode::Save(range, key) => {
                 let evaluated = range.to_owned().eval(context)?;
                 // TODO: Work out vector string results
                 let key = key.eval(context)?[0].clone();
                 context.saved_ranges.insert(key, evaluated.clone());
-                return Ok(evaluated);
+                Ok(evaluated)
             }
             RangeNode::Saved(key, column) => {
                 let key_value = &key.eval(context)?[0];
                 let mut result = context.saved_ranges[key_value].clone();
                 result.column_id = Some(column.column_id);
 
-                return Ok(result);
+                Ok(result)
             }
         }
     }
@@ -512,22 +516,22 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
             FilterPredicate::StringCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::String => match &contents[column_id] {
                     TableContents::String(v) => {
                         let eval = enforce_single_string(node.eval(context)?)?;
-                        return match comp_type {
+                        match comp_type {
                             SimpleComparisionType::Equals => Ok(eval == *v),
                             SimpleComparisionType::NotEquals => Ok(eval != *v),
-                        };
+                        }
                     }
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
             FilterPredicate::IntCompare(_, _comp_type, _node) => match input_data_type {
                 TableDataTypeDescriptor::Int => match contents[column_id] {
@@ -536,7 +540,7 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
             FilterPredicate::UIntCompare(_, _comp_type, _node) => match input_data_type {
                 TableDataTypeDescriptor::UInt => match contents[column_id] {
@@ -545,7 +549,7 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
             },
         }
     }

@@ -175,6 +175,9 @@ impl BuilderNode {
 
     /// Note that type hints are just hints, and are only sometimes used. If you want strict
     /// typing, check the output of this function yourself.
+    // We allow thes issues because I think for the semantics it is expressing, the if chain is more
+    // clear than the match statement.
+    #[allow(clippy::comparison_chain, clippy::len_zero)]
     fn convert_to_node(
         self,
         context: &ProjectContext,

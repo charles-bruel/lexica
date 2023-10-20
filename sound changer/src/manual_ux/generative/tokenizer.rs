@@ -3,7 +3,7 @@
 // from the author and owner
 
 use fancy_regex::Regex;
-use std::{collections::HashMap, hint::unreachable_unchecked, rc::Rc};
+use std::{cmp::Ordering, collections::HashMap, hint::unreachable_unchecked, rc::Rc};
 
 use super::data_types::{Keyword, Operator};
 
@@ -354,7 +354,7 @@ fn compile_tokens(tokens: &[TokenDefinition]) -> Result<TokenProgram, fancy_rege
             max_priority = x.priority;
         }
     }
-    return Ok((result, max_priority));
+    Ok((result, max_priority))
 }
 
 /// This function replaces all commented blocks of code with spaces, 1:1 with old characters.
@@ -378,9 +378,9 @@ pub fn preprocess(mut string: String) -> Option<String> {
     //Tracks the current context
     #[derive(PartialEq)]
     enum Status {
-        REGULAR,
-        LINE,  //Line comment
-        BLOCK, //Block comment
+        Regular,
+        Line,  //Line comment
+        Block, //Block comment
     }
 
     //These are used solely for the purposes of error handling and output
@@ -395,7 +395,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
         //We will do this by only overwritnig multi-byte characters will completely
         //single byte characters
         let working_string = string.as_bytes_mut();
-        let mut mode = Status::REGULAR;
+        let mut mode = Status::Regular;
         let mut i = 0;
         while i < working_string.len() {
             //This means it's a single byte UTF-8 codepoint. Most characters should
@@ -413,40 +413,41 @@ pub fn preprocess(mut string: String) -> Option<String> {
                 //This stores whether or not the character should be replaced with whitespace
                 let mut flag_modify = false;
                 match mode {
-                    Status::REGULAR => {
+                    Status::Regular => {
                         //For all multi character searches, we also have to verify we aren't exceeding the length of the array\
                         if i < working_string.len() - 1 {
                             //Detect //
                             if working_string[i] == 0x2F && working_string[i + 1] == 0x2F {
-                                mode = Status::LINE;
+                                mode = Status::Line;
                                 flag_modify = true;
                             }
                             //Detect /*
                             if working_string[i] == 0x2F && working_string[i + 1] == 0x2A {
-                                mode = Status::BLOCK;
+                                mode = Status::Block;
                                 flag_modify = true;
                                 last_block_comment_start_column_number = column_number;
                                 last_block_comment_start_line_number = line_number;
                             }
                         }
                     }
-                    Status::LINE => {
+                    Status::Line => {
                         //Detect \n
                         if working_string[i] == 0x0A {
-                            mode = Status::REGULAR;
+                            mode = Status::Regular;
                         } else {
                             flag_modify = true;
                         }
                     }
-                    Status::BLOCK => {
+                    Status::Block => {
                         //Detect */
-                        if i < working_string.len() - 1 {
-                            if working_string[i] == 0x2A && working_string[i + 1] == 0x2F {
-                                //In order to also remove the last symbol, we do it here
-                                //There is possible a less ugly solution to this
-                                working_string[i + 1] = 0x20;
-                                mode = Status::REGULAR;
-                            }
+                        if i < working_string.len() - 1
+                            && working_string[i] == 0x2A
+                            && working_string[i + 1] == 0x2F
+                        {
+                            //In order to also remove the last symbol, we do it here
+                            //There is possible a less ugly solution to this
+                            working_string[i + 1] = 0x20;
+                            mode = Status::Regular;
                         }
                         flag_modify = true;
                     }
@@ -477,12 +478,12 @@ pub fn preprocess(mut string: String) -> Option<String> {
                         unreachable_unchecked();
                     }
                 };
-                if mode != Status::REGULAR {
+                if mode != Status::Regular {
                     //Overwrite with spaces
                     //We need to put a valid single byte UTF-8 in all of those spaces
                     //even if we will delete them later, so we just put spaces in
-                    for j in i..i + len {
-                        working_string[j] = 0x20;
+                    for elem in working_string.iter_mut().skip(i).take(len) {
+                        *elem = 0x20;
                     }
 
                     //We want the number of bytes we're deleting, so we subtract one
@@ -523,17 +524,21 @@ pub fn preprocess(mut string: String) -> Option<String> {
 
             //This contains the index into the array of byte spans to skip. Those are creating in order
             //so we can save execution time by not searching and instead going through them in order.
-            let mut index = 0;
-            for i in 0..working_string.len() {
-                if i > multi_byte_indices[index].0 && i < multi_byte_indices[index].1 {
+            let mut multi_byte_index = 0;
+            for (working_string_index, working_string_item) in working_string.iter().enumerate() {
+                if working_string_index > multi_byte_indices[multi_byte_index].0
+                    && working_string_index < multi_byte_indices[multi_byte_index].1
+                {
                     //We skip the character
                 } else {
-                    result.push(working_string[i]);
+                    result.push(*working_string_item);
                 }
 
                 //If we're beyond the current multi_byte to check, we advance, unless we're at the end
-                if i >= multi_byte_indices[index].1 && index < multi_byte_indices.len() - 1 {
-                    index += 1;
+                if working_string_index >= multi_byte_indices[multi_byte_index].1
+                    && multi_byte_index < multi_byte_indices.len() - 1
+                {
+                    multi_byte_index += 1;
                 }
             }
 
@@ -554,7 +559,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
         //We error if there is an unterminated block comment
         //EOF is just as valid as \n for ending a line comment,
         //so we don't check it
-        if mode == Status::BLOCK {
+        if mode == Status::Block {
             let _attribution = Token {
                 token_type: TokenType::Comment,
                 token_contents: String::from("/*"),
@@ -564,7 +569,7 @@ pub fn preprocess(mut string: String) -> Option<String> {
             return None;
         }
 
-        return Some(final_result);
+        Some(final_result)
     }
 }
 
@@ -580,7 +585,7 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
     let mut line_number = 0;
     let mut column_number = 0;
 
-    'outer: while current_string.len() > 0 {
+    'outer: while !current_string.is_empty() {
         //We first go by priority. Lower is done first
         for tokens_priority in 0..tokens.1 + 1 {
             match tokens.0.get(&tokens_priority) {
@@ -593,7 +598,7 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                         match token.match_mode {
                             MatchMode::Regex => {
                                 //Unwrap is OK because the regex has to be populated
-                                match token.regex.as_ref().unwrap().find(&current_string) {
+                                match token.regex.as_ref().unwrap().find(current_string) {
                                     Ok(Some(v)) => {
                                         //Found a match with the regex
                                         let (start, end) = {
@@ -615,13 +620,13 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                     continue 'inner;
                                 }
                                 let mut iter_test_case = current_string.chars();
-                                let mut iter_reference = token.descriptor.chars();
-                                while let Some(v) = iter_reference.next() {
+                                let iter_reference = token.descriptor.chars();
+                                for char in iter_reference {
                                     //We can blindly advance the current string iterator because we
                                     //checked the length to be less than the one which we are bounds
                                     //checking above
                                     let test_case_char = iter_test_case.next().unwrap();
-                                    if v != test_case_char {
+                                    if char != test_case_char {
                                         //Doesn't match
                                         continue 'inner;
                                     }
@@ -644,10 +649,10 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                 working_vec.push((token.token_type, token.descriptor.len()));
                             }
                             MatchMode::Empty => {
-                                let mut iter = current_string.chars();
+                                let iter = current_string.chars();
                                 let mut end = 0;
-                                while let Some(v) = iter.next() {
-                                    if v.is_whitespace() {
+                                for char in iter {
+                                    if char.is_whitespace() {
                                         end += 1;
                                     } else {
                                         break;
@@ -663,15 +668,15 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                 }
 
                                 let mut iter_main = current_string.chars();
-                                let mut iter_reference = token.descriptor.chars();
+                                let iter_reference = token.descriptor.chars();
                                 let mut length = 0;
 
-                                while let Some(v) = iter_reference.next() {
+                                for char in iter_reference {
                                     //We can blindly advance the current string iterator because we
                                     //checked the length to be less than the one which we are bounds
                                     //checking above
                                     let test_case_char = iter_main.next().unwrap();
-                                    if v != test_case_char {
+                                    if char != test_case_char {
                                         //Doesn't match
                                         continue 'inner;
                                     }
@@ -681,15 +686,13 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                 //If we got here, the string has started. Now we need to see if it ends
                                 let mut escape_flag = false;
                                 let mut found_end = false;
-                                while let Some(v) = iter_main.next() {
+                                for char in iter_main {
                                     length += 1;
 
                                     //If we have a raw string, we just search for a quote
-                                    if raw_mode {
-                                        if v == '"' {
-                                            found_end = true;
-                                            break;
-                                        }
+                                    if raw_mode && char == '"' {
+                                        found_end = true;
+                                        break;
                                     }
                                     //Otherwise we have to find a quote that isn't preceeded by a \
                                     //Unless of course that actually a \\
@@ -701,10 +704,10 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                                             escape_flag = false;
                                         } else {
                                             //We aren't escaped, so this is the true end of the string
-                                            if v == '"' {
+                                            if char == '"' {
                                                 found_end = true;
                                                 break;
-                                            } else if v == '\\' {
+                                            } else if char == '\\' {
                                                 escape_flag = true;
                                             }
                                         }
@@ -733,41 +736,38 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
                             }
                         }
                     }
-                    if working_vec.len() >= 1 {
+                    if !working_vec.is_empty() {
                         //We found just one match of this priority, that's the one
                         //We add it to the token list and reset the string
 
                         let selected_match = {
-                            if working_vec.len() == 0 {
-                                working_vec[0]
-                            } else {
-                                let mut max_length = 0;
-                                let mut best_index = 0;
-                                //This marks if there are multiple longest solutions
-                                let mut flag = false;
+                            let mut max_length = 0;
+                            let mut best_index = 0;
+                            //This marks if there are multiple longest solutions
+                            let mut flag = false;
 
-                                for i in 0..working_vec.len() {
-                                    if working_vec[i].1 > max_length {
-                                        max_length = working_vec[i].1;
-                                        best_index = i;
+                            for (index, element) in working_vec.iter().enumerate() {
+                                match element.1.cmp(&max_length) {
+                                    Ordering::Greater => {
+                                        max_length = element.1;
+                                        best_index = index;
 
                                         //Current longest solution is alone... for now
                                         flag = false;
-                                    } else if working_vec[i].1 == max_length {
-                                        //Current longest solution now has a friend
-                                        flag = true;
-                                    } else {
-                                        //Not the new longest; ignore
                                     }
-                                }
-
-                                if flag {
-                                    //Ambigious symbols
-                                    todo!();
-                                }
-
-                                working_vec[best_index]
+                                    Ordering::Equal => {
+                                        flag = true;
+                                    }
+                                    _ => {}
+                                };
                             }
+
+                            if flag {
+                                //Ambigious symbols
+                                todo!();
+                            }
+
+                            working_vec[best_index]
                         };
 
                         //Don't bother adding empty tokens to the list. They're
@@ -829,7 +829,7 @@ fn tokenize_int(tokens: TokenProgram, input: String) -> Vec<Token> {
             }
         }
     }
-    return result;
+    result
 }
 
 /// This function tokenizes an input file. It takes an input file
@@ -860,7 +860,7 @@ pub fn tokenize(input: String) -> Option<Vec<Token>> {
     let comp_duration = comp_start.elapsed();
     let pre_start = Instant::now();
 
-    let preproccessed_string = match preprocess(input.clone()) {
+    let preproccessed_string = match preprocess(input) {
         Some(v) => v,
 
         //Even if there is an error, preprocess should still return sensible output. If
@@ -882,7 +882,7 @@ pub fn tokenize(input: String) -> Option<Vec<Token>> {
     println!("\tPre-proccessed in {:?}", pre_duration);
     println!("\tTokenized in {:?}", tok_duration);
 
-    return Some(result);
+    Some(result)
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

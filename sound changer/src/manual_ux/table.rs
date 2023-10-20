@@ -119,39 +119,39 @@ impl TableDataTypeDescriptor {
     pub fn assert_string(&self) {
         match self {
             TableDataTypeDescriptor::String => {}
-            _ => assert!(false, "Type mismatch; expected string"),
+            _ => panic!("Type mismatch; expected string"),
         }
     }
 
     pub fn assert_uint(&self) {
         match self {
             TableDataTypeDescriptor::UInt => {}
-            _ => assert!(false, "Type mismatch; expected string"),
+            _ => panic!("Type mismatch; expected string"),
         }
     }
 
     pub fn assert_int(&self) {
         match self {
             TableDataTypeDescriptor::Int => {}
-            _ => assert!(false, "Type mismatch; expected string"),
+            _ => panic!("Type mismatch; expected string"),
         }
     }
 
     pub fn assert_enum(&self) {
         match self {
             TableDataTypeDescriptor::Enum(_) => {}
-            _ => assert!(false, "Type mismatch; expected string"),
+            _ => panic!("Type mismatch; expected string"),
         }
     }
 }
 
 pub fn load_table(
-    input: &String,
+    input: &str,
     previous_descriptors: &mut HashMap<usize, Rc<TableDescriptor>>,
     source_path: String,
 ) -> Result<Table, TableLoadingError> {
     let table_start = Instant::now();
-    let mut lines: Vec<&str> = input.split("\n").collect();
+    let mut lines: Vec<&str> = input.split('\n').collect();
     if lines.len() < 3 {
         return Err(TableLoadingError::MalformedHeader);
     }
@@ -165,8 +165,8 @@ pub fn load_table(
         Err(_) => return Err(TableLoadingError::MalformedHeader),
     };
 
-    let descriptors_names: Vec<&str> = header2.split("|").collect();
-    let descriptors_contents: Vec<&str> = header3.split("|").collect();
+    let descriptors_names: Vec<&str> = header2.split('|').collect();
+    let descriptors_contents: Vec<&str> = header3.split('|').collect();
     if descriptors_names.len() != descriptors_contents.len() {
         return Err(TableLoadingError::MalformedHeader);
     }
@@ -179,7 +179,7 @@ pub fn load_table(
 
         descriptors.push(TableColumnDescriptor {
             name: name.to_string(),
-            data_type: data_type,
+            data_type,
         });
 
         i += 1;
@@ -233,13 +233,13 @@ fn load_table_data_type(input: &str) -> Result<TableDataTypeDescriptor, TableLoa
     }
 
     // Enums are represented as a bracket-surrounded, comma-seperated list of values.
-    if value.starts_with("[") && value.ends_with("]") {
+    if value.starts_with('[') && value.ends_with(']') {
         // It's formatted like an enum
 
-        value = value.trim_start_matches("[").to_string();
-        value = value.trim_end_matches("]").to_string();
+        value = value.trim_start_matches('[').to_string();
+        value = value.trim_end_matches(']').to_string();
 
-        let enum_values: Vec<&str> = value.split(",").collect();
+        let enum_values: Vec<&str> = value.split(',').collect();
         let mut enum_final_values: Vec<String> = Vec::new();
         for x in enum_values {
             enum_final_values.push(x.to_lowercase().trim().to_string());
@@ -262,7 +262,7 @@ fn parse_table_line(
         return parse_generative_table_line(all_descriptors, table_id, line);
     }
 
-    let values: Vec<&str> = line.split("|").collect();
+    let values: Vec<&str> = line.split('|').collect();
     assert_eq!(values.len(), descriptor.column_descriptors.len());
 
     let mut i = 0;
@@ -280,7 +280,7 @@ fn parse_table_line(
 
     Ok(TableRow::PopulatedTableRow {
         source: PopulatedTableRowSource::EXPLICIT,
-        descriptor: descriptor,
+        descriptor,
         contents: cells,
     })
 }
