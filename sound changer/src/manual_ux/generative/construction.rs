@@ -6,19 +6,16 @@ use std::{
     rc::Rc,
 };
 
-use crate::{
-    main,
-    manual_ux::{
-        generative::{
-            data_types::{Keyword, Operator},
-            execution::{ComplexComparisionType, SimpleComparisionType},
-            tokenizer::{GroupType, TokenType},
-            SyntaxErrorType,
-        },
-        table::{
-            GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor,
-            TableLoadingError, TableRow,
-        },
+use crate::manual_ux::{
+    generative::{
+        data_types::{Keyword, Operator},
+        execution::{ComplexComparisionType, SimpleComparisionType},
+        tokenizer::{GroupType, TokenType},
+        SyntaxErrorType,
+    },
+    table::{
+        GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
+        TableRow,
     },
 };
 
@@ -497,6 +494,15 @@ fn parse_access(
                     )],
                 ))),
             )),
+            Keyword::Mutate => Ok((
+                FunctionType::Mutate,
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
+                    vec![
+                        DataTypeDescriptor::Range,
+                        DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::UInt),
+                    ],
+                ))),
+            )),
             _ => Err(GenerativeProgramCompileError::SyntaxError(
                 SyntaxErrorType::InvalidKeywordDuringBlankStageParsing,
             )),
@@ -597,6 +603,8 @@ fn parse_filter_predicate_expression(
     let lhs_column_specifier = check_if_column_specifier(lhs.clone(), project_context);
     let rhs_column_specifier = check_if_column_specifier(rhs.clone(), project_context);
 
+    println!("{:?} vs. {:?}", lhs, rhs);
+
     if lhs_column_specifier == rhs_column_specifier {
         // Only one can be the specifier
         // TODO: Allow both to be specifiers to check for column equality in a row
@@ -618,13 +626,15 @@ fn parse_filter_predicate_expression(
         create_table_column_specifier(current_token, &mut other, project_context)?
     };
 
-    let column = match table_column_specifier {
-        TableColumnSpecifier::Column(v) => v,
-        _ => return Err(GenerativeProgramCompileError::FilterPredicateSpecifierColumnOnly),
+    let (table, column) = match table_column_specifier {
+        TableColumnSpecifier::Column(v) => (project_context.table_id, v),
+        TableColumnSpecifier::Both(t, v) => (t.table_id, v),
+        _ => return Err(GenerativeProgramCompileError::FilterPredicateSpecifierRequireColumn),
     };
 
-    let output_type =
-        &project_context.clone().descriptor.column_descriptors[column.column_id].data_type;
+    let output_type = &project_context.all_descriptors[&table].column_descriptors[column.column_id]
+        .data_type
+        .clone();
 
     let predicate_segment = parse_generative_segment(
         false,
@@ -807,6 +817,20 @@ fn parse_awaiting_value(
                     ],
                 ))),
             )),
+            Keyword::Mutate => Ok((
+                BuilderNode::CombinationNode(
+                    super::node_builder::FunctionType::Mutate,
+                    Vec::new(),
+                    2,
+                ),
+                Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
+                    vec![
+                        DataTypeDescriptor::Range,
+                        DataTypeDescriptor::Range,
+                        DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::UInt),
+                    ],
+                ))),
+            )),
             Keyword::Filter | Keyword::Save => Err(GenerativeProgramCompileError::SyntaxError(
                 SyntaxErrorType::FunctionRequiresObject,
             )),
@@ -955,6 +979,7 @@ fn create_table_column_specifier(
                     // Specifying column by name
                     TokenType::Symbol => Ok(TableColumnSpecifier::Column(ColumnSpecifier {
                         column_id: column_id_from_symbol(
+                            project_context.table_id,
                             &next_token.token_contents,
                             project_context,
                         )?,
@@ -995,6 +1020,7 @@ fn create_table_column_specifier(
                                         TableSpecifier { table_id },
                                         ColumnSpecifier {
                                             column_id: column_id_from_symbol(
+                                                table_id,
                                                 &next_token.token_contents,
                                                 project_context,
                                             )?,
@@ -1032,11 +1058,11 @@ fn create_table_column_specifier(
 /// This functions turns a symbol which should contain a column id into a
 /// column id to put into a descriptor
 fn column_id_from_symbol(
+    table: usize,
     symbol: &str,
     project_context: &mut ProjectContext,
 ) -> Result<usize, GenerativeProgramCompileError> {
-    for (i, column) in project_context
-        .descriptor
+    for (i, column) in project_context.all_descriptors[&table]
         .column_descriptors
         .iter()
         .enumerate()

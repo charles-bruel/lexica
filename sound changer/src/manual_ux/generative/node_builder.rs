@@ -41,6 +41,7 @@ pub enum FunctionType {
     Save,
     Saved,
     SoundChange,
+    Mutate,
     SymbolLookup(String),
 }
 
@@ -351,6 +352,23 @@ impl BuilderNode {
                     Box::new(program),
                 )))
             }
+            BuilderNode::CombinationNode(FunctionType::Mutate, v, _) => {
+                if v.len() < 3 {
+                    todo!()
+                } else if v.len() > 3 {
+                    todo!()
+                }
+
+                let a = v[0].clone().try_convert_range(context)?;
+                let b = v[1].clone().try_convert_range(context)?;
+                let mode = v[2].clone().try_convert_uint(context)?;
+
+                Ok(TypedNode::RangeNode(RangeNode::Mutate(
+                    Box::new(a),
+                    Box::new(b),
+                    Box::new(mode),
+                )))
+            }
             BuilderNode::Wrapper(v) => v.convert_to_node(context, type_hint),
             _ => {
                 println!("{:?}", self);
@@ -532,6 +550,10 @@ impl RangeNode {
                 .column_descriptors[column.column_id]
                 .data_type
                 .clone(),
+            RangeNode::Mutate(a, _, _) => {
+                // TODO: Better data type heuristic
+                a.get_data_type(context)
+            }
         }
     }
 }
@@ -561,7 +583,16 @@ impl UnderspecifiedLiteral {
             }
             UnderspecifiedLiteral::Int(_) => todo!(),
             UnderspecifiedLiteral::UInt(_) => todo!(),
-            UnderspecifiedLiteral::Number(_, _) => todo!(),
+            UnderspecifiedLiteral::Number(uint_value, int_value) => match type_hint {
+                Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::Int)) => {
+                    Ok(TypedNode::IntNode(IntNode::LiteralNode(int_value)))
+                }
+                Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::UInt)) => {
+                    Ok(TypedNode::UIntNode(UIntNode::LiteralNode(uint_value)))
+                }
+                None => todo!(),
+                _ => todo!(),
+            },
             UnderspecifiedLiteral::TableColumnSpecifier(v) => Ok(TypedNode::TableColumn(v)),
             UnderspecifiedLiteral::StringOrShortEnum(string, _column, _table) => match type_hint {
                 Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::Enum(_))) => {
@@ -599,6 +630,7 @@ impl FunctionType {
             | FunctionType::Save
             | FunctionType::Saved
             | FunctionType::SoundChange
+            | FunctionType::Mutate
             | FunctionType::SymbolLookup(_) => true,
             FunctionType::Addition | FunctionType::Subtraction => false,
         }
@@ -610,7 +642,8 @@ impl FunctionType {
             | FunctionType::Filter
             | FunctionType::Save
             | FunctionType::SoundChange
-            | FunctionType::SymbolLookup(_) => FinalOperandIndex::First,
+            | FunctionType::SymbolLookup(_)
+            | FunctionType::Mutate => FinalOperandIndex::First,
             FunctionType::Addition | FunctionType::Subtraction => FinalOperandIndex::Last,
             FunctionType::Saved | FunctionType::Foreach => unreachable!(),
         }

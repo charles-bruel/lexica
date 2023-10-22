@@ -5,3 +5,4 @@ Cargo.lock
 *.pdb
 local/
 save-data/
+*.out

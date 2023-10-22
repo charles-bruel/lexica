@@ -251,6 +251,13 @@ const TOKENS: &[TokenDefinition] = &[
         ..BASE_TOKEN
     },
     TokenDefinition {
+        token_type: TokenType::Keyword(Keyword::Mutate),
+        descriptor: "mutate",
+        priority: 2,
+        match_mode: MatchMode::Keyword,
+        ..BASE_TOKEN
+    },
+    TokenDefinition {
         token_type: TokenType::Keyword(Keyword::Enum),
         descriptor: "enum",
         priority: 2,

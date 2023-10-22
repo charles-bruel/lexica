@@ -40,6 +40,7 @@ pub enum TableRow {
 pub enum PopulatedTableRowSource {
     EXPLICIT,
     CACHE(Rc<GenerativeTableRowProcedure>),
+    MUTATE,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -195,8 +196,12 @@ pub fn load_table(
 
     previous_descriptors.insert(id.into(), table_descriptor.clone());
 
-    for line in lines {
+    for mut line in lines {
         let line_start = Instant::now();
+        line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
         table_rows.push(parse_table_line(
             table_descriptor.clone(),
             previous_descriptors.clone(),
@@ -255,9 +260,8 @@ fn parse_table_line(
     descriptor: Rc<TableDescriptor>,
     all_descriptors: HashMap<usize, Rc<TableDescriptor>>,
     table_id: usize,
-    mut line: &str,
+    line: &str,
 ) -> Result<TableRow, TableLoadingError> {
-    line = line.trim();
     if line.starts_with(":=") {
         return parse_generative_table_line(all_descriptors, table_id, line);
     }

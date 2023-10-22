@@ -109,7 +109,7 @@ pub enum GenerativeProgramCompileError {
     ColumnNotFound,
     ParsedParameterIntoIncorrectNode,
     MainNodeHasNoValue,
-    FilterPredicateSpecifierColumnOnly,
+    FilterPredicateSpecifierRequireColumn,
     OnlyEqualsAndNotEqualsValidHere,
     NoValueFromSegment,
     RequiresColumnSpecifier,
