@@ -6,16 +6,19 @@ use std::{
     rc::Rc,
 };
 
-use crate::manual_ux::{
-    generative::{
-        data_types::{Keyword, Operator},
-        execution::{ComplexComparisionType, SimpleComparisionType},
-        tokenizer::{GroupType, TokenType},
-        SyntaxErrorType,
-    },
-    table::{
-        GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor, TableLoadingError,
-        TableRow,
+use crate::{
+    main,
+    manual_ux::{
+        generative::{
+            data_types::{Keyword, Operator},
+            execution::{ComplexComparisionType, SimpleComparisionType},
+            tokenizer::{GroupType, TokenType},
+            SyntaxErrorType,
+        },
+        table::{
+            GenerativeTableRowProcedure, TableDataTypeDescriptor, TableDescriptor,
+            TableLoadingError, TableRow,
+        },
     },
 };
 
@@ -66,10 +69,6 @@ enum ParsingContext {
     /// it is also how the system keeps track of the number of parameters
     /// left.
     AwaitingParameters(VecDeque<DataTypeDescriptor>),
-    /// Indicates that we have recieved a function and we have at least 1
-    /// left.
-    /// TODO: Find a way to allow trailing commas (i.e. `(a, b, c,)`)
-    AwaitingFunctionComma(VecDeque<DataTypeDescriptor>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
@@ -182,48 +181,61 @@ fn create_generative_program(
     output_type: &TableDataTypeDescriptor,
     project_context: &mut ProjectContext,
 ) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
-    let main_segment = parse_generative_segment(true, tokens, output_type, project_context)?;
+    let queue = &mut VecDeque::from(tokens);
+    let main_segment = parse_generative_segment(
+        true,
+        queue,
+        &Some(output_type.clone()),
+        project_context,
+        None,
+    )?;
 
     Ok(GenerativeProgram {
         output_node: main_segment.try_convert_output_node(output_type, project_context)?,
     })
 }
 
+// TODO: Allow any data type in some circumstances
 fn parse_generative_segment(
     require_equals: bool,
-    tokens: Vec<Token>,
-    output_type: &TableDataTypeDescriptor,
+    tokens: &mut VecDeque<Token>,
+    output_type: &Option<TableDataTypeDescriptor>,
     project_context: &mut ProjectContext,
+    closing_token_type: Option<TokenType>,
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
     let mut context: VecDeque<ParsingContext> = if require_equals {
         VecDeque::from(vec![ParsingContext::Start])
     } else {
-        VecDeque::from(vec![ParsingContext::AwaitingValue(Some(
-            DataTypeDescriptor::TableDataType(output_type.clone()),
-        ))])
+        VecDeque::from(vec![ParsingContext::AwaitingValue(
+            output_type
+                .as_ref()
+                .map(|v| DataTypeDescriptor::TableDataType(v.clone())),
+        )])
     };
 
-    let mut queue = VecDeque::from(tokens);
+    // let mut tokens: VecDeque<Token> = VecDeque::from(tokens);
 
     let mut main_node: Option<BuilderNode> = None;
 
-    while !queue.is_empty() {
+    while !tokens.is_empty() {
         // Queue is garunteed to have elements because of while condition
-        let current_token = queue.pop_front().unwrap();
-        println!("{:?}", current_token);
+        let current_token = tokens.pop_front().unwrap();
+        println!("{:?}: {:?}", context, current_token);
 
         match &mut context[0] {
             // TODO: Split into own function
             ParsingContext::Start => match current_token.token_type {
                 TokenType::Operator(Operator::Equals) => {
-                    context[0] = ParsingContext::AwaitingValue(Some(
-                        DataTypeDescriptor::TableDataType(output_type.clone()),
-                    ))
+                    context[0] = ParsingContext::AwaitingValue(
+                        output_type
+                            .as_ref()
+                            .map(|v| DataTypeDescriptor::TableDataType(v.clone())),
+                    )
                 }
                 _ => {
                     return Ok(BuilderNode::GenericLiteral(create_literal_node(
                         current_token,
-                        &mut queue,
+                        tokens,
                         project_context,
                     )?))
                 }
@@ -231,9 +243,10 @@ fn parse_generative_segment(
             ParsingContext::AwaitingValue(ref target_data_type) => {
                 let (node, optional_addition) = parse_awaiting_value(
                     current_token,
-                    &mut queue,
+                    tokens,
                     target_data_type,
                     project_context,
+                    None,
                 )?;
                 match &mut main_node {
                     Some(BuilderNode::CombinationNode(_, v, _)) => v.push(node),
@@ -247,6 +260,15 @@ fn parse_generative_segment(
                 }
             }
             ParsingContext::Ready => {
+                if let Some(token_type) = closing_token_type {
+                    if token_type == current_token.token_type {
+                        return match main_node {
+                            Some(v) => Ok(BuilderNode::Wrapper(Box::new(v))),
+                            None => Err(GenerativeProgramCompileError::NoValueFromSegment),
+                        };
+                    }
+                }
+
                 let mut top_context = context[0].clone();
                 main_node = Some(parse_new_segment_ready(
                     &mut top_context,
@@ -271,41 +293,31 @@ fn parse_generative_segment(
             },
             ParsingContext::AwaitingParameters(ref mut parameter_queue) => {
                 if parameter_queue.is_empty() {
-                    // In this case, we know we have finished the function.
-                    // This is purely a state change and syntax verification,
-                    // so the code can stay in the main function
-                    match current_token.token_type {
-                        TokenType::CloseGroup(GroupType::Paren) => {
-                            // All good, move on
-                            // All entries to the function system *should* add a new layer
-                            // to the context stack, however this is not 100% safe to assume
-                            // and should be checked.
-                            context.pop_front();
-                            if context.is_empty() {
-                                return Err(GenerativeProgramCompileError::SyntaxError(
-                                    SyntaxErrorType::UnbalancedFunctions,
-                                ));
-                            }
-                        }
-                        _ => {
-                            return Err(GenerativeProgramCompileError::SyntaxError(
-                                SyntaxErrorType::ExpectedCloseParenthesis,
-                            ));
-                        }
-                    }
                 } else {
                     // Actually fill in function parameters
                     // Safe to unwrap because len is non-zero
                     let target_data_type = parameter_queue.pop_front().unwrap();
-                    let cloned_queue = parameter_queue.clone();
+
+                    // TODO: Find way to allow trailing commas
+                    let automatic_recursion_end_token = Some(if parameter_queue.is_empty() {
+                        TokenType::CloseGroup(GroupType::Paren)
+                    } else {
+                        TokenType::Operator(Operator::Comma)
+                    });
                     let (node, parsing_context) = parse_awaiting_value(
                         current_token,
-                        &mut queue,
+                        tokens,
                         &Some(target_data_type),
                         project_context,
+                        automatic_recursion_end_token,
                     )?;
-                    if !cloned_queue.is_empty() {
-                        context[0] = ParsingContext::AwaitingFunctionComma(cloned_queue);
+                    if parameter_queue.is_empty() {
+                        context.pop_front();
+                        if context.is_empty() {
+                            return Err(GenerativeProgramCompileError::SyntaxError(
+                                SyntaxErrorType::UnbalancedFunctions,
+                            ));
+                        }
                     }
                     match &mut main_node {
                         Some(v) => v.insert_operand(node),
@@ -328,30 +340,20 @@ fn parse_generative_segment(
                     ))
                 }
             },
-            ParsingContext::AwaitingFunctionComma(params) => match current_token.token_type {
-                TokenType::Operator(Operator::Comma) => {
-                    context[0] = ParsingContext::AwaitingParameters(params.clone())
-                }
-                _ => {
-                    return Err(GenerativeProgramCompileError::SyntaxError(
-                        SyntaxErrorType::ExpectedComma,
-                    ))
-                }
-            },
         }
     }
 
     // TODO: Check that we are in a good parsing state before returning
-
+    println!("full: {:?}", main_node);
     match main_node {
-        Some(v) => Ok(v),
+        Some(v) => Ok(BuilderNode::Wrapper(Box::new(v))),
         None => Err(GenerativeProgramCompileError::NoValueFromSegment),
     }
 }
 
 /// This function handles the ready state of parsing.
 /// There are two ways out of the ready state - a combination
-/// symbol (`+` or sometimes `-`) or a function starter (.)
+/// symbol (`+` or sometimes `-`) or a function starter (`.`)
 fn parse_new_segment_ready(
     context: &mut ParsingContext,
     current_token: Token,
@@ -427,7 +429,6 @@ fn insert_new_operator(
                         // and then immediately execute this, so this is guaranteed.
                         unreachable!()
                     }
-                    println!("{:?}", old_node);
                     Ok(old_node)
                 }
                 FinalOperandIndex::Last => {
@@ -447,7 +448,6 @@ fn insert_new_operator(
                         // and then immediately execute this, so this is guaranteed.
                         unreachable!()
                     }
-                    println!("{:?}", old_node);
                     Ok(old_node)
                 }
             };
@@ -626,8 +626,13 @@ fn parse_filter_predicate_expression(
     let output_type =
         &project_context.clone().descriptor.column_descriptors[column.column_id].data_type;
 
-    let predicate_segment =
-        parse_generative_segment(false, predicate, &output_type.clone(), project_context)?;
+    let predicate_segment = parse_generative_segment(
+        false,
+        &mut VecDeque::from(predicate),
+        &Some(output_type.clone()),
+        project_context,
+        None,
+    )?;
 
     match output_type {
         TableDataTypeDescriptor::Enum(_) => {
@@ -724,22 +729,60 @@ fn parse_awaiting_value(
     other_tokens: &mut VecDeque<Token>,
     target_data_type: &Option<DataTypeDescriptor>,
     project_context: &mut ProjectContext,
+    automatic_recursion_end_token: Option<TokenType>,
 ) -> Result<(BuilderNode, Option<ParsingContext>), GenerativeProgramCompileError> {
     if let Some(DataTypeDescriptor::FilterPredicate) = target_data_type {
         // We have to return a filter predicate for the program to be valid,
         // so unlike the case with the table column specifier literal, we can
         // pull elements from the token queue without any checks or backups.
-        return Ok((
+        let result = (
             BuilderNode::FilterPredicate(parse_filter_predicate_expression(
                 current_token,
                 other_tokens,
                 project_context,
             )?),
             None,
+        );
+
+        if let Some(closing_token_type) = automatic_recursion_end_token {
+            if closing_token_type != other_tokens.pop_front().unwrap().token_type {
+                todo!()
+            }
+        }
+
+        return Ok(result);
+    }
+
+    if let Some(closing_token_type) = automatic_recursion_end_token {
+        // Since we are automatically doing this, the first token is still important
+        other_tokens.push_front(current_token);
+        let data_type = match target_data_type {
+            Some(DataTypeDescriptor::TableDataType(v)) => Some(v.clone()),
+            _ => None,
+        };
+        return Ok((
+            parse_generative_segment(
+                false,
+                other_tokens,
+                &data_type,
+                project_context,
+                Some(closing_token_type),
+            )?,
+            None,
         ));
     }
 
     match current_token.token_type {
+        TokenType::OpenGroup(GroupType::Paren) => Ok((
+            parse_generative_segment(
+                false,
+                other_tokens,
+                &None,
+                project_context,
+                Some(TokenType::CloseGroup(GroupType::Paren)),
+            )?,
+            None,
+        )),
         TokenType::Keyword(word) => match word {
             Keyword::Foreach => Ok((
                 BuilderNode::CombinationNode(

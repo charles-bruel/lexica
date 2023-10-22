@@ -59,6 +59,7 @@ pub enum BuilderNode {
     /// checking, not gaurunteed to be valid. The u8 value is precedence; used
     /// by `construction.rs` to implement operator precedence.
     CombinationNode(FunctionType, Vec<BuilderNode>, u8),
+    Wrapper(Box<BuilderNode>),
 }
 
 /// Represents any node. Nodes are recursively generically converted to
@@ -350,6 +351,7 @@ impl BuilderNode {
                     Box::new(program),
                 )))
             }
+            BuilderNode::Wrapper(v) => v.convert_to_node(context, type_hint),
             _ => {
                 println!("{:?}", self);
                 todo!()
