@@ -2,6 +2,7 @@
 
 use std::{
     collections::{HashMap, VecDeque},
+    mem,
     rc::Rc,
 };
 
@@ -20,7 +21,7 @@ use crate::manual_ux::{
 
 use super::{
     execution::{ColumnSpecifier, FilterPredicate, TableSpecifier},
-    node_builder::{BuilderNode, FunctionType, UnderspecifiedLiteral},
+    node_builder::{BuilderNode, FinalOperandIndex, FunctionType, UnderspecifiedLiteral},
     tokenizer::{tokenize, Token},
     GenerativeProgram, GenerativeProgramCompileError,
 };
@@ -42,7 +43,7 @@ enum ParsingContext {
     /// it should receive a value of the given type.
     /// Occurs after the start state, and after an operator such as `+`
     /// (not `.`). The code associated with this state is also called from
-    /// the `AWAITING_PARAMETERS` state.
+    /// the `AwaitingParameters` state.
     AwaitingValue(Option<DataTypeDescriptor>),
     /// Indicates that there is a valid construction of the given
     /// data type and the operation can be finished or expanded with
@@ -73,9 +74,9 @@ enum ParsingContext {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum TableColumnSpecifier {
-    TABLE(TableSpecifier),
-    COLUMN(ColumnSpecifier),
-    BOTH(TableSpecifier, ColumnSpecifier),
+    Table(TableSpecifier),
+    Column(ColumnSpecifier),
+    Both(TableSpecifier, ColumnSpecifier),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -209,6 +210,7 @@ fn parse_generative_segment(
     while !queue.is_empty() {
         // Queue is garunteed to have elements because of while condition
         let current_token = queue.pop_front().unwrap();
+        println!("{:?}", current_token);
 
         match &mut context[0] {
             // TODO: Split into own function
@@ -234,7 +236,7 @@ fn parse_generative_segment(
                     project_context,
                 )?;
                 match &mut main_node {
-                    Some(BuilderNode::CombinationNode(_, v)) => v.push(node),
+                    Some(BuilderNode::CombinationNode(_, v, _)) => v.push(node),
                     None => main_node = Some(node),
                     _ => {}
                 }
@@ -254,18 +256,21 @@ fn parse_generative_segment(
                 context[0] = top_context;
             }
             ParsingContext::AwaitingAccess => match &mut main_node {
-                Some(BuilderNode::CombinationNode(function_type, _)) => {
-                    let (returned_function_type, new_context) = parse_access(current_token)?;
-                    *function_type = returned_function_type;
-                    context[0] = ParsingContext::Ready;
-                    if let Some(v) = new_context {
-                        context.push_front(v);
+                Some(v) => match v.get_function_node() {
+                    BuilderNode::CombinationNode(function_type, _, _) => {
+                        let (returned_function_type, new_context) = parse_access(current_token)?;
+                        *function_type = returned_function_type;
+                        context[0] = ParsingContext::Ready;
+                        if let Some(v) = new_context {
+                            context.push_front(v);
+                        }
                     }
-                }
+                    _ => todo!(),
+                },
                 _ => todo!(),
             },
             ParsingContext::AwaitingParameters(ref mut parameter_queue) => {
-                if !parameter_queue.is_empty() {
+                if parameter_queue.is_empty() {
                     // In this case, we know we have finished the function.
                     // This is purely a state change and syntax verification,
                     // so the code can stay in the main function
@@ -276,7 +281,7 @@ fn parse_generative_segment(
                             // to the context stack, however this is not 100% safe to assume
                             // and should be checked.
                             context.pop_front();
-                            if !context.is_empty() {
+                            if context.is_empty() {
                                 return Err(GenerativeProgramCompileError::SyntaxError(
                                     SyntaxErrorType::UnbalancedFunctions,
                                 ));
@@ -289,31 +294,30 @@ fn parse_generative_segment(
                         }
                     }
                 } else {
+                    // Actually fill in function parameters
                     // Safe to unwrap because len is non-zero
                     let target_data_type = parameter_queue.pop_front().unwrap();
                     let cloned_queue = parameter_queue.clone();
+                    let (node, parsing_context) = parse_awaiting_value(
+                        current_token,
+                        &mut queue,
+                        &Some(target_data_type),
+                        project_context,
+                    )?;
+                    if !cloned_queue.is_empty() {
+                        context[0] = ParsingContext::AwaitingFunctionComma(cloned_queue);
+                    }
                     match &mut main_node {
-                        Some(BuilderNode::CombinationNode(_, vec)) => {
-                            let (node, parsing_context) = parse_awaiting_value(
-                                current_token,
-                                &mut queue,
-                                &Some(target_data_type),
-                                project_context,
-                            )?;
-                            if !cloned_queue.is_empty() {
-                                context[0] = ParsingContext::AwaitingFunctionComma(cloned_queue);
-                            }
-                            vec.push(node);
-                            if let Some(v) = parsing_context {
-                                context.push_front(v)
-                            }
-                        }
-                        _ => return Err(
-                            GenerativeProgramCompileError::FoundValueWhileNotMakingCombinationNode,
-                        ),
+                        Some(v) => v.insert_operand(node),
+                        None => todo!(),
+                    }
+                    if let Some(v) = parsing_context {
+                        context.push_front(v)
                     }
                 }
             }
+
+            // Syntax guarantees that don't affect the structure
             ParsingContext::AwaitingFunctionBracket(params) => match current_token.token_type {
                 TokenType::OpenGroup(GroupType::Paren) => {
                     context[0] = ParsingContext::AwaitingParameters(params.clone())
@@ -337,6 +341,8 @@ fn parse_generative_segment(
         }
     }
 
+    // TODO: Check that we are in a good parsing state before returning
+
     match main_node {
         Some(v) => Ok(v),
         None => Err(GenerativeProgramCompileError::NoValueFromSegment),
@@ -351,7 +357,13 @@ fn parse_new_segment_ready(
     current_token: Token,
     main_node: Option<BuilderNode>,
 ) -> Result<BuilderNode, GenerativeProgramCompileError> {
+    let old_node = match main_node {
+        Some(v) => v,
+        None => return Err(GenerativeProgramCompileError::MainNodeHasNoValue),
+    };
+
     match &current_token.token_type {
+        // Low precedence
         TokenType::Operator(v @ (Operator::Plus | Operator::Minus)) => {
             *context = ParsingContext::AwaitingValue(None);
 
@@ -361,30 +373,98 @@ fn parse_new_segment_ready(
                 FunctionType::Subtraction
             };
 
-            Ok(BuilderNode::CombinationNode(
-                function_type,
-                vec![match main_node {
-                    Some(v) => v,
-                    None => return Err(GenerativeProgramCompileError::MainNodeHasNoValue),
-                }],
-            ))
+            Ok(insert_new_operator(old_node, function_type, 0)?)
         }
+        // Medium precedence
+        TokenType::Operator(Operator::Star) => todo!(),
+        // High precendence
         TokenType::Operator(Operator::Period) => {
             // We have a function and the first parameter
             // will be the current main node
             *context = ParsingContext::AwaitingAccess;
-            Ok(BuilderNode::CombinationNode(
-                super::node_builder::FunctionType::UnknownFunction,
-                vec![match main_node {
-                    Some(v) => v,
-                    None => return Err(GenerativeProgramCompileError::MainNodeHasNoValue),
-                }],
-            ))
+
+            Ok(insert_new_operator(
+                old_node,
+                FunctionType::UnknownFunction,
+                2,
+            )?)
         }
         _ => {
             todo!()
         }
     }
+}
+
+fn insert_new_operator(
+    mut old_node: BuilderNode,
+    function_type: FunctionType,
+    precedence: u8,
+) -> Result<BuilderNode, GenerativeProgramCompileError> {
+    if let BuilderNode::CombinationNode(old_function_type, vec, old_precedence) = &mut old_node {
+        if precedence > *old_precedence {
+            // In this case, we have that the new precedence is greater
+            // so we need to replace the last operand of the previous node
+            // with a combination of itself and this.
+
+            // i.e. `a + b => a + b.c() <=> a + c(b)`
+
+            // TODO: DRY
+            return match old_function_type.final_operand_index() {
+                FinalOperandIndex::First => {
+                    let old_vec = vec;
+                    let new_parameter_vec = vec![];
+                    // `a + b => a + c()`
+                    let idx = 0;
+                    let old_operand = mem::replace(
+                        &mut old_vec[idx],
+                        BuilderNode::CombinationNode(function_type, new_parameter_vec, precedence),
+                    );
+                    // `a + c() => a + c(b) <=> a + b.c()`
+                    if let BuilderNode::CombinationNode(_, vec, _) = &mut old_vec[idx] {
+                        vec.push(old_operand);
+                    } else {
+                        // We just assigned old_vec[idx] to be a BuilderNode::CombinationNode
+                        // and then immediately execute this, so this is guaranteed.
+                        unreachable!()
+                    }
+                    println!("{:?}", old_node);
+                    Ok(old_node)
+                }
+                FinalOperandIndex::Last => {
+                    let old_vec = vec;
+                    let new_parameter_vec = vec![];
+                    // `a + b => a + c()`
+                    let idx = old_vec.len() - 1;
+                    let old_operand = mem::replace(
+                        &mut old_vec[idx],
+                        BuilderNode::CombinationNode(function_type, new_parameter_vec, precedence),
+                    );
+                    // `a + c() => a + c(b) <=> a + b.c()`
+                    if let BuilderNode::CombinationNode(_, vec, _) = &mut old_vec[idx] {
+                        vec.push(old_operand);
+                    } else {
+                        // We just assigned old_vec[idx] to be a BuilderNode::CombinationNode
+                        // and then immediately execute this, so this is guaranteed.
+                        unreachable!()
+                    }
+                    println!("{:?}", old_node);
+                    Ok(old_node)
+                }
+            };
+        }
+
+        // The old operation has greater or equal precedence
+        // (i.e. 5 * 5 + 3 or 5 + 5 + 3) We want to operate on
+        // the old operation as a block so we fall through and let
+        // the default handling work.
+    }
+
+    // Old node is not a combination node; there is no way for precedence to be weird here, so we use default behavior.
+    Ok(BuilderNode::CombinationNode(
+        function_type,
+        vec![old_node],
+        precedence,
+    ))
 }
 
 fn parse_access(
@@ -539,7 +619,7 @@ fn parse_filter_predicate_expression(
     };
 
     let column = match table_column_specifier {
-        TableColumnSpecifier::COLUMN(v) => v,
+        TableColumnSpecifier::Column(v) => v,
         _ => return Err(GenerativeProgramCompileError::FilterPredicateSpecifierColumnOnly),
     };
 
@@ -665,13 +745,18 @@ fn parse_awaiting_value(
                 BuilderNode::CombinationNode(
                     super::node_builder::FunctionType::Foreach,
                     Vec::new(),
+                    2,
                 ),
                 Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![DataTypeDescriptor::TableColumnSpecifier],
                 ))),
             )),
             Keyword::Saved => Ok((
-                BuilderNode::CombinationNode(super::node_builder::FunctionType::Saved, Vec::new()),
+                BuilderNode::CombinationNode(
+                    super::node_builder::FunctionType::Saved,
+                    Vec::new(),
+                    2,
+                ),
                 Some(ParsingContext::AwaitingFunctionBracket(VecDeque::from(
                     vec![
                         DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::String),
@@ -785,15 +870,15 @@ fn _create_enum_literal(
     current_column: ColumnSpecifier,
 ) -> Result<EnumSpecifier, GenerativeProgramCompileError> {
     let column = match specifier {
-        Some(TableColumnSpecifier::BOTH(_, v)) | Some(TableColumnSpecifier::COLUMN(v)) => v,
-        Some(TableColumnSpecifier::TABLE(_)) => {
+        Some(TableColumnSpecifier::Both(_, v)) | Some(TableColumnSpecifier::Column(v)) => v,
+        Some(TableColumnSpecifier::Table(_)) => {
             return Err(GenerativeProgramCompileError::OnlySpecifiedTable)
         }
         None => current_column,
     };
 
     let table = match specifier {
-        Some(TableColumnSpecifier::BOTH(v, _)) | Some(TableColumnSpecifier::TABLE(v)) => Some(v),
+        Some(TableColumnSpecifier::Both(v, _)) | Some(TableColumnSpecifier::Table(v)) => Some(v),
         _ => None,
     };
 
@@ -820,12 +905,12 @@ fn create_table_column_specifier(
                 match next_token.token_type {
                     TokenType::NumericLiteral => match next_token.token_contents.parse::<usize>() {
                         Ok(column_id) => {
-                            Ok(TableColumnSpecifier::COLUMN(ColumnSpecifier { column_id }))
+                            Ok(TableColumnSpecifier::Column(ColumnSpecifier { column_id }))
                         }
                         Err(error) => Err(GenerativeProgramCompileError::IntParseError(error)),
                     },
                     // Specifying column by name
-                    TokenType::Symbol => Ok(TableColumnSpecifier::COLUMN(ColumnSpecifier {
+                    TokenType::Symbol => Ok(TableColumnSpecifier::Column(ColumnSpecifier {
                         column_id: column_id_from_symbol(
                             &next_token.token_contents,
                             project_context,
@@ -853,7 +938,7 @@ fn create_table_column_specifier(
                                 match next_token.token_type {
                                     TokenType::NumericLiteral => {
                                         match next_token.token_contents.parse::<usize>() {
-                                            Ok(column_id) => Ok(TableColumnSpecifier::BOTH(
+                                            Ok(column_id) => Ok(TableColumnSpecifier::Both(
                                                 TableSpecifier { table_id },
                                                 ColumnSpecifier { column_id },
                                             )),
@@ -863,7 +948,7 @@ fn create_table_column_specifier(
                                         }
                                     }
                                     // Specifying column by name
-                                    TokenType::Symbol => Ok(TableColumnSpecifier::BOTH(
+                                    TokenType::Symbol => Ok(TableColumnSpecifier::Both(
                                         TableSpecifier { table_id },
                                         ColumnSpecifier {
                                             column_id: column_id_from_symbol(
@@ -875,12 +960,12 @@ fn create_table_column_specifier(
                                     _ => {
                                         // In this case, the specifier is over so we return what
                                         // we have
-                                        Ok(TableColumnSpecifier::TABLE(TableSpecifier { table_id }))
+                                        Ok(TableColumnSpecifier::Table(TableSpecifier { table_id }))
                                     }
                                 }
                             } else {
                                 // This is probably an error but not our responsibility
-                                Ok(TableColumnSpecifier::TABLE(TableSpecifier { table_id }))
+                                Ok(TableColumnSpecifier::Table(TableSpecifier { table_id }))
                             }
                         }
                         _ => Err(GenerativeProgramCompileError::SyntaxError(

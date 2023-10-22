@@ -1,8 +1,8 @@
-use std::{rc::Rc, collections::HashMap};
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{io, manual_ux::table};
 
-use super::table::{Table, TableLoadingError, TableDescriptor};
+use super::table::{Table, TableDescriptor, TableLoadingError};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Project {
@@ -22,14 +22,18 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     for entry in glob::glob(&(filepath + &String::from("/**/*.ltable"))).unwrap() {
         let path_str = &entry.unwrap().as_path().display().to_string();
         let temp = match table::load_table(
-            &io::load_from_file(path_str, false).unwrap(), &mut previous_descriptors, path_str.clone()) {
+            &io::load_from_file(path_str, false).unwrap(),
+            &mut previous_descriptors,
+            path_str.clone(),
+        ) {
             Ok(v) => v,
             Err(e) => {
                 println!("{:?}", e);
+                println!();
                 panic!();
             }
         };
-        
+
         if <u16 as Into<usize>>::into(temp.id) > max_id {
             max_id = temp.id.into();
         }

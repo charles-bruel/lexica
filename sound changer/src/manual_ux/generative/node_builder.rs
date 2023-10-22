@@ -55,7 +55,10 @@ pub enum BuilderNode {
     TrueRangeNode(RangeNode),
     GenericLiteral(UnderspecifiedLiteral),
     FilterPredicate(FilterPredicate),
-    CombinationNode(FunctionType, Vec<BuilderNode>),
+    /// Stores any node which is a combination of other builder nodes. No
+    /// checking, not gaurunteed to be valid. The u8 value is precedence; used
+    /// by `construction.rs` to implement operator precedence.
+    CombinationNode(FunctionType, Vec<BuilderNode>, u8),
 }
 
 /// Represents any node. Nodes are recursively generically converted to
@@ -194,7 +197,7 @@ impl BuilderNode {
             BuilderNode::FilterPredicate(v) => Ok(TypedNode::FilterPredicate(v)),
 
             // Hard
-            BuilderNode::CombinationNode(FunctionType::Filter, v) => {
+            BuilderNode::CombinationNode(FunctionType::Filter, v, _) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
@@ -207,7 +210,7 @@ impl BuilderNode {
                     Box::new(predicate),
                 )))
             }
-            BuilderNode::CombinationNode(FunctionType::Foreach, v) => {
+            BuilderNode::CombinationNode(FunctionType::Foreach, v, _) => {
                 if v.len() < 1 {
                     todo!()
                 } else if v.len() > 1 {
@@ -215,15 +218,15 @@ impl BuilderNode {
                 }
                 let specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table, column) = match specifier {
-                    TableColumnSpecifier::TABLE(_) => {
+                    TableColumnSpecifier::Table(_) => {
                         return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
                     }
-                    TableColumnSpecifier::COLUMN(_) => todo!(),
-                    TableColumnSpecifier::BOTH(t, c) => (t, c),
+                    TableColumnSpecifier::Column(_) => todo!(),
+                    TableColumnSpecifier::Both(t, c) => (t, c),
                 };
                 Ok(TypedNode::RangeNode(RangeNode::ForeachNode(table, column)))
             }
-            BuilderNode::CombinationNode(FunctionType::Save, v) => {
+            BuilderNode::CombinationNode(FunctionType::Save, v, _) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
@@ -236,7 +239,7 @@ impl BuilderNode {
                     Box::new(name),
                 )))
             }
-            BuilderNode::CombinationNode(FunctionType::Saved, v) => {
+            BuilderNode::CombinationNode(FunctionType::Saved, v, _) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
@@ -245,18 +248,18 @@ impl BuilderNode {
                 let name = v[0].clone().try_convert_string(context)?;
                 let table_column = v[1].clone().try_convert_table_column(context)?;
                 let column = match table_column {
-                    TableColumnSpecifier::TABLE(_) => {
+                    TableColumnSpecifier::Table(_) => {
                         return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
                     }
-                    TableColumnSpecifier::COLUMN(c) => c,
-                    TableColumnSpecifier::BOTH(_, c) => c,
+                    TableColumnSpecifier::Column(c) => c,
+                    TableColumnSpecifier::Both(_, c) => c,
                 };
                 Ok(TypedNode::RangeNode(RangeNode::Saved(
                     Box::new(name),
                     column,
                 )))
             }
-            BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v) => {
+            BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v, _) => {
                 if v.len() < 1 {
                     todo!()
                 } else if v.len() > 1 {
@@ -264,11 +267,11 @@ impl BuilderNode {
                 }
                 let table_column_specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table_id, column_id) = match table_column_specifier {
-                    TableColumnSpecifier::TABLE(_) => {
+                    TableColumnSpecifier::Table(_) => {
                         return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
                     }
-                    TableColumnSpecifier::COLUMN(c) => (context.table_id, c.column_id),
-                    TableColumnSpecifier::BOTH(t, c) => (t.table_id, c.column_id),
+                    TableColumnSpecifier::Column(c) => (context.table_id, c.column_id),
+                    TableColumnSpecifier::Both(t, c) => (t.table_id, c.column_id),
                 };
                 let data_type_descriptor = context.all_descriptors[&table_id].column_descriptors
                     [column_id]
@@ -299,10 +302,11 @@ impl BuilderNode {
                     )),
                 }
             }
-            BuilderNode::CombinationNode(FunctionType::Addition, v) => {
+            BuilderNode::CombinationNode(FunctionType::Addition, v, _) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
+                    println!("{:?}", v);
                     todo!()
                 }
 
@@ -331,7 +335,7 @@ impl BuilderNode {
                     ))),
                 }
             }
-            BuilderNode::CombinationNode(FunctionType::SoundChange, v) => {
+            BuilderNode::CombinationNode(FunctionType::SoundChange, v, _) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
@@ -351,6 +355,67 @@ impl BuilderNode {
                 todo!()
             }
         }
+    }
+}
+
+impl BuilderNode {
+    /// This is a recursive function to insert a parameter into the current function call.<br><br>
+    /// In certain cases with precedence, the top level node will not be the be the function: <br>
+    /// i.e. consider `a + b.c(z) <=> a + c(b, z)` - when z is parsed, the top level node is the
+    /// addition node `a + (b.c(z)). <br><br>
+    /// This function typically doesn't need to go more than one level deep but it can go arbritrarily deep.
+    /// It places the parameter into the first valid node it finds. Valid nodes are onces where
+    /// `is_strictly_ordered()` returns true.
+    pub fn insert_operand(&mut self, operand: BuilderNode) {
+        match self {
+            BuilderNode::CombinationNode(t, v, _) => {
+                if t.is_strictly_ordered() {
+                    v.push(operand)
+                } else {
+                    match t.final_operand_index() {
+                        FinalOperandIndex::First => v[0].insert_operand(operand),
+                        FinalOperandIndex::Last => {
+                            let idx = v.len() - 1;
+                            v[idx].insert_operand(operand);
+                        }
+                    }
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    /// Finds the first strictly ordered node.<br>
+    /// Similar to `insert_operand()`, more details there
+    pub fn get_function_node(&mut self) -> &mut BuilderNode {
+        if let BuilderNode::CombinationNode(t, _, _) = self {
+            if t.is_strictly_ordered() {
+                return self;
+            }
+        } else {
+            return self;
+        }
+
+        if let BuilderNode::CombinationNode(t, v, _) = self {
+            if !t.is_strictly_ordered() {
+                match t.final_operand_index() {
+                    FinalOperandIndex::First => return v[0].get_function_node(),
+                    FinalOperandIndex::Last => {
+                        let idx = v.len() - 1;
+                        return v[idx].get_function_node();
+                    }
+                }
+            }
+        }
+
+        unreachable!();
+
+        // match self {
+        //     BuilderNode::CombinationNode(t, v, _) => {}
+        //     _ => todo!(),
+        // }
+
+        // return self;
     }
 }
 
@@ -507,6 +572,45 @@ impl UnderspecifiedLiteral {
                     "Invalid type hint for node type",
                 )),
             },
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+pub enum FinalOperandIndex {
+    First,
+    Last,
+}
+
+impl FunctionType {
+    /// A node is strictly ordered if it is non-communative and the simple
+    /// ordering scheme does not work.
+    /// i.e. `1 + 2 * 3 / 4 - 5` is not strictly ordered because the simple
+    /// ordering scheme will generate a correct configuration (`((1 + ((2 * 3) / 4)) - 5)`).
+    /// i.e `a + b.c(z)` is strictly ordered because the function call operation requires
+    /// the special handling.
+    fn is_strictly_ordered(&self) -> bool {
+        match self {
+            FunctionType::UnknownFunction
+            | FunctionType::Foreach
+            | FunctionType::Filter
+            | FunctionType::Save
+            | FunctionType::Saved
+            | FunctionType::SoundChange
+            | FunctionType::SymbolLookup(_) => true,
+            FunctionType::Addition | FunctionType::Subtraction => false,
+        }
+    }
+
+    pub fn final_operand_index(&self) -> FinalOperandIndex {
+        match self {
+            FunctionType::UnknownFunction
+            | FunctionType::Filter
+            | FunctionType::Save
+            | FunctionType::SoundChange
+            | FunctionType::SymbolLookup(_) => FinalOperandIndex::First,
+            FunctionType::Addition | FunctionType::Subtraction => FinalOperandIndex::Last,
+            FunctionType::Saved | FunctionType::Foreach => unreachable!(),
         }
     }
 }

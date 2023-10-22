@@ -107,7 +107,7 @@ pub enum GenerativeProgramCompileError {
     IntOutOfRange,
     OnlySpecifiedTable,
     ColumnNotFound,
-    FoundValueWhileNotMakingCombinationNode,
+    ParsedParameterIntoIncorrectNode,
     MainNodeHasNoValue,
     FilterPredicateSpecifierColumnOnly,
     OnlyEqualsAndNotEqualsValidHere,
