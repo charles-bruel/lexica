@@ -7,7 +7,10 @@ use crate::{
     data::Program,
     io,
     manual_ux::{
-        generative::{execution::GenerativeProgramExecutionOutput, GenerativeProgramRuntimeError},
+        generative::{
+            execution::GenerativeProgramExecutionOutput, runtime_err,
+            GenerativeProgramRuntimeError, RuntimeErrorType,
+        },
         table::{PopulatedTableRowSource, TableContents},
     },
 };
@@ -94,8 +97,8 @@ impl Table {
                                 None => first_not_one_count = Some(result.len()),
                                 Some(c) => {
                                     if c != result.len() {
-                                        return Err(
-                                            GenerativeProgramRuntimeError::MismatchedRangeLengths,
+                                        return runtime_err(
+                                            RuntimeErrorType::MismatchedRangeLengths,
                                         );
                                     }
                                 }

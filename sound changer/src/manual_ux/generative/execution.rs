@@ -182,7 +182,7 @@ impl StringNode {
                         }
                         return Ok(operand1);
                     }
-                    return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
+                    return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
                 }
 
                 let mut i = 0;
@@ -257,7 +257,7 @@ impl IntNode {
                         }
                         return Ok(operand1);
                     }
-                    return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
+                    return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
                 }
 
                 let mut i = 0;
@@ -324,7 +324,7 @@ impl UIntNode {
                         }
                         return Ok(operand1);
                     }
-                    return Err(GenerativeProgramRuntimeError::MismatchedRangeLengths);
+                    return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
                 }
 
                 let mut i = 0;
@@ -373,7 +373,7 @@ impl EnumNode {
                 let (table, table_specifer) =
                     match &context.project.tables[table_specifier.table_id] {
                         Some(table) => (table.table_descriptor.clone(), *table_specifier),
-                        None => return Err(GenerativeProgramRuntimeError::TableNotFound),
+                        None => return runtime_err(RuntimeErrorType::TableNotFound),
                     };
                 let data_type = &table.column_descriptors[column_specifier.column_id].data_type;
                 let values = match data_type {
@@ -391,7 +391,7 @@ impl EnumNode {
                         table: table_specifer,
                         column: *column_specifier,
                     }]),
-                    None => Err(GenerativeProgramRuntimeError::EnumNotFound),
+                    None => runtime_err(RuntimeErrorType::EnumNotFound),
                 }
             }
             EnumNode::ConversionNode(v) => {
@@ -432,7 +432,7 @@ impl RangeNode {
             RangeNode::ForeachNode(table, column) => {
                 let table = match &context.project.tables[table.table_id] {
                     Some(v) => v,
-                    None => return Err(GenerativeProgramRuntimeError::TableNotFound),
+                    None => return runtime_err(RuntimeErrorType::TableNotFound),
                 };
 
                 Ok(Range {
@@ -475,7 +475,6 @@ impl RangeNode {
 }
 
 fn mutate(a: Range, b: Range, mode: u32) -> Result<Range, GenerativeProgramRuntimeError> {
-    println!("{:?}, {:?}", a.column_id, b.column_id);
     let mut results = Vec::new();
     for a_comp in &a.rows {
         for b_comp in &b.rows {
@@ -580,7 +579,7 @@ impl FilterPredicate {
                 ..
             } => (descriptor, contents),
             TableRow::UnpopulatedTableRow { .. } => {
-                return Err(GenerativeProgramRuntimeError::OutOfOrderExecution);
+                return runtime_err(RuntimeErrorType::OutOfOrderExecution);
             }
         };
 
@@ -613,7 +612,7 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => runtime_err(RuntimeErrorType::MismatchedRangeLengths),
             },
             FilterPredicate::StringCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::String => match &contents[column_id] {
@@ -628,7 +627,7 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => runtime_err(RuntimeErrorType::MismatchedRangeLengths),
             },
             FilterPredicate::IntCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::Int => match contents[column_id] {
@@ -648,7 +647,7 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => runtime_err(RuntimeErrorType::MismatchedRangeLengths),
             },
             FilterPredicate::UIntCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::UInt => match contents[column_id] {
@@ -667,7 +666,7 @@ impl FilterPredicate {
                     // this will never happen and will be unreachable
                     _ => unreachable!(),
                 },
-                _ => Err(GenerativeProgramRuntimeError::MismatchedRangeLengths),
+                _ => runtime_err(RuntimeErrorType::MismatchedRangeLengths),
             },
         }
     }
@@ -685,12 +684,12 @@ fn load_program_if_not_loaded(
     let contents = match io::load_from_file(path_str, false) {
         Ok(v) => v,
         // TODO: Pass along error information
-        Err(_) => return Err(GenerativeProgramRuntimeError::IOError),
+        Err(err) => return runtime_err(RuntimeErrorType::IOError(err)),
     };
     let program = match construct(&contents) {
         Ok(v) => v,
         // TODO: Pass along error information
-        Err(_) => return Err(GenerativeProgramRuntimeError::SoundChangeCompileError),
+        Err(_) => return runtime_err(RuntimeErrorType::SoundChangeCompileError),
     };
 
     context.programs.insert(name.clone(), program);
@@ -721,7 +720,7 @@ fn enforce_single_string(input: Vec<String>) -> Result<String, GenerativeProgram
     if input.len() == 1 {
         Ok(input[0].clone())
     } else {
-        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
     }
 }
 
@@ -730,7 +729,7 @@ fn _enforce_single_usize(input: Vec<usize>) -> Result<usize, GenerativeProgramRu
     if input.len() == 1 {
         Ok(input[0])
     } else {
-        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
     }
 }
 
@@ -738,7 +737,7 @@ fn enforce_single_i32(input: Vec<i32>) -> Result<i32, GenerativeProgramRuntimeEr
     if input.len() == 1 {
         Ok(input[0])
     } else {
-        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
     }
 }
 
@@ -746,6 +745,6 @@ fn enforce_single_u32(input: Vec<u32>) -> Result<u32, GenerativeProgramRuntimeEr
     if input.len() == 1 {
         Ok(input[0])
     } else {
-        Err(GenerativeProgramRuntimeError::MismatchedRangeLengths)
+        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
     }
 }

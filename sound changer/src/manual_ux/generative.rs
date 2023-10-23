@@ -76,7 +76,13 @@ pub mod tokenizer;
 
 use std::{collections::HashMap, num::ParseIntError, rc::Rc};
 
-use self::execution::OutputNode;
+use crate::io::IOError;
+
+use self::{
+    execution::OutputNode,
+    node_builder::{BuilderNode, TypedNode, UnderspecifiedLiteral},
+    tokenizer::Token,
+};
 
 use super::{
     project::Project,
@@ -88,19 +94,40 @@ pub struct GenerativeLine {
     pub columns: Vec<GenerativeProgram>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum GenerativeProgramRuntimeError {
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct GenerativeProgramRuntimeError {
+    pub error_type: RuntimeErrorType,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum RuntimeErrorType {
     MismatchedRangeLengths,
     TypeMismatch,
     OutOfOrderExecution,
     TableNotFound,
     EnumNotFound,
     SoundChangeCompileError,
-    IOError,
+    IOError(IOError),
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum GenerativeProgramCompileError {
+pub struct GenerativeProgramCompileError {
+    pub error_type: CompileErrorType,
+    pub attribution: CompileAttribution,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum CompileAttribution {
+    None,
+    Token(Token),
+    BuilderNode(BuilderNode),
+    TypedNode(TypedNode),
+    UnderspecifiedLiteral(UnderspecifiedLiteral),
+    OutputNode(OutputNode),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum CompileErrorType {
     SyntaxError(SyntaxErrorType),
     TypeMismatch(&'static str),
     IntParseError(ParseIntError),
@@ -129,6 +156,68 @@ pub enum SyntaxErrorType {
     FilterPredicateEndsEarly,
     UnbalancedFunctions,
     ExpectedComma,
+}
+
+pub fn compile_err_token<T>(
+    error_type: CompileErrorType,
+    attribution: Token,
+) -> Result<T, GenerativeProgramCompileError> {
+    Err(GenerativeProgramCompileError {
+        error_type,
+        attribution: CompileAttribution::Token(attribution),
+    })
+}
+
+pub fn compile_err_builder_node<T>(
+    error_type: CompileErrorType,
+    attribution: BuilderNode,
+) -> Result<T, GenerativeProgramCompileError> {
+    Err(GenerativeProgramCompileError {
+        error_type,
+        attribution: CompileAttribution::BuilderNode(attribution),
+    })
+}
+
+pub fn compile_err_output_node<T>(
+    error_type: CompileErrorType,
+    attribution: OutputNode,
+) -> Result<T, GenerativeProgramCompileError> {
+    Err(GenerativeProgramCompileError {
+        error_type,
+        attribution: CompileAttribution::OutputNode(attribution),
+    })
+}
+
+pub fn compile_err_typed_node<T>(
+    error_type: CompileErrorType,
+    attribution: TypedNode,
+) -> Result<T, GenerativeProgramCompileError> {
+    Err(GenerativeProgramCompileError {
+        error_type,
+        attribution: CompileAttribution::TypedNode(attribution),
+    })
+}
+
+pub fn compile_err_literal<T>(
+    error_type: CompileErrorType,
+    attribution: UnderspecifiedLiteral,
+) -> Result<T, GenerativeProgramCompileError> {
+    Err(GenerativeProgramCompileError {
+        error_type,
+        attribution: CompileAttribution::UnderspecifiedLiteral(attribution),
+    })
+}
+
+// TODO: Make all errors have attribution
+pub fn compile_err<T>(error_type: CompileErrorType) -> Result<T, GenerativeProgramCompileError> {
+    Err(GenerativeProgramCompileError {
+        error_type,
+        attribution: CompileAttribution::None,
+    })
+}
+
+pub fn runtime_err<T>(error_type: RuntimeErrorType) -> Result<T, GenerativeProgramRuntimeError> {
+    Err(GenerativeProgramRuntimeError { error_type })
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

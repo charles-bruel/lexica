@@ -105,7 +105,12 @@ impl TableContents {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum TableLoadingError {
+pub struct TableLoadingError {
+    pub error_type: LoadingErrorType,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum LoadingErrorType {
     MalformedHeader,
     MalformedDataTypeDescriptor,
     UnknownEnumType,
@@ -114,6 +119,10 @@ pub enum TableLoadingError {
     GenerativeProgramCompileError(GenerativeProgramCompileError),
 
     Unknown,
+}
+
+pub fn loading_err<T>(error_type: LoadingErrorType) -> Result<T, TableLoadingError> {
+    Err(TableLoadingError { error_type })
 }
 
 impl TableDataTypeDescriptor {
@@ -154,7 +163,7 @@ pub fn load_table(
     let table_start = Instant::now();
     let mut lines: Vec<&str> = input.split('\n').collect();
     if lines.len() < 3 {
-        return Err(TableLoadingError::MalformedHeader);
+        return loading_err(LoadingErrorType::MalformedHeader);
     }
     let header1 = lines[0].trim();
     let header2 = lines[1].trim();
@@ -163,13 +172,13 @@ pub fn load_table(
 
     let id = match header1.parse::<u16>() {
         Ok(v) => v,
-        Err(_) => return Err(TableLoadingError::MalformedHeader),
+        Err(_) => return loading_err(LoadingErrorType::MalformedHeader),
     };
 
     let descriptors_names: Vec<&str> = header2.split('|').collect();
     let descriptors_contents: Vec<&str> = header3.split('|').collect();
     if descriptors_names.len() != descriptors_contents.len() {
-        return Err(TableLoadingError::MalformedHeader);
+        return loading_err(LoadingErrorType::MalformedHeader);
     }
 
     let mut descriptors: Vec<TableColumnDescriptor> = Vec::new();
@@ -253,7 +262,7 @@ fn load_table_data_type(input: &str) -> Result<TableDataTypeDescriptor, TableLoa
         return Ok(TableDataTypeDescriptor::Enum(enum_final_values));
     }
 
-    Err(TableLoadingError::MalformedDataTypeDescriptor)
+    loading_err(LoadingErrorType::MalformedDataTypeDescriptor)
 }
 
 fn parse_table_line(
@@ -315,16 +324,16 @@ fn parse_table_cell(
                 i += 1;
             }
 
-            Err(TableLoadingError::UnknownEnumType)
+            loading_err(LoadingErrorType::UnknownEnumType)
         }
         TableDataTypeDescriptor::String => Ok(TableContents::String(cell_contents.to_string())),
         TableDataTypeDescriptor::UInt => match cell_contents.parse::<u32>() {
             Ok(v) => Ok(TableContents::UInt(v)),
-            Err(_) => Err(TableLoadingError::ValueParseError),
+            Err(_) => loading_err(LoadingErrorType::ValueParseError),
         },
         TableDataTypeDescriptor::Int => match cell_contents.parse::<i32>() {
             Ok(v) => Ok(TableContents::Int(v)),
-            Err(_) => Err(TableLoadingError::ValueParseError),
+            Err(_) => loading_err(LoadingErrorType::ValueParseError),
         },
     }
 }

@@ -2,7 +2,7 @@ use std::{collections::HashMap, rc::Rc};
 
 use crate::{io, manual_ux::table};
 
-use super::table::{Table, TableDescriptor, TableLoadingError};
+use super::table::{LoadingErrorType, Table, TableDescriptor, TableLoadingError};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Project {
@@ -55,9 +55,9 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
     for table in accumulation {
         let id: usize = table.id.into();
         if tables[id].is_some() {
-            return Err(ProjectLoadError::TableError(
-                TableLoadingError::TableIDCollision,
-            ));
+            return Err(ProjectLoadError::TableError(TableLoadingError {
+                error_type: LoadingErrorType::TableIDCollision,
+            }));
         }
         tables[id] = Option::Some(table);
     }

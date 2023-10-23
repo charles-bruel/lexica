@@ -10,12 +10,13 @@
 use crate::manual_ux::table::TableDataTypeDescriptor;
 
 use super::{
+    compile_err_builder_node, compile_err_literal, compile_err_output_node, compile_err_typed_node,
     construction::{DataTypeDescriptor, EnumSpecifier, ProjectContext, TableColumnSpecifier},
     execution::{
         ColumnSpecifier, EnumNode, FilterPredicate, IntNode, OutputNode, RangeNode, StringNode,
         TableSpecifier, UIntNode,
     },
-    GenerativeProgramCompileError,
+    CompileErrorType, GenerativeProgramCompileError,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -47,6 +48,7 @@ pub enum FunctionType {
 
 /// Represents an unchecked node. There can be severe type mismatch,
 /// parameter count, etc. errors in this representation.
+// TODO Add attribution information?
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum BuilderNode {
     TrueStringNode(StringNode),
@@ -66,7 +68,7 @@ pub enum BuilderNode {
 /// Represents any node. Nodes are recursively generically converted to
 /// this type, and then type checked as they are used.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-enum TypedNode {
+pub enum TypedNode {
     StringNode(StringNode),
     IntNode(IntNode),
     UIntNode(UIntNode),
@@ -89,22 +91,31 @@ impl BuilderNode {
             )?
             .try_convert_output_node(context)?;
         match output_node {
-            OutputNode::String(_) => match data_type {
-                TableDataTypeDescriptor::String => Ok(output_node),
-                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got string")),
-            },
-            OutputNode::Int(_) => match data_type {
-                TableDataTypeDescriptor::Int => Ok(output_node),
-                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got int")),
-            },
-            OutputNode::UInt(_) => match data_type {
-                TableDataTypeDescriptor::UInt => Ok(output_node),
-                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got uint")),
-            },
             // TODO: Verify enum type
             OutputNode::Enum(_) => match data_type {
                 TableDataTypeDescriptor::Enum(_) => Ok(output_node),
-                _ => Err(GenerativeProgramCompileError::TypeMismatch("Got enum")),
+                _ => {
+                    compile_err_output_node(CompileErrorType::TypeMismatch("Got enum"), output_node)
+                }
+            },
+            OutputNode::String(_) => match data_type {
+                TableDataTypeDescriptor::String => Ok(output_node),
+                _ => compile_err_output_node(
+                    CompileErrorType::TypeMismatch("Got string"),
+                    output_node,
+                ),
+            },
+            OutputNode::Int(_) => match data_type {
+                TableDataTypeDescriptor::Int => Ok(output_node),
+                _ => {
+                    compile_err_output_node(CompileErrorType::TypeMismatch("Got int"), output_node)
+                }
+            },
+            OutputNode::UInt(_) => match data_type {
+                TableDataTypeDescriptor::UInt => Ok(output_node),
+                _ => {
+                    compile_err_output_node(CompileErrorType::TypeMismatch("Got uint"), output_node)
+                }
             },
         }
     }
@@ -212,7 +223,7 @@ impl BuilderNode {
                     Box::new(predicate),
                 )))
             }
-            BuilderNode::CombinationNode(FunctionType::Foreach, v, _) => {
+            BuilderNode::CombinationNode(FunctionType::Foreach, v, p) => {
                 if v.len() < 1 {
                     todo!()
                 } else if v.len() > 1 {
@@ -221,7 +232,11 @@ impl BuilderNode {
                 let specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table, column) = match specifier {
                     TableColumnSpecifier::Table(_) => {
-                        return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
+                        return compile_err_builder_node(
+                            CompileErrorType::RequiresColumnSpecifier,
+                            // Recreate node for attribution
+                            BuilderNode::CombinationNode(FunctionType::Foreach, v, p),
+                        );
                     }
                     TableColumnSpecifier::Column(_) => todo!(),
                     TableColumnSpecifier::Both(t, c) => (t, c),
@@ -241,7 +256,7 @@ impl BuilderNode {
                     Box::new(name),
                 )))
             }
-            BuilderNode::CombinationNode(FunctionType::Saved, v, _) => {
+            BuilderNode::CombinationNode(FunctionType::Saved, v, p) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
@@ -251,7 +266,11 @@ impl BuilderNode {
                 let table_column = v[1].clone().try_convert_table_column(context)?;
                 let column = match table_column {
                     TableColumnSpecifier::Table(_) => {
-                        return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
+                        return compile_err_builder_node(
+                            CompileErrorType::RequiresColumnSpecifier,
+                            // Recreate node for attribution
+                            BuilderNode::CombinationNode(FunctionType::Saved, v, p),
+                        );
                     }
                     TableColumnSpecifier::Column(c) => c,
                     TableColumnSpecifier::Both(_, c) => c,
@@ -261,7 +280,7 @@ impl BuilderNode {
                     column,
                 )))
             }
-            BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v, _) => {
+            BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v, p) => {
                 if v.len() < 1 {
                     todo!()
                 } else if v.len() > 1 {
@@ -270,7 +289,11 @@ impl BuilderNode {
                 let table_column_specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table_id, column_id) = match table_column_specifier {
                     TableColumnSpecifier::Table(_) => {
-                        return Err(GenerativeProgramCompileError::RequiresColumnSpecifier)
+                        return compile_err_builder_node(
+                            CompileErrorType::RequiresColumnSpecifier,
+                            // Recreate node for attribution
+                            BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v, p),
+                        );
                     }
                     TableColumnSpecifier::Column(c) => (context.table_id, c.column_id),
                     TableColumnSpecifier::Both(t, c) => (t.table_id, c.column_id),
@@ -280,17 +303,23 @@ impl BuilderNode {
                     .clone()
                     .data_type;
                 match data_type_descriptor {
-                    TableDataTypeDescriptor::Enum(v) => {
+                    TableDataTypeDescriptor::Enum(v2) => {
                         let mut found_flag = false;
-                        for s in v {
+                        for s in v2 {
                             if s == name.to_lowercase() {
                                 found_flag = true;
                             }
                         }
                         if !found_flag {
-                            return Err(GenerativeProgramCompileError::TypeMismatch(
-                                "Couldn't find symbol",
-                            ));
+                            return compile_err_builder_node(
+                                CompileErrorType::TypeMismatch("Couldn't find symbol"),
+                                // Recreate node for attribution
+                                BuilderNode::CombinationNode(
+                                    FunctionType::SymbolLookup(name),
+                                    v,
+                                    p,
+                                ),
+                            );
                         }
 
                         Ok(TypedNode::EnumNode(EnumNode::LiteralNode(
@@ -299,16 +328,17 @@ impl BuilderNode {
                             TableSpecifier { table_id },
                         )))
                     }
-                    _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                        "Not an enum column",
-                    )),
+                    _ => compile_err_builder_node(
+                        CompileErrorType::TypeMismatch("Not an enum column"),
+                        // Recreate node for attribution
+                        BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v, p),
+                    ),
                 }
             }
             BuilderNode::CombinationNode(FunctionType::Addition, v, _) => {
                 if v.len() < 2 {
                     todo!()
                 } else if v.len() > 2 {
-                    println!("{:?}", v);
                     todo!()
                 }
 
@@ -371,7 +401,6 @@ impl BuilderNode {
             }
             BuilderNode::Wrapper(v) => v.convert_to_node(context, type_hint),
             _ => {
-                println!("{:?}", self);
                 todo!()
             }
         }
@@ -429,13 +458,6 @@ impl BuilderNode {
         }
 
         unreachable!();
-
-        // match self {
-        //     BuilderNode::CombinationNode(t, v, _) => {}
-        //     _ => todo!(),
-        // }
-
-        // return self;
     }
 }
 
@@ -444,7 +466,7 @@ impl TypedNode {
         match self {
             TypedNode::EnumNode(v) => Ok(v),
             TypedNode::RangeNode(v) => Ok(EnumNode::ConversionNode(v)),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected enum")),
+            _ => compile_err_typed_node(CompileErrorType::TypeMismatch("Expected enum"), self),
         }
     }
 
@@ -452,9 +474,7 @@ impl TypedNode {
         match self {
             TypedNode::StringNode(v) => Ok(v),
             TypedNode::RangeNode(v) => Ok(StringNode::ConversionNode(v)),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                "Expected string",
-            )),
+            _ => compile_err_typed_node(CompileErrorType::TypeMismatch("Expected string"), self),
         }
     }
 
@@ -462,7 +482,7 @@ impl TypedNode {
         match self {
             TypedNode::UIntNode(v) => Ok(v),
             TypedNode::RangeNode(v) => Ok(UIntNode::ConversionNode(v)),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected uint")),
+            _ => compile_err_typed_node(CompileErrorType::TypeMismatch("Expected uint"), self),
         }
     }
 
@@ -470,16 +490,14 @@ impl TypedNode {
         match self {
             TypedNode::IntNode(v) => Ok(v),
             TypedNode::RangeNode(v) => Ok(IntNode::ConversionNode(v)),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch("Expected int")),
+            _ => compile_err_typed_node(CompileErrorType::TypeMismatch("Expected int"), self),
         }
     }
 
     fn try_convert_range(self) -> Result<RangeNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::RangeNode(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                "Expected range",
-            )),
+            _ => compile_err_typed_node(CompileErrorType::TypeMismatch("Expected range"), self),
         }
     }
 
@@ -488,9 +506,10 @@ impl TypedNode {
     ) -> Result<FilterPredicate, GenerativeProgramCompileError> {
         match self {
             TypedNode::FilterPredicate(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                "Expected filter predicate",
-            )),
+            _ => compile_err_typed_node(
+                CompileErrorType::TypeMismatch("Expected filter predicate"),
+                self,
+            ),
         }
     }
 
@@ -499,9 +518,10 @@ impl TypedNode {
     ) -> Result<TableColumnSpecifier, GenerativeProgramCompileError> {
         match self {
             TypedNode::TableColumn(v) => Ok(v),
-            _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                "Expected table column specifier",
-            )),
+            _ => compile_err_typed_node(
+                CompileErrorType::TypeMismatch("Expected table column specifier"),
+                self,
+            ),
         }
     }
 
@@ -530,9 +550,10 @@ impl TypedNode {
                     TableDataTypeDescriptor::Int => Ok(OutputNode::Int(IntNode::ConversionNode(v))),
                 }
             }
-            _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                "Expected an output node",
-            )),
+            _ => compile_err_typed_node(
+                CompileErrorType::TypeMismatch("Expected an output node"),
+                self,
+            ),
         }
     }
 }
@@ -594,16 +615,17 @@ impl UnderspecifiedLiteral {
                 _ => todo!(),
             },
             UnderspecifiedLiteral::TableColumnSpecifier(v) => Ok(TypedNode::TableColumn(v)),
-            UnderspecifiedLiteral::StringOrShortEnum(string, _column, _table) => match type_hint {
+            UnderspecifiedLiteral::StringOrShortEnum(string, c, t) => match type_hint {
                 Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::Enum(_))) => {
                     todo!()
                 }
                 None | Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::String)) => {
                     Ok(TypedNode::StringNode(StringNode::LiteralNode(string)))
                 }
-                _ => Err(GenerativeProgramCompileError::TypeMismatch(
-                    "Invalid type hint for node type",
-                )),
+                _ => compile_err_literal(
+                    CompileErrorType::TypeMismatch("Invalid type hint for node type"),
+                    UnderspecifiedLiteral::StringOrShortEnum(string, c, t),
+                ),
             },
         }
     }
