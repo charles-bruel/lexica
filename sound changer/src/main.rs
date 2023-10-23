@@ -1,20 +1,46 @@
 #![feature(string_remove_matches)]
 
-extern crate fancy_regex;
-extern crate tungstenite;
-extern crate priority_queue;
-extern crate no_panic;
-extern crate serde;
+use std::time::Instant;
 
-pub mod io;
-pub mod constructor;
-pub mod rules;
-pub mod data;
+use manual_ux::project::load_project;
+
+extern crate clap;
+extern crate fancy_regex;
+extern crate no_panic;
+extern crate priority_queue;
+extern crate serde;
+extern crate tabled;
+extern crate tungstenite;
+
 pub mod applicator;
-pub mod websocket_handler;
+pub mod args;
+pub mod constructor;
+pub mod data;
+pub mod io;
+pub mod manual_ux;
+pub mod rules;
 #[cfg(test)]
 mod tests;
- 
+pub mod websocket_handler;
+
 fn main() {
-    io::web_socket_listener();
+    let start = Instant::now();
+
+    use clap::Parser;
+
+    let args = args::LexicaArgs::parse();
+
+    match args.mode {
+        args::LexicaMode::WebIO => io::web_socket_listener(),
+        args::LexicaMode::Manual(command) => match command.command {
+            args::ManualSubcommand::Rebuild(v) => manual_ux::rebuilder::rebuild(
+                &mut load_project(command.path.clone()).unwrap(),
+                v.start,
+                command.path,
+            ),
+        },
+    }
+
+    let elapsed = start.elapsed();
+    println!("Total runtime: {:?}", elapsed)
 }

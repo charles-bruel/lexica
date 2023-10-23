@@ -1,0 +1,5 @@
+10
+POS|WORD|TRANSLATION|INDEX
+[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT
+:={=foreach(2:POS).filter(2:SUBINDEX==0).save(a)|=saved(a,:word)|=saved(a,:translation)|=saved(a,:index)}
+:={=foreach(7:POS).save(a)|=saved(a,:word)|=saved(a,:translation)|=saved(a,:index)}

@@ -1,0 +1,11 @@
+1
+POS|WORD|TRANSLATION|INDEX
+[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT
+ROOT|ran|earth|0
+NOUN|kosa|sword|1
+PRONOUN|ipi|I|2
+ADJECTIVE|von|red|3
+ADVERB|rele|quickly|4
+PARTICLE|na|nominalizer|5
+NOUN|kasii|lightning|6
+NOUN|eʃa|king|7
