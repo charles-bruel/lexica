@@ -211,10 +211,8 @@ impl BuilderNode {
 
             // Hard
             BuilderNode::CombinationNode(FunctionType::Filter, v, _) => {
-                if v.len() < 2 {
-                    todo!()
-                } else if v.len() > 2 {
-                    todo!()
+                if v.len() != 2 {
+                    panic!()
                 }
                 let range = v[0].clone().try_convert_range(context)?;
                 let predicate = v[1].clone().try_convert_filter_predicate(context)?;
@@ -224,10 +222,8 @@ impl BuilderNode {
                 )))
             }
             BuilderNode::CombinationNode(FunctionType::Foreach, v, p) => {
-                if v.len() < 1 {
-                    todo!()
-                } else if v.len() > 1 {
-                    todo!()
+                if v.len() != 1 {
+                    panic!()
                 }
                 let specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table, column) = match specifier {
@@ -238,16 +234,14 @@ impl BuilderNode {
                             BuilderNode::CombinationNode(FunctionType::Foreach, v, p),
                         );
                     }
-                    TableColumnSpecifier::Column(_) => todo!(),
+                    TableColumnSpecifier::Column(_) => panic!(),
                     TableColumnSpecifier::Both(t, c) => (t, c),
                 };
                 Ok(TypedNode::RangeNode(RangeNode::ForeachNode(table, column)))
             }
             BuilderNode::CombinationNode(FunctionType::Save, v, _) => {
-                if v.len() < 2 {
-                    todo!()
-                } else if v.len() > 2 {
-                    todo!()
+                if v.len() != 2 {
+                    panic!()
                 }
                 let target = v[0].clone().try_convert_range(context)?;
                 let name = v[1].clone().try_convert_string(context)?;
@@ -257,10 +251,8 @@ impl BuilderNode {
                 )))
             }
             BuilderNode::CombinationNode(FunctionType::Saved, v, p) => {
-                if v.len() < 2 {
-                    todo!()
-                } else if v.len() > 2 {
-                    todo!()
+                if v.len() != 2 {
+                    panic!()
                 }
                 let name = v[0].clone().try_convert_string(context)?;
                 let table_column = v[1].clone().try_convert_table_column(context)?;
@@ -281,10 +273,8 @@ impl BuilderNode {
                 )))
             }
             BuilderNode::CombinationNode(FunctionType::SymbolLookup(name), v, p) => {
-                if v.len() < 1 {
-                    todo!()
-                } else if v.len() > 1 {
-                    todo!()
+                if v.len() != 1 {
+                    panic!()
                 }
                 let table_column_specifier = v[0].clone().try_convert_table_column(context)?;
                 let (table_id, column_id) = match table_column_specifier {
@@ -336,15 +326,13 @@ impl BuilderNode {
                 }
             }
             BuilderNode::CombinationNode(FunctionType::Addition, v, _) => {
-                if v.len() < 2 {
-                    todo!()
-                } else if v.len() > 2 {
-                    todo!()
+                if v.len() != 2 {
+                    panic!()
                 }
 
                 let data_type = match type_hint {
                     Some(DataTypeDescriptor::TableDataType(v)) => v,
-                    _ => todo!(),
+                    _ => panic!(),
                 };
 
                 match data_type {
@@ -368,10 +356,8 @@ impl BuilderNode {
                 }
             }
             BuilderNode::CombinationNode(FunctionType::SoundChange, v, _) => {
-                if v.len() < 2 {
-                    todo!()
-                } else if v.len() > 2 {
-                    todo!()
+                if v.len() != 2 {
+                    panic!()
                 }
 
                 let source = v[0].clone().try_convert_string(context)?;
@@ -383,10 +369,8 @@ impl BuilderNode {
                 )))
             }
             BuilderNode::CombinationNode(FunctionType::Mutate, v, _) => {
-                if v.len() < 3 {
-                    todo!()
-                } else if v.len() > 3 {
-                    todo!()
+                if v.len() != 3 {
+                    panic!()
                 }
 
                 let a = v[0].clone().try_convert_range(context)?;
@@ -430,7 +414,7 @@ impl BuilderNode {
                     }
                 }
             }
-            _ => todo!(),
+            _ => panic!(),
         }
     }
 
@@ -611,7 +595,7 @@ impl UnderspecifiedLiteral {
                 Some(DataTypeDescriptor::TableDataType(TableDataTypeDescriptor::UInt)) => {
                     Ok(TypedNode::UIntNode(UIntNode::LiteralNode(uint_value)))
                 }
-                None => todo!(),
+                None => panic!(),
                 _ => todo!(),
             },
             UnderspecifiedLiteral::TableColumnSpecifier(v) => Ok(TypedNode::TableColumn(v)),

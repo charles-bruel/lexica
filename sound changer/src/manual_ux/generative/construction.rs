@@ -294,7 +294,7 @@ fn parse_generative_segment(
                     }
                     _ => todo!(),
                 },
-                _ => todo!(),
+                _ => panic!(),
             },
             ParsingContext::AwaitingParameters(ref mut parameter_queue) => {
                 if parameter_queue.is_empty() {
@@ -335,7 +335,7 @@ fn parse_generative_segment(
                     }
                     match &mut main_node {
                         Some(v) => v.insert_operand(node),
-                        None => todo!(),
+                        None => panic!(),
                     }
                     if let Some(v) = parsing_context {
                         context.push_front(v)
@@ -406,7 +406,7 @@ fn parse_new_segment_ready(
             )?)
         }
         _ => {
-            todo!()
+            panic!()
         }
     }
 }
@@ -631,7 +631,6 @@ fn parse_filter_predicate_expression(
     if lhs_column_specifier == rhs_column_specifier {
         // Only one can be the specifier
         // TODO: Allow both to be specifiers to check for column equality in a row
-        // Also TODO: Actual error handling here
         todo!()
     }
 
@@ -794,7 +793,7 @@ fn parse_awaiting_value(
 
         if let Some(closing_token_type) = automatic_recursion_end_token {
             if closing_token_type != other_tokens.pop_front().unwrap().token_type {
-                todo!()
+                panic!()
             }
         }
 

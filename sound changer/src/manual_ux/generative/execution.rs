@@ -207,7 +207,8 @@ impl StringNode {
                             let content = &contents[column];
                             match content {
                                 TableContents::String(v) => result.push(v.clone()),
-                                _ => todo!(),
+                                // TODO: Maybe have to_string functionality?
+                                _ => panic!(),
                             }
                         }
                         // No range should have an unpopulated row
@@ -282,7 +283,7 @@ impl IntNode {
                             let content = &contents[column];
                             match content {
                                 TableContents::Int(v) => result.push(*v),
-                                _ => todo!(),
+                                _ => panic!(),
                             }
                         }
                         // No range should have an unpopulated row
@@ -349,7 +350,7 @@ impl UIntNode {
                             let content = &contents[column];
                             match content {
                                 TableContents::UInt(v) => result.push(*v),
-                                _ => todo!(),
+                                _ => panic!(),
                             }
                         }
                         // No range should have an unpopulated row
@@ -409,7 +410,7 @@ impl EnumNode {
                             let content = &contents[column];
                             match content {
                                 TableContents::Enum(v) => result.push(*v),
-                                _ => todo!(),
+                                _ => panic!(),
                             }
                         }
                         // No range should have an unpopulated row
@@ -529,15 +530,15 @@ fn add(a: TableContents, b: TableContents) -> Result<TableContents, GenerativePr
     match a {
         TableContents::String(av) => match b {
             TableContents::String(bv) => Ok(TableContents::String(av + &bv)),
-            _ => todo!(),
+            _ => panic!(),
         },
         TableContents::UInt(av) => match b {
             TableContents::UInt(bv) => Ok(TableContents::UInt(av + bv)),
-            _ => todo!(),
+            _ => panic!(),
         },
         TableContents::Int(av) => match b {
             TableContents::Int(bv) => Ok(TableContents::Int(av + bv)),
-            _ => todo!(),
+            _ => panic!(),
         },
         TableContents::Enum(_) => todo!(),
     }
@@ -555,12 +556,12 @@ impl TableRow {
                 contents,
             } => match column {
                 Some(v) => Ok(contents[v].clone()),
-                None => todo!(),
+                None => panic!(),
             },
             TableRow::UnpopulatedTableRow {
                 procedure: _,
                 descriptor: _,
-            } => todo!(),
+            } => panic!(),
         }
     }
 }
