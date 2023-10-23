@@ -1,14 +1,14 @@
-use std::{fs::File, net::TcpStream};
-use std::io::prelude::*;
-use std::path::Path;
-use std::net::TcpListener;
-use std::thread::spawn;
-use tungstenite::{accept, Message, WebSocket};
 use crate::data::create_thread_context;
+use std::io::prelude::*;
+use std::net::TcpListener;
+use std::path::Path;
+use std::thread::spawn;
+use std::{fs::File, net::TcpStream};
+use tungstenite::{accept, Message, WebSocket};
 
 use super::websocket_handler::*;
 
-#[derive(Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum IOError {
     FileNotFound(String),
     FileExists(String),
@@ -20,7 +20,9 @@ pub enum IOError {
 
 impl IOError {
     pub fn get_response(&self) -> WebSocketResponse {
-        WebSocketResponse::Error { message: self.get_message().clone() }
+        WebSocketResponse::Error {
+            message: self.get_message().clone(),
+        }
     }
 
     pub fn get_message(&self) -> &String {
@@ -42,7 +44,10 @@ pub fn load_from_file(path_str: &String, restrict_path: bool) -> Result<String, 
 
     if restrict_path {
         if path_str.contains(":") || path_str.contains("..") {
-            return Err(IOError::InvalidFilePath(format!("security settings do not allow the path: {}", path_str)));
+            return Err(IOError::InvalidFilePath(format!(
+                "security settings do not allow the path: {}",
+                path_str
+            )));
         }
     }
 
@@ -50,13 +55,23 @@ pub fn load_from_file(path_str: &String, restrict_path: bool) -> Result<String, 
     let display = path.display();
 
     let mut file = match File::open(&path) {
-        Err(why) => return Err(IOError::FileNotFound(format!("couldn't open {}: {}", display, why))),
+        Err(why) => {
+            return Err(IOError::FileNotFound(format!(
+                "couldn't open {}: {}",
+                display, why
+            )))
+        }
         Ok(file) => file,
     };
 
     let mut s = String::new();
     let temp = match file.read_to_string(&mut s) {
-        Err(why) => return Err(IOError::ReadError(format!("couldn't read {}: {}", display, why))),
+        Err(why) => {
+            return Err(IOError::ReadError(format!(
+                "couldn't read {}: {}",
+                display, why
+            )))
+        }
         Ok(_) => s,
     };
 
@@ -66,13 +81,21 @@ pub fn load_from_file(path_str: &String, restrict_path: bool) -> Result<String, 
     return Ok(temp);
 }
 
-pub fn save_to_file(path_str: &String, data: &String, overwrite: bool, restrict_path: bool) -> Option<IOError> {
+pub fn save_to_file(
+    path_str: &String,
+    data: &String,
+    overwrite: bool,
+    restrict_path: bool,
+) -> Option<IOError> {
     use std::time::Instant;
     let now = Instant::now();
 
     if restrict_path {
         if path_str.contains(":") || path_str.contains("..") {
-            return Some(IOError::InvalidFilePath(format!("security settings do not allow the path: {}", path_str)));
+            return Some(IOError::InvalidFilePath(format!(
+                "security settings do not allow the path: {}",
+                path_str
+            )));
         }
     }
 
@@ -81,17 +104,30 @@ pub fn save_to_file(path_str: &String, data: &String, overwrite: bool, restrict_
 
     if path.exists() {
         if !overwrite {
-            return Some(IOError::FileExists(format!("file already exists: {}", display)));
+            return Some(IOError::FileExists(format!(
+                "file already exists: {}",
+                display
+            )));
         }
     }
 
     let mut file = match File::create(&path) {
-        Err(why) => return Some(IOError::FileNotFound(format!("couldn't create {}: {}", display, why))),
+        Err(why) => {
+            return Some(IOError::FileNotFound(format!(
+                "couldn't create {}: {}",
+                display, why
+            )))
+        }
         Ok(file) => file,
     };
 
     match file.write_all(data.as_bytes()) {
-        Err(why) => return Some(IOError::WriteError(format!("couldn't write {}: {}", display, why))),
+        Err(why) => {
+            return Some(IOError::WriteError(format!(
+                "couldn't write {}: {}",
+                display, why
+            )))
+        }
         Ok(_) => (),
     };
 
@@ -104,7 +140,7 @@ pub fn save_to_file(path_str: &String, data: &String, overwrite: bool, restrict_
 pub fn web_socket_listener() {
     let server = TcpListener::bind("127.0.0.1:9001").unwrap();
     for stream in server.incoming() {
-        spawn (move || {
+        spawn(move || {
             let websocket_result = accept(stream.unwrap());
             let mut websocket: WebSocket<TcpStream> = match websocket_result {
                 Ok(v) => v,
@@ -127,7 +163,6 @@ pub fn web_socket_listener() {
                 use std::time::Instant;
                 let now = Instant::now();
 
-
                 let message = decode(msg.to_string());
                 let response = message.handle(&mut context);
                 let response_message = response.handle();
@@ -146,12 +181,28 @@ pub fn web_socket_listener() {
 
                 let elapsed = now.elapsed();
                 match message {
-                    WebSocketMessage::SaveFile { file_path:_, data:_, overwrite:_ } => print!("Handled save file message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::LoadFile { file_path:_ } => print!("Handled load file message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::LoadProgram { name:_, contents:_ } => print!("Handled load program message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::TryCompile { program: _ } => print!("Handled try compile message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::RunSC { program_name:_, to_convert:_ } => print!("Handled run sound changer message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::Unknown { error:_ } => print!("Handled unknown message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::SaveFile {
+                        file_path: _,
+                        data: _,
+                        overwrite: _,
+                    } => print!("Handled save file message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::LoadFile { file_path: _ } => {
+                        print!("Handled load file message in: {:.2?}\n", elapsed)
+                    }
+                    WebSocketMessage::LoadProgram {
+                        name: _,
+                        contents: _,
+                    } => print!("Handled load program message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::TryCompile { program: _ } => {
+                        print!("Handled try compile message in: {:.2?}\n", elapsed)
+                    }
+                    WebSocketMessage::RunSC {
+                        program_name: _,
+                        to_convert: _,
+                    } => print!("Handled run sound changer message in: {:.2?}\n", elapsed),
+                    WebSocketMessage::Unknown { error: _ } => {
+                        print!("Handled unknown message in: {:.2?}\n", elapsed)
+                    }
                 }
             }
             println!("Thread closed")
