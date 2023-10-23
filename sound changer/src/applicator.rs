@@ -5,7 +5,7 @@ impl super::data::Program {
         let mut context: ExecutionContext = create_execution_context(&input);
         let mut instruction_count: u16 = 0;
         while context.instruction_ptr < self.rules.len() {
-            self.rules[context.instruction_ptr].apply(&self, &mut context)?;
+            self.rules[context.instruction_ptr].apply(self, &mut context)?;
 
             if !context.jump_flag {
                 context.instruction_ptr += 1;
@@ -14,16 +14,18 @@ impl super::data::Program {
             instruction_count += 1;
 
             if instruction_count == u16::MAX {
-                return Err(ApplicationError::InternalError(String::from("Infinite loop detected; executed u16::MAX instructions without ending")));
+                return Err(ApplicationError::InternalError(String::from(
+                    "Infinite loop detected; executed u16::MAX instructions without ending",
+                )));
             }
         }
 
-        return Ok(context.result);
+        Ok(context.result)
     }
 
     pub fn apply_vec(&self, input: Vec<Word>) -> std::result::Result<Vec<Word>, ApplicationError> {
         use std::time::Instant;
-        let now = Instant::now();    
+        let now = Instant::now();
 
         let mut result: Vec<Word> = Vec::new();
         for v in input {
@@ -31,43 +33,65 @@ impl super::data::Program {
         }
 
         let elapsed = now.elapsed();
-        print!("Applied sound changes to {1} words in {0:.2?}\n", elapsed, result.len());
-    
-        return Ok(result);
+        println!(
+            "Applied sound changes to {1} words in {0:.2?}",
+            elapsed,
+            result.len()
+        );
+
+        Ok(result)
     }
 }
 
 impl super::data::Rule {
-    pub fn apply(&self, program: &Program, context: &mut ExecutionContext) -> std::result::Result<(), ApplicationError> {
+    pub fn apply(
+        &self,
+        program: &Program,
+        context: &mut ExecutionContext,
+    ) -> std::result::Result<(), ApplicationError> {
         match self {
-            Rule::TransformationRule { bytes, flags: _, name: _ } => {
+            Rule::TransformationRule {
+                bytes,
+                flags: _,
+                name: _,
+            } => {
                 context.flag_flag = false;
-                context.mod_flag = false;    
+                context.mod_flag = false;
 
                 for rule in bytes {
                     let mut mod_flag: bool = false;
-                    context.result = rule.apply(std::mem::replace(&mut context.result, create_empty_word()), &mut mod_flag)?;
+                    context.result = rule.apply(
+                        std::mem::replace(&mut context.result, create_empty_word()),
+                        &mut mod_flag,
+                    )?;
                     context.mod_flag = mod_flag;
                     //Replaces with an empty struct to avoid ownership issues. I think this is faster than clone.
                     //Maybe use Option?
                 }
-                return Ok(());
-            },
+                Ok(())
+            }
             Rule::CallSubroutine { name } => {
                 context.flag_flag = false;
                 context.mod_flag = false;
-    
+
                 if program.subroutines.contains_key(name) {
                     let temp_subroutine = program.subroutines.get(name).unwrap();
                     for rule in temp_subroutine {
                         rule.apply(program, context)?;
                     }
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(ApplicationError::InternalError(format!("Subroutine not found: \"{}\"", name)));
+                    Err(ApplicationError::InternalError(format!(
+                        "Subroutine not found: \"{}\"",
+                        name
+                    )))
                 }
-            },
-            Rule::JumpSubRoutine { name, condition, inverted } => {
+            }
+            Rule::JumpSubRoutine {
+                name,
+                condition,
+                inverted,
+            } => {
                 let flag = match condition {
                     JumpCondition::PrevMod => context.mod_flag != *inverted,
                     JumpCondition::Flag => context.flag_flag != *inverted,
@@ -75,20 +99,26 @@ impl super::data::Rule {
                 };
 
                 context.flag_flag = false;
-                context.mod_flag = false;    
+                context.mod_flag = false;
 
                 if flag {
                     if program.labels.contains_key(name) {
                         context.instruction_ptr = *program.labels.get(name).unwrap();
                         context.jump_flag = true;
                     } else {
-                        return Err(ApplicationError::InternalError(format!("Could not find label \"{}\"", name)));
+                        return Err(ApplicationError::InternalError(format!(
+                            "Could not find label \"{}\"",
+                            name
+                        )));
                     }
                 }
 
-                return Ok(());
-            },
-            Rule::Detect { predicate, enviorment } => {
+                Ok(())
+            }
+            Rule::Detect {
+                predicate,
+                enviorment,
+            } => {
                 let num = predicate.len();
 
                 if num > context.result.len() {
@@ -101,11 +131,11 @@ impl super::data::Rule {
                     let mut j: usize = 0;
                     let mut flag = true;
                     while j < predicate.len() {
-                        if !predicate[j].validate(&context.result, i + j) { 
+                        if !predicate[j].validate(&context.result, i + j) {
                             flag = false;
                         }
                         j += 1;
-                    }        
+                    }
                     if flag {
                         context.flag_flag = enviorment.check_enviorment(&context.result, i, num);
                         return Ok(());
@@ -113,53 +143,76 @@ impl super::data::Rule {
                     i += 1;
                 }
                 context.flag_flag = false;
-                return Ok(());
-            },
+                Ok(())
+            }
         }
     }
 }
 
 impl super::data::RuleByte {
-    pub fn apply(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
+    pub fn apply(
+        &self,
+        input: Word,
+        mod_flag: &mut bool,
+    ) -> std::result::Result<Word, ApplicationError> {
         match self.transformations.len() == 1 {
             true => Ok(self.apply_single(input, mod_flag)?),
             false => Ok(self.apply_multi(input, mod_flag)?),
         }
     }
 
-    fn apply_single(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
-        if self.transformations[0].predicate.len() == 0 {
-            return Ok(self.apply_empty_predicate(input, mod_flag)?);
+    fn apply_single(
+        &self,
+        input: Word,
+        mod_flag: &mut bool,
+    ) -> std::result::Result<Word, ApplicationError> {
+        if self.transformations[0].predicate.is_empty() {
+            Ok(self.apply_empty_predicate(input, mod_flag)?)
         } else {
-            return Ok(self.apply_single_simple(input, mod_flag)?);
+            Ok(self.apply_single_simple(input, mod_flag)?)
         }
     }
 
-    fn apply_empty_predicate(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
+    fn apply_empty_predicate(
+        &self,
+        input: Word,
+        mod_flag: &mut bool,
+    ) -> std::result::Result<Word, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
 
-        {//Insert as very first character? Code duplication which is unideal
+        {
+            //Insert as very first character? Code duplication which is unideal
             let flag = self.enviorment.check_enviorment_for_initial(&result);
             if flag {
                 let rule = self.transformations[0].result[0].as_ref();
-                let temp = match rule.transform(&Letter { value: 0 }) {//Dummy input; there are better ways to do this
+                let temp = match rule.transform(&Letter { value: 0 }) {
+                    //Dummy input; there are better ways to do this
                     Some(v) => v,
-                    None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
+                    None => {
+                        return Err(ApplicationError::InternalError(String::from(
+                            "Rule returned None",
+                        )))
+                    }
                 };
                 result.insert(0, temp);
                 *mod_flag = true;
                 i += 1;
             }
         }
-        
+
         while i < result.len() {
             let flag = self.enviorment.check_enviorment(&result, i + 1, 0);
             if flag {
                 let rule = self.transformations[0].result[0].as_ref();
-                let temp = match rule.transform(&Letter { value: 0 }) {//Dummy input; there are better ways to do this
+                let temp = match rule.transform(&Letter { value: 0 }) {
+                    //Dummy input; there are better ways to do this
                     Some(v) => v,
-                    None => return Err(ApplicationError::InternalError(String::from("Rule returned None"))), 
+                    None => {
+                        return Err(ApplicationError::InternalError(String::from(
+                            "Rule returned None",
+                        )))
+                    }
                 };
                 result.insert(i + 1, temp);
                 *mod_flag = true;
@@ -169,10 +222,14 @@ impl super::data::RuleByte {
             i += 1;
         }
 
-        return Ok(result);
+        Ok(result)
     }
 
-    fn apply_single_simple(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
+    fn apply_single_simple(
+        &self,
+        input: Word,
+        mod_flag: &mut bool,
+    ) -> std::result::Result<Word, ApplicationError> {
         let mut result = input;
         let mut i: usize = 0;
         while i < result.len() {
@@ -191,7 +248,7 @@ impl super::data::RuleByte {
                     while k < self.transformations[0].predicate_captures.len() {
                         let x = self.transformations[0].predicate_captures[k].0;
                         let m = self.transformations[0].predicate_captures[k].1;
-                        captures[x] = &result[i].value & m;
+                        captures[x] = result[i].value & m;
                         masks[x] = m;
 
                         k += 1;
@@ -203,8 +260,11 @@ impl super::data::RuleByte {
 
             let mut i_adjustment: i32 = 0;
 
-            if flag && self.enviorment.check_enviorment(&result, (i as i32 + i_adjustment) as usize, 1) {
-                
+            if flag
+                && self
+                    .enviorment
+                    .check_enviorment(&result, (i as i32 + i_adjustment) as usize, 1)
+            {
                 let rule = match self.transformations[0].result.len() {
                     1 => self.transformations[0].result[0].as_ref(),
                     _ => self.transformations[0].result[j].as_ref(),
@@ -217,22 +277,26 @@ impl super::data::RuleByte {
                         }
                         result[i] = val;
                         *mod_flag = true;
-                    },
+                    }
                     None => {
                         result.remove((i as i32 + i_adjustment) as usize);
                         i_adjustment -= 1;
                         *mod_flag = true;
-                    },
+                    }
                 }
             }
 
             i += 1;
             i = (i as i32 + i_adjustment) as usize;
         }
-        return Ok(result);
+        Ok(result)
     }
 
-    fn apply_multi(&self, input: Word, mod_flag: &mut bool) -> std::result::Result<Word, ApplicationError> {
+    fn apply_multi(
+        &self,
+        input: Word,
+        mod_flag: &mut bool,
+    ) -> std::result::Result<Word, ApplicationError> {
         let num = self.transformations.len();
 
         let mut result = input;
@@ -254,23 +318,25 @@ impl super::data::RuleByte {
                 while k < self.transformations[j].predicate.len() {
                     let p = &self.transformations[j].predicate[k];
                     let temp = p.as_ref();
-                    if temp.validate(&result, i + j) { 
+                    if temp.validate(&result, i + j) {
                         flag = true;
                         let mut l: usize = 0;
                         while l < self.transformations[j].predicate_captures.len() {
                             let x = self.transformations[j].predicate_captures[l].0;
                             let m = self.transformations[j].predicate_captures[l].1;
                             match captures[x] {
-                                Some(v) => {//If this capture ID has already been used, now it needs to detect sameness
+                                Some(v) => {
+                                    //If this capture ID has already been used, now it needs to detect sameness
                                     if result[i + j].value & m != v {
-                                        flag = false;//Sike this actually isn't ok
+                                        flag = false; //Sike this actually isn't ok
                                     }
                                     //It matches; move on
-                                },
-                                None => {//New capture
-                                    captures[x] = Some(&result[i + j].value & m);
-                                    masks[x] = m; 
-                                },
+                                }
+                                None => {
+                                    //New capture
+                                    captures[x] = Some(result[i + j].value & m);
+                                    masks[x] = m;
+                                }
                             }
 
                             l += 1;
@@ -280,7 +346,9 @@ impl super::data::RuleByte {
                     }
                     k += 1;
                 }
-                if !flag { flag2 = false; }
+                if !flag {
+                    flag2 = false;
+                }
                 j += 1;
             }
 
@@ -299,21 +367,25 @@ impl super::data::RuleByte {
                             for x in &self.transformations[k].result_captures {
                                 match captures[*x] {
                                     Some(v) => val.value = (val.value & !masks[*x]) | v,
-                                    None => return Err(ApplicationError::InternalError(format!("Did receive captured value for capture id \"{}\"", x))),
+                                    None => {
+                                        return Err(ApplicationError::InternalError(format!(
+                                            "Did receive captured value for capture id \"{}\"",
+                                            x
+                                        )))
+                                    }
                                 }
-                                
                             }
                             result[((i + k) as i32 + i_adjustment) as usize] = val;
                             *mod_flag = true;
-                        },
+                        }
                         None => {
                             result.remove(((i + k) as i32 + i_adjustment) as usize);
                             *mod_flag = true;
                             if num > result.len() {
                                 return Ok(result);
-                            }                    
+                            }
                             i_adjustment -= 1;
-                        },
+                        }
                     }
                     k += 1;
                 }
@@ -322,7 +394,7 @@ impl super::data::RuleByte {
             i += 1;
             i = (i as i32 + i_adjustment) as usize;
         }
-        return Ok(result);
+        Ok(result)
     }
 }
 
@@ -343,21 +415,19 @@ impl super::data::Enviorment {
             position_ante -= 1;
 
             let temp = self.ante[j].predicate.validate(input, position_ante);
-            accum += if temp {1} else {0};
+            accum += if temp { 1 } else { 0 };
             if temp {
                 if accum == self.ante[j].max_quant {
                     j += 1;
                     accum = 0;
                 }
+            } else if accum < self.ante[j].min_quant {
+                return self.inverted;
             } else {
-                if accum < self.ante[j].min_quant {
-                    return self.inverted;
-                } else {
-                    j += 1;
-                    accum = 0;
-                    if j < self.ante.len() {
-                        position_ante += 1;//Need to check it again, but against the next one
-                    }
+                j += 1;
+                accum = 0;
+                if j < self.ante.len() {
+                    position_ante += 1; //Need to check it again, but against the next one
                 }
             }
         }
@@ -381,41 +451,37 @@ impl super::data::Enviorment {
             }
 
             let temp = self.post[j].predicate.validate(input, position_post);
-            accum += if temp {1} else {0};
+            accum += if temp { 1 } else { 0 };
             if temp {
                 if accum == self.post[j].max_quant {
                     j += 1;
                     accum = 0;
                 }
+            } else if accum < self.post[j].min_quant {
+                return self.inverted;
             } else {
-                if accum < self.post[j].min_quant {
-                    return self.inverted;
-                } else {
-                    j += 1;
-                    accum = 0;
-                    if j < self.post.len() {
-                        position_post -= 1;//Need to check it again, but against the next one
-                    }
+                j += 1;
+                accum = 0;
+                if j < self.post.len() {
+                    position_post -= 1; //Need to check it again, but against the next one
                 }
             }
         }
         if self.post_word_boundary {
-            if self.post.len() != 0 {
+            if !self.post.is_empty() {
                 if position_post != input.len() - 1 {
                     return self.inverted;
                 }
-            } else {
-                if position_post != input.len() {
-                    return self.inverted;
-                }
+            } else if position_post != input.len() {
+                return self.inverted;
             }
         }
 
-        return !self.inverted;
+        !self.inverted
     }
 
     fn check_enviorment_for_initial(&self, input: &Word) -> bool {
-        if self.ante.len() != 0 {
+        if !self.ante.is_empty() {
             return self.inverted;
         }
 
@@ -438,36 +504,34 @@ impl super::data::Enviorment {
             }
 
             let temp = self.post[j].predicate.validate(input, position_post);
-            accum += if temp {1} else {0};
+            accum += if temp { 1 } else { 0 };
             if temp {
                 if accum == self.post[j].max_quant {
                     j += 1;
                     accum = 0;
                 }
+            } else if accum < self.post[j].min_quant {
+                return self.inverted;
             } else {
-                if accum < self.post[j].min_quant {
-                    return self.inverted;
-                } else {
-                    j += 1;
-                    accum = 0;
-                    if j < self.post.len() {
-                        position_post -= 1;//Need to check it again, but against the next one
-                    }
+                j += 1;
+                accum = 0;
+                if j < self.post.len() {
+                    position_post -= 1; //Need to check it again, but against the next one
                 }
             }
         }
-        if self.post_word_boundary {
-            if position_post != input.len() - 1 {
-                return self.inverted;
-            }
+        if self.post_word_boundary && position_post != input.len() - 1 {
+            return self.inverted;
         }
 
-        return !self.inverted;
+        !self.inverted
     }
 }
 
-
-pub fn from_string(program: &Program, input: &String) -> std::result::Result<Word, ApplicationError> {
+pub fn from_string(
+    program: &Program,
+    input: &String,
+) -> std::result::Result<Word, ApplicationError> {
     let mut string = input.clone();
     let mut result: Vec<Letter> = Vec::new();
     let mut syllables: Vec<SyllableDefinition> = Vec::new();
@@ -475,18 +539,18 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Wor
     for k in program.symbol_to_letter.keys() {
         keys.push(k);
     }
-    keys.sort_unstable_by(|a, b| b.chars().count().cmp(&a.chars().count()));
+    keys.sort_unstable_by_key(|b| std::cmp::Reverse(b.chars().count()));
 
     let mut depth: usize = 0;
     let mut flag = false;
     let mut index: usize = 0;
     syllables.push(create_syllable_definition(0, 0)?);
-    while string.len() > 0 {
-        if string.starts_with(".") {
+    while !string.is_empty() {
+        if string.starts_with('.') {
             let i = syllables.len() - 1;
             syllables[i].end = index;
             syllables.push(create_syllable_definition(index, index)?);
-            string = String::from(string.strip_prefix(".").unwrap())
+            string = String::from(string.strip_prefix('.').unwrap())
         }
         if flag {
             for d in &program.diacritics {
@@ -494,7 +558,10 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Wor
                     string = String::from(string.strip_prefix(&d.diacritic).unwrap());
                     let i = result.len() - 1;
                     if result[i].value & d.mask != d.key {
-                        return Err(ApplicationError::IntoConversionError(format!("Invalid diacritic \"{0}\"", d.diacritic)));
+                        return Err(ApplicationError::IntoConversionError(format!(
+                            "Invalid diacritic \"{0}\"",
+                            d.diacritic
+                        )));
                     }
                     result[i].value = (result[i].value & !d.mask) | d.mod_key;
                 }
@@ -511,10 +578,13 @@ pub fn from_string(program: &Program, input: &String) -> std::result::Result<Wor
         }
         depth += 1;
         if depth > 1024 {
-            return Err(ApplicationError::IntoConversionError(format!("Could not convert string \"{0}\", got to \"{1}\"", input, string)));
+            return Err(ApplicationError::IntoConversionError(format!(
+                "Could not convert string \"{0}\", got to \"{1}\"",
+                input, string
+            )));
         }
     }
     let i = syllables.len() - 1;
     syllables[i].end = index;
-    return Ok(create_word_syllables(result, syllables));
+    Ok(create_word_syllables(result, syllables))
 }

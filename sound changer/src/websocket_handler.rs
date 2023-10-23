@@ -113,7 +113,7 @@ fn handle_load_file(file_path: &String) -> WebSocketResponse {
 
 fn handle_load_program(
     name: &String,
-    contents: &String,
+    contents: &str,
     context: &mut ThreadContext,
 ) -> WebSocketResponse {
     let program = construct(contents);
@@ -131,7 +131,7 @@ fn handle_load_program(
     }
 }
 
-fn handle_try_compilation(program: &String) -> WebSocketResponse {
+fn handle_try_compilation(program: &str) -> WebSocketResponse {
     let result = construct(program);
     WebSocketResponse::CompilationResult {
         result: match result {

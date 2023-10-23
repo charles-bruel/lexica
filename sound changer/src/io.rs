@@ -42,19 +42,17 @@ pub fn load_from_file(path_str: &String, restrict_path: bool) -> Result<String, 
     use std::time::Instant;
     let now = Instant::now();
 
-    if restrict_path {
-        if path_str.contains(":") || path_str.contains("..") {
-            return Err(IOError::InvalidFilePath(format!(
-                "security settings do not allow the path: {}",
-                path_str
-            )));
-        }
+    if restrict_path && (path_str.contains(':') || path_str.contains("..")) {
+        return Err(IOError::InvalidFilePath(format!(
+            "security settings do not allow the path: {}",
+            path_str
+        )));
     }
 
     let path = Path::new(path_str);
     let display = path.display();
 
-    let mut file = match File::open(&path) {
+    let mut file = match File::open(path) {
         Err(why) => {
             return Err(IOError::FileNotFound(format!(
                 "couldn't open {}: {}",
@@ -76,9 +74,9 @@ pub fn load_from_file(path_str: &String, restrict_path: bool) -> Result<String, 
     };
 
     let elapsed = now.elapsed();
-    print!("Loaded file in {:.2?}\n", elapsed);
+    println!("Loaded file in {:.2?}", elapsed);
 
-    return Ok(temp);
+    Ok(temp)
 }
 
 pub fn save_to_file(
@@ -90,28 +88,24 @@ pub fn save_to_file(
     use std::time::Instant;
     let now = Instant::now();
 
-    if restrict_path {
-        if path_str.contains(":") || path_str.contains("..") {
-            return Some(IOError::InvalidFilePath(format!(
-                "security settings do not allow the path: {}",
-                path_str
-            )));
-        }
+    if restrict_path && (path_str.contains(':') || path_str.contains("..")) {
+        return Some(IOError::InvalidFilePath(format!(
+            "security settings do not allow the path: {}",
+            path_str
+        )));
     }
 
     let path = Path::new(path_str);
     let display = path.display();
 
-    if path.exists() {
-        if !overwrite {
-            return Some(IOError::FileExists(format!(
-                "file already exists: {}",
-                display
-            )));
-        }
+    if path.exists() && !overwrite {
+        return Some(IOError::FileExists(format!(
+            "file already exists: {}",
+            display
+        )));
     }
 
-    let mut file = match File::create(&path) {
+    let mut file = match File::create(path) {
         Err(why) => {
             return Some(IOError::FileNotFound(format!(
                 "couldn't create {}: {}",
@@ -121,20 +115,17 @@ pub fn save_to_file(
         Ok(file) => file,
     };
 
-    match file.write_all(data.as_bytes()) {
-        Err(why) => {
-            return Some(IOError::WriteError(format!(
-                "couldn't write {}: {}",
-                display, why
-            )))
-        }
-        Ok(_) => (),
-    };
+    if let Err(why) = file.write_all(data.as_bytes()) {
+        return Some(IOError::WriteError(format!(
+            "couldn't write {}: {}",
+            display, why
+        )));
+    }
 
     let elapsed = now.elapsed();
-    print!("Saved file file in {:.2?}\n", elapsed);
+    println!("Saved file file in {:.2?}", elapsed);
 
-    return None;
+    None
 }
 
 pub fn web_socket_listener() {
@@ -154,7 +145,7 @@ pub fn web_socket_listener() {
             let mut context = create_thread_context();
 
             loop {
-                let temp = websocket.read_message();
+                let temp = websocket.read();
                 let msg = match temp {
                     Ok(v) => v,
                     Err(_) => break,
@@ -171,7 +162,7 @@ pub fn web_socket_listener() {
                     None => panic!("Couldn't serialize response"),
                 };
 
-                while context.queued_extra_messages.len() > 0 {
+                while !context.queued_extra_messages.is_empty() {
                     let extra_message = context.queued_extra_messages.pop_front().unwrap().handle();
                     match extra_message {
                         Some(msg) => push_messages(&mut websocket, msg),
@@ -212,7 +203,7 @@ pub fn web_socket_listener() {
 
 pub fn push_messages(websocket: &mut WebSocket<TcpStream>, message: String) -> Option<String> {
     let msg: Message = Message::Text(message);
-    match websocket.write_message(msg) {
+    match websocket.send(msg) {
         Ok(_) => None,
         Err(msg) => Some(format!("Could not send message: {}", msg)),
     }

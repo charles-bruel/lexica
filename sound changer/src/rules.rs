@@ -32,16 +32,18 @@ impl Predicate for MultiPredicate {
     fn validate(&self, word: &Word, position: usize) -> bool {
         let mut flag: bool = self.req_all;
         for predicate in &self.predicate {
-            if self.req_all != predicate.validate(word, position) { flag = !self.req_all; }
+            if self.req_all != predicate.validate(word, position) {
+                flag = !self.req_all;
+            }
         }
-        return flag;
+        flag
     }
 }
 
 impl Predicate for SimplePredicate {
     fn validate(&self, word: &Word, position: usize) -> bool {
         let letter = word[position];
-        return (letter.value & self.mask) == self.key;
+        (letter.value & self.mask) == self.key
     }
 }
 
@@ -60,65 +62,66 @@ impl Predicate for PositiveNegativePredicate {
             }
             i += 1;
         }
-        return true;
+        true
     }
 }
 
 impl Result for SimpleResult {
     fn transform(&self, _input: &Letter) -> Option<Letter> {
-        return Some(self.letter);
+        Some(self.letter)
     }
 }
 
 impl Result for SimpleApplicationResult {
     fn transform(&self, input: &Letter) -> Option<Letter> {
         let value = (input.value & !self.mask) | self.value;
-        return Some(Letter { value: value });
+        Some(Letter { value })
     }
 }
 
 impl Result for DeleteResult {
-    fn transform(&self, _input: &Letter) -> Option<Letter> { None }
+    fn transform(&self, _input: &Letter) -> Option<Letter> {
+        None
+    }
 }
 
-pub fn create_multi_predicate(predicates: Vec<Box<dyn Predicate>>, req_all: bool) -> MultiPredicate {
+pub fn create_multi_predicate(
+    predicates: Vec<Box<dyn Predicate>>,
+    req_all: bool,
+) -> MultiPredicate {
     MultiPredicate {
         predicate: predicates,
-        req_all: req_all,
+        req_all,
     }
 }
-
 
 pub fn create_simple_predicate(key: u64, mask: u64) -> SimplePredicate {
-    SimplePredicate {
-        key: key,
-        mask: mask,
-    }
+    SimplePredicate { key, mask }
 }
 
-pub fn create_positive_negative_predicate(positive_mask: u64, positive_key: u64, negative_masks: Vec<u64>, negative_keys: Vec<u64>) -> PositiveNegativePredicate {
+pub fn create_positive_negative_predicate(
+    positive_mask: u64,
+    positive_key: u64,
+    negative_masks: Vec<u64>,
+    negative_keys: Vec<u64>,
+) -> PositiveNegativePredicate {
     if negative_masks.len() != negative_keys.len() {
         panic!("Mismatched number of masks and keys");
     }
     PositiveNegativePredicate {
-        positive_mask: positive_mask,
-        positive_key: positive_key,
-        negative_masks: negative_masks,
-        negative_keys: negative_keys,
+        positive_mask,
+        positive_key,
+        negative_masks,
+        negative_keys,
     }
 }
 
 pub fn create_simple_result(letter: Letter) -> SimpleResult {
-    SimpleResult {
-        letter: letter,
-    }
+    SimpleResult { letter }
 }
 
 pub fn create_simple_application_result(mask: u64, value: u64) -> SimpleApplicationResult {
-    SimpleApplicationResult {
-        mask: mask,
-        value: value,
-    }
+    SimpleApplicationResult { mask, value }
 }
 
 pub fn create_delete_result() -> DeleteResult {
