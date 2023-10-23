@@ -1,5 +1,7 @@
 #![feature(string_remove_matches)]
 
+use std::time::Instant;
+
 use manual_ux::project::load_project;
 
 extern crate clap;
@@ -22,6 +24,8 @@ mod tests;
 pub mod websocket_handler;
 
 fn main() {
+    let start = Instant::now();
+
     use clap::Parser;
 
     let args = args::LexicaArgs::parse();
@@ -36,4 +40,7 @@ fn main() {
             ),
         },
     }
+
+    let elapsed = start.elapsed();
+    println!("Total runtime: {:?}", elapsed)
 }
