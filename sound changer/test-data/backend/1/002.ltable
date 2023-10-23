@@ -1,0 +1,5 @@
+2
+POS|WORD|TRANSLATION|INDEX
+[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT
+:={=foreach(1:POS).filter(:POS==1:POS.Noun).save(a)|=(saved(a,:word)+ika).soundchange("1-2")|=saved(a,:translation)|=saved(a,:index)}
+:={=foreach(1:POS).filter(:POS!=1:POS.Noun).filter(:POS!=1:POS.Particle).save(a)|=saved(a,:word).soundchange("1-2")|=saved(a,:translation)|=saved(a,:index)}

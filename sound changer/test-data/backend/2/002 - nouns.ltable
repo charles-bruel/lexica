@@ -1,0 +1,4 @@
+2
+POS|WORD|TRANSLATION|INDEX|SUBINDEX
+[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT|UINT
+:={=2:POS.Noun|=mutate(foreach(0:WORD).filter(:POS==0:POS.Noun).save(a),foreach(1:AFFIX).save(b),2).soundchange("1-2")|=mutate(saved(a,:translation),saved(b,1:subindex),0)|=mutate(saved(a,:index),saved(b,1:subindex),0)|=mutate(saved(a,:index),saved(b,1:subindex),1)}
