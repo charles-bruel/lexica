@@ -1,7 +1,11 @@
-use crate::applicator::from_string;
-use crate::constructor::construct;
-use crate::data::{to_string, Program};
-use crate::io;
+use crate::{
+    io,
+    sc::{
+        applicator::from_string,
+        constructor::construct,
+        data::{to_string, Program},
+    },
+};
 
 use super::super::table::*;
 use super::*;

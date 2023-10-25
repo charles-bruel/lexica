@@ -1,10 +1,10 @@
-use crate::constructor::construct;
-use crate::data::ConstructorError;
+use crate::sc::constructor::construct;
+use crate::sc::data::ConstructorError;
 use serde::{Deserialize, Serialize};
 
-use super::applicator::*;
-use super::data::{to_string, ApplicationError, ThreadContext};
 use super::io::*;
+use super::sc::applicator::*;
+use super::sc::data::{to_string, ApplicationError, ThreadContext};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WebSocketMessage {

@@ -12,15 +12,10 @@ extern crate serde;
 extern crate tabled;
 extern crate tungstenite;
 
-pub mod applicator;
 pub mod args;
-pub mod constructor;
-pub mod data;
 pub mod io;
 pub mod manual_ux;
-pub mod rules;
-#[cfg(test)]
-mod tests;
+pub mod sc;
 pub mod websocket_handler;
 
 fn main() {

@@ -1,4 +1,4 @@
-use data::*;
+use super::data::*;
 
 pub struct MultiPredicate {
     pub predicate: Vec<Box<dyn Predicate>>,

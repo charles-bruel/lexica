@@ -1,8 +1,8 @@
 use super::applicator::*;
 use super::constructor::*;
 use super::data::*;
-use super::io::*;
 use super::rules::*;
+use crate::io::*;
 
 extern crate rand;
 use self::rand::Rng;

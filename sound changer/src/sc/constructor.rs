@@ -1,7 +1,7 @@
 use std::{collections::*, vec};
 
-use super::fancy_regex::Regex;
-use {applicator::*, data::*, rules::*};
+use crate::fancy_regex::Regex;
+use {super::applicator::*, super::data::*, super::rules::*};
 
 macro_rules! error {
     ($name:expr, $error_type:expr) => {

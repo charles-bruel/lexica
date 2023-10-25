@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    data::Program,
     io,
     manual_ux::{
         generative::{
@@ -13,6 +12,7 @@ use crate::{
         },
         table::{PopulatedTableRowSource, TableContents},
     },
+    sc::data::Program,
 };
 
 use super::{

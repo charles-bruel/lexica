@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
-use super::priority_queue::PriorityQueue;
-use super::websocket_handler::WebSocketResponse;
+use crate::{priority_queue::PriorityQueue, websocket_handler::WebSocketResponse};
 
 pub type PredicateDef = (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>);
 pub type ResultDef = (Vec<Box<dyn Result>>, Vec<usize>);
