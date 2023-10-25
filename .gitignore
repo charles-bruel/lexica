@@ -6,3 +6,4 @@ Cargo.lock
 local/
 save-data/
 *.out
+lcov.info

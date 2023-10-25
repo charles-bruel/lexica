@@ -21,13 +21,13 @@ use super::{
     table::{Table, TableRow},
 };
 
-pub fn rebuild(project: &mut Project, start: u16, base_path: String) {
+pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool) {
     let mut index = start as usize;
     let mut programs = HashMap::new();
     while index < project.tables.len() {
         if let Some(mut table) = project.tables[index].clone() {
             table
-                .rebuild(project, &mut programs, base_path.clone())
+                .rebuild(project, &mut programs, base_path.clone(), do_io)
                 .unwrap();
 
             project.tables[index] = Some(table);
@@ -43,6 +43,7 @@ impl Table {
         project: &Project,
         programs: &mut HashMap<String, Program>,
         base_path: String,
+        do_io: bool,
     ) -> Result<(), GenerativeProgramRuntimeError> {
         // 1) Execute all unpopulated table rows
 
@@ -164,7 +165,9 @@ impl Table {
         let path_str = self.source_path.clone() + ".out";
         println!("Rebuilt table in {:?}", elapsed);
 
-        io::save_to_file(&path_str, &output, true, false);
+        if do_io {
+            io::save_to_file(&path_str, &output, true, false);
+        }
 
         Ok(())
     }

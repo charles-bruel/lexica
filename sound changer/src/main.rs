@@ -32,6 +32,7 @@ fn main() {
                 &mut load_project(command.path.clone()).unwrap(),
                 v.start,
                 command.path,
+                true,
             ),
         },
     }
