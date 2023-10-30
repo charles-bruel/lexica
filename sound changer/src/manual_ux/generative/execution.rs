@@ -685,7 +685,7 @@ fn load_program_if_not_loaded(
         return Ok(());
     }
 
-    let path_str = &format!("{}\\{}.lsc", context.base_path, name);
+    let path_str = &format!("{}/{}.lsc", context.base_path, name);
     let contents = match io::load_from_file(path_str, false) {
         Ok(v) => v,
         // TODO: Pass along error information
