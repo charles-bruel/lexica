@@ -390,12 +390,7 @@ pub fn preprocess(mut string: String) -> String {
         Block, //Block comment
     }
 
-    //These are used solely for the purposes of error handling and output
-    let mut last_block_comment_start_line_number = 0;
-    let mut last_block_comment_start_column_number = 0;
     let mut new_line_flag = false;
-    let mut line_number = 0;
-    let mut column_number = 0;
 
     unsafe {
         //SAFETY: We must ensure we output value UTF-8 before we pass on the string
@@ -432,8 +427,6 @@ pub fn preprocess(mut string: String) -> String {
                             if working_string[i] == 0x2F && working_string[i + 1] == 0x2A {
                                 mode = Status::Block;
                                 flag_modify = true;
-                                last_block_comment_start_column_number = column_number;
-                                last_block_comment_start_line_number = line_number;
                             }
                         }
                     }
@@ -507,11 +500,7 @@ pub fn preprocess(mut string: String) -> String {
 
             i += 1;
             if new_line_flag {
-                column_number = 0;
-                line_number += 1;
                 new_line_flag = false;
-            } else {
-                column_number += 1;
             }
         }
 
@@ -521,7 +510,7 @@ pub fn preprocess(mut string: String) -> String {
 
         //First we check if this step is even nessecary. Most codebases will probably
         //be entirely ASCII
-        let final_result = if num_multi_byte == 0 {
+        if num_multi_byte == 0 {
             string
         } else {
             //Now we copy the bytes of this string over to a destination string, skipping the ones we
@@ -561,9 +550,7 @@ pub fn preprocess(mut string: String) -> String {
             } else {
                 String::from_utf8_unchecked(result)
             }
-        };
-
-        final_result
+        }
     }
 }
 
