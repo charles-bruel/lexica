@@ -99,6 +99,17 @@ pub fn parse_generative_table_line(
     // First we need to extract the useful portion of the line which
     // should be in the form :={<CONTENT>} and tokenize it.
     line = line.trim();
+    if line.len() < 3 {
+        return loading_err(LoadingErrorType::GenerativeProgramCompileError(
+            GenerativeProgramCompileError {
+                error_type: CompileErrorType::SyntaxError(
+                    SyntaxErrorType::MissingProgramSurrondings,
+                ),
+                attribution: super::CompileAttribution::None,
+            },
+        ));
+    }
+
     if &line[0..3] != ":={" || line.chars().nth_back(0).unwrap() != '}' {
         return loading_err(LoadingErrorType::GenerativeProgramCompileError(
             GenerativeProgramCompileError {
@@ -110,10 +121,16 @@ pub fn parse_generative_table_line(
         ));
     }
 
-    let tokens = match tokenize(line[3..line.len() - 2].to_string()) {
-        Some(v) => v,
-        None => return loading_err(LoadingErrorType::Unknown),
-    };
+    if line.len() <= 4 {
+        return loading_err(LoadingErrorType::GenerativeProgramCompileError(
+            GenerativeProgramCompileError {
+                error_type: CompileErrorType::SyntaxError(SyntaxErrorType::NoGenerativeContent),
+                attribution: super::CompileAttribution::None,
+            },
+        ));
+    }
+
+    let tokens = tokenize(line[3..line.len() - 2].to_string());
 
     // Then we extract each column into a vec of tokens
     // Programs are seperated by `|` tokens, so we just

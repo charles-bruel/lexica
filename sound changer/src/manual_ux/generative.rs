@@ -156,6 +156,7 @@ pub enum SyntaxErrorType {
     FilterPredicateEndsEarly,
     UnbalancedFunctions,
     ExpectedComma,
+    NoGenerativeContent,
 }
 
 pub fn compile_err_token<T>(
