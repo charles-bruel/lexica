@@ -104,6 +104,34 @@ pub enum ComplexComparisionType {
     LessEquals,
 }
 
+impl SimpleComparisionType {
+    pub fn compare<T>(&self, a: &T, b: &T) -> bool
+    where
+        T: PartialEq,
+    {
+        match self {
+            SimpleComparisionType::Equals => a == b,
+            SimpleComparisionType::NotEquals => a != b,
+        }
+    }
+}
+
+impl ComplexComparisionType {
+    pub fn compare<T>(&self, a: &T, b: &T) -> bool
+    where
+        T: PartialEq + PartialOrd,
+    {
+        match self {
+            ComplexComparisionType::Equals => a == b,
+            ComplexComparisionType::NotEquals => a != b,
+            ComplexComparisionType::Greater => a > b,
+            ComplexComparisionType::GreaterEquals => a >= b,
+            ComplexComparisionType::Less => a < b,
+            ComplexComparisionType::LessEquals => a <= b,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub struct RuntimeEnum {
     pub index: usize,
@@ -157,6 +185,124 @@ impl OutputNode {
     }
 }
 
+/// Trait for generically adding two data types.
+/// Existing generics are insufficient because there is no default
+/// implementation of add for String and String (or &String)
+trait DataAdd<T> {
+    fn add(&self, other: &T) -> T;
+}
+
+impl DataAdd<String> for String {
+    fn add(&self, other: &String) -> String {
+        self.clone() + other
+    }
+}
+
+impl DataAdd<u32> for u32 {
+    fn add(&self, other: &u32) -> u32 {
+        self + other
+    }
+}
+
+impl DataAdd<i32> for i32 {
+    fn add(&self, other: &i32) -> i32 {
+        self + other
+    }
+}
+
+fn add_vecs<T: DataAdd<T>>(
+    mut operand1: Vec<T>,
+    operand2: Vec<T>,
+) -> Result<Vec<T>, GenerativeProgramRuntimeError> {
+    // TODO: Work out DRY here
+    if operand1.len() != operand2.len() {
+        let (single_operand, mut multi_operand) = if operand1.len() == 1 {
+            (&operand1[0], operand2)
+        } else if operand2.len() == 1 {
+            (&operand2[0], operand1)
+        } else {
+            return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
+        };
+
+        let mut i = 0;
+        while i < multi_operand.len() {
+            multi_operand[i] = multi_operand[i].add(single_operand);
+            i += 1;
+        }
+        return Ok(multi_operand);
+    }
+
+    let mut i = 0;
+    while i < operand1.len() {
+        operand1[i] = operand1[i].add(&operand2[i]);
+        i += 1;
+    }
+    Ok(operand1)
+}
+
+impl From<TableContents> for Result<RuntimeEnum, GenerativeProgramRuntimeError> {
+    fn from(val: TableContents) -> Self {
+        match val {
+            TableContents::Enum(v) => Ok(v),
+            _ => runtime_err(RuntimeErrorType::TypeMismatch),
+        }
+    }
+}
+
+impl From<TableContents> for Result<String, GenerativeProgramRuntimeError> {
+    fn from(val: TableContents) -> Self {
+        match val {
+            TableContents::String(v) => Ok(v),
+            _ => runtime_err(RuntimeErrorType::TypeMismatch),
+        }
+    }
+}
+
+impl From<TableContents> for Result<u32, GenerativeProgramRuntimeError> {
+    fn from(val: TableContents) -> Self {
+        match val {
+            TableContents::UInt(v) => Ok(v),
+            _ => runtime_err(RuntimeErrorType::TypeMismatch),
+        }
+    }
+}
+
+impl From<TableContents> for Result<i32, GenerativeProgramRuntimeError> {
+    fn from(val: TableContents) -> Self {
+        match val {
+            TableContents::Int(v) => Ok(v),
+            _ => runtime_err(RuntimeErrorType::TypeMismatch),
+        }
+    }
+}
+
+fn convert<T>(range: Range) -> Result<Vec<T>, GenerativeProgramRuntimeError>
+where
+    TableContents: Into<Result<T, GenerativeProgramRuntimeError>>,
+{
+    let column = range.column_id.unwrap();
+    let mut result = Vec::new();
+
+    for row in range.rows {
+        match row {
+            TableRow::PopulatedTableRow {
+                source: _,
+                descriptor: _,
+                contents,
+            } => {
+                let content = &contents[column];
+                result.push(std::convert::Into::<
+                    Result<T, GenerativeProgramRuntimeError>,
+                >::into(content.clone())?)
+            }
+            // No range should have an unpopulated row
+            _ => unreachable!(),
+        }
+    }
+
+    Ok(result)
+}
+
 impl StringNode {
     pub fn eval(
         &self,
@@ -164,66 +310,10 @@ impl StringNode {
     ) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
         match self {
             StringNode::LiteralNode(contents) => Ok(vec![contents.clone()]),
-            StringNode::AdditionNode(a, b) => {
-                let mut operand1 = a.eval(context)?;
-                let mut operand2 = b.eval(context)?;
-
-                // TODO: Work out DRY here
-                if operand1.len() != operand2.len() {
-                    if operand1.len() == 1 {
-                        let mut i = 0;
-                        while i < operand2.len() {
-                            operand2[i] += &operand1[0];
-                            i += 1;
-                        }
-                        return Ok(operand2);
-                    }
-                    if operand2.len() == 1 {
-                        let mut i = 0;
-                        while i < operand1.len() {
-                            operand1[i] += &operand2[0];
-                            i += 1;
-                        }
-                        return Ok(operand1);
-                    }
-                    return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
-                }
-
-                let mut i = 0;
-                while i < operand1.len() {
-                    operand1[i] += &operand2[i];
-                    i += 1;
-                }
-                Ok(operand1)
-            }
-            StringNode::ConversionNode(v) => {
-                let range = v.eval(context)?;
-                let column = range.column_id.unwrap();
-                let mut result = Vec::new();
-
-                for row in range.rows {
-                    match row {
-                        TableRow::PopulatedTableRow {
-                            source: _,
-                            descriptor: _,
-                            contents,
-                        } => {
-                            let content = &contents[column];
-                            match content {
-                                TableContents::String(v) => result.push(v.clone()),
-                                // TODO: Maybe have to_string functionality?
-                                _ => panic!(),
-                            }
-                        }
-                        // No range should have an unpopulated row
-                        _ => unreachable!(),
-                    }
-                }
-
-                Ok(result)
-            }
+            StringNode::AdditionNode(a, b) => add_vecs(a.eval(context)?, b.eval(context)?),
+            StringNode::ConversionNode(v) => convert(v.eval(context)?),
             StringNode::SoundChangeNode(source, program) => {
-                let program_name = enforce_single_string(program.eval(context)?)?;
+                let program_name = enforce_single(program.eval(context)?)?;
                 load_program_if_not_loaded(&program_name, context)?;
                 let inputs = source.eval(context)?;
 
@@ -240,63 +330,8 @@ impl IntNode {
     ) -> Result<Vec<i32>, GenerativeProgramRuntimeError> {
         match self {
             IntNode::LiteralNode(contents) => Ok(vec![*contents]),
-            IntNode::AdditionNode(a, b) => {
-                let mut operand1 = a.eval(context)?;
-                let mut operand2 = b.eval(context)?;
-
-                // TODO: Work out DRY here
-                if operand1.len() != operand2.len() {
-                    if operand1.len() == 1 {
-                        let mut i = 0;
-                        while i < operand2.len() {
-                            operand2[i] += &operand1[0];
-                            i += 1;
-                        }
-                        return Ok(operand2);
-                    }
-                    if operand2.len() == 1 {
-                        let mut i = 0;
-                        while i < operand1.len() {
-                            operand1[i] += &operand2[0];
-                            i += 1;
-                        }
-                        return Ok(operand1);
-                    }
-                    return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
-                }
-
-                let mut i = 0;
-                while i < operand1.len() {
-                    operand1[i] += &operand2[i];
-                    i += 1;
-                }
-                Ok(operand1)
-            }
-            IntNode::ConversionNode(v) => {
-                let range = v.eval(context)?;
-                let column = range.column_id.unwrap();
-                let mut result = Vec::new();
-
-                for row in range.rows {
-                    match row {
-                        TableRow::PopulatedTableRow {
-                            source: _,
-                            descriptor: _,
-                            contents,
-                        } => {
-                            let content = &contents[column];
-                            match content {
-                                TableContents::Int(v) => result.push(*v),
-                                _ => panic!(),
-                            }
-                        }
-                        // No range should have an unpopulated row
-                        _ => unreachable!(),
-                    }
-                }
-
-                Ok(result)
-            }
+            IntNode::AdditionNode(a, b) => add_vecs(a.eval(context)?, b.eval(context)?),
+            IntNode::ConversionNode(v) => convert(v.eval(context)?),
         }
     }
 }
@@ -308,62 +343,8 @@ impl UIntNode {
     ) -> Result<Vec<u32>, GenerativeProgramRuntimeError> {
         match self {
             UIntNode::LiteralNode(contents) => Ok(vec![*contents]),
-            UIntNode::AdditionNode(a, b) => {
-                let mut operand1 = a.eval(context)?;
-                let mut operand2 = b.eval(context)?;
-
-                if operand1.len() != operand2.len() {
-                    if operand1.len() == 1 {
-                        let mut i = 0;
-                        while i < operand2.len() {
-                            operand2[i] += &operand1[0];
-                            i += 1;
-                        }
-                        return Ok(operand2);
-                    }
-                    if operand2.len() == 1 {
-                        let mut i = 0;
-                        while i < operand1.len() {
-                            operand1[i] += &operand2[0];
-                            i += 1;
-                        }
-                        return Ok(operand1);
-                    }
-                    return runtime_err(RuntimeErrorType::MismatchedRangeLengths);
-                }
-
-                let mut i = 0;
-                while i < operand1.len() {
-                    operand1[i] += &operand2[i];
-                    i += 1;
-                }
-                Ok(operand1)
-            }
-            UIntNode::ConversionNode(v) => {
-                let range = v.eval(context)?;
-                let column = range.column_id.unwrap();
-                let mut result = Vec::new();
-
-                for row in range.rows {
-                    match row {
-                        TableRow::PopulatedTableRow {
-                            source: _,
-                            descriptor: _,
-                            contents,
-                        } => {
-                            let content = &contents[column];
-                            match content {
-                                TableContents::UInt(v) => result.push(*v),
-                                _ => panic!(),
-                            }
-                        }
-                        // No range should have an unpopulated row
-                        _ => unreachable!(),
-                    }
-                }
-
-                Ok(result)
-            }
+            UIntNode::AdditionNode(a, b) => add_vecs(a.eval(context)?, b.eval(context)?),
+            UIntNode::ConversionNode(v) => convert(v.eval(context)?),
         }
     }
 }
@@ -399,31 +380,7 @@ impl EnumNode {
                     None => runtime_err(RuntimeErrorType::EnumNotFound),
                 }
             }
-            EnumNode::ConversionNode(v) => {
-                let range = v.eval(context)?;
-                let column = range.column_id.unwrap();
-                let mut result = Vec::new();
-
-                for row in range.rows {
-                    match row {
-                        TableRow::PopulatedTableRow {
-                            source: _,
-                            descriptor: _,
-                            contents,
-                        } => {
-                            let content = &contents[column];
-                            match content {
-                                TableContents::Enum(v) => result.push(*v),
-                                _ => panic!(),
-                            }
-                        }
-                        // No range should have an unpopulated row
-                        _ => unreachable!(),
-                    }
-                }
-
-                Ok(result)
-            }
+            EnumNode::ConversionNode(v) => convert(v.eval(context)?),
         }
     }
 }
@@ -473,13 +430,23 @@ impl RangeNode {
             }
             RangeNode::Mutate(a, b, mode) => {
                 // TODO: More reliable take mode
-                mutate(a.eval(context)?, b.eval(context)?, mode.eval(context)?[0])
+                mutate(
+                    a.eval(context)?,
+                    b.eval(context)?,
+                    mode.eval(context)?[0],
+                    context,
+                )
             }
         }
     }
 }
 
-fn mutate(a: Range, b: Range, mode: u32) -> Result<Range, GenerativeProgramRuntimeError> {
+fn mutate(
+    a: Range,
+    b: Range,
+    mode: u32,
+    context: &ExecutionContext,
+) -> Result<Range, GenerativeProgramRuntimeError> {
     let mut results = Vec::new();
     for a_comp in &a.rows {
         for b_comp in &b.rows {
@@ -501,12 +468,7 @@ fn mutate(a: Range, b: Range, mode: u32) -> Result<Range, GenerativeProgramRunti
         todo!()
     }
     // TODO: Check for uniformity in output data type.
-    let data_type = match results[0] {
-        TableContents::Enum(_) => todo!(),
-        TableContents::String(_) => TableDataTypeDescriptor::String,
-        TableContents::UInt(_) => TableDataTypeDescriptor::UInt,
-        TableContents::Int(_) => TableDataTypeDescriptor::Int,
-    };
+    let data_type = results[0].to_data_type(context);
 
     let descriptor = Rc::new(TableDescriptor {
         column_descriptors: vec![TableColumnDescriptor {
@@ -571,6 +533,14 @@ impl TableRow {
 }
 
 impl FilterPredicate {
+    pub fn get_column_id(&self) -> usize {
+        match self {
+            FilterPredicate::EnumCompare(column, _, _) => column.column_id,
+            FilterPredicate::StringCompare(column, _, _) => column.column_id,
+            FilterPredicate::IntCompare(column, _, _) => column.column_id,
+            FilterPredicate::UIntCompare(column, _, _) => column.column_id,
+        }
+    }
     pub fn check(
         &self,
         row: &TableRow,
@@ -588,12 +558,7 @@ impl FilterPredicate {
             }
         };
 
-        let column_id = match self {
-            FilterPredicate::EnumCompare(column, _, _) => column.column_id,
-            FilterPredicate::StringCompare(column, _, _) => column.column_id,
-            FilterPredicate::IntCompare(column, _, _) => column.column_id,
-            FilterPredicate::UIntCompare(column, _, _) => column.column_id,
-        };
+        let column_id = self.get_column_id();
 
         let input_data_type = &descriptor.column_descriptors[column_id].data_type;
 
@@ -604,10 +569,7 @@ impl FilterPredicate {
                     TableContents::Enum(v) => {
                         let check_value = node.eval(context)?;
                         if check_value.len() == 1 {
-                            match comp_type {
-                                SimpleComparisionType::Equals => Ok(v == check_value[0]),
-                                SimpleComparisionType::NotEquals => Ok(v != check_value[0]),
-                            }
+                            Ok(comp_type.compare(&v, &check_value[0]))
                         } else {
                             // Check to see if it matches with any of the given values
                             todo!()
@@ -622,11 +584,8 @@ impl FilterPredicate {
             FilterPredicate::StringCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::String => match &contents[column_id] {
                     TableContents::String(v) => {
-                        let eval = enforce_single_string(node.eval(context)?)?;
-                        match comp_type {
-                            SimpleComparisionType::Equals => Ok(eval == *v),
-                            SimpleComparisionType::NotEquals => Ok(eval != *v),
-                        }
+                        let eval: String = enforce_single(node.eval(context)?)?;
+                        Ok(comp_type.compare(&eval, v))
                     }
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
@@ -637,16 +596,9 @@ impl FilterPredicate {
             FilterPredicate::IntCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::Int => match contents[column_id] {
                     TableContents::Int(v) => {
-                        let eval = enforce_single_i32(node.eval(context)?)?;
+                        let eval = enforce_single(node.eval(context)?)?;
                         // TODO: Check direction on < <= > >=
-                        match comp_type {
-                            ComplexComparisionType::Equals => Ok(eval == v),
-                            ComplexComparisionType::NotEquals => Ok(eval != v),
-                            ComplexComparisionType::Greater => Ok(eval > v),
-                            ComplexComparisionType::GreaterEquals => Ok(eval >= v),
-                            ComplexComparisionType::Less => Ok(eval < v),
-                            ComplexComparisionType::LessEquals => Ok(eval <= v),
-                        }
+                        Ok(comp_type.compare(&eval, &v))
                     }
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
@@ -657,15 +609,8 @@ impl FilterPredicate {
             FilterPredicate::UIntCompare(_, comp_type, node) => match input_data_type {
                 TableDataTypeDescriptor::UInt => match contents[column_id] {
                     TableContents::UInt(v) => {
-                        let eval = enforce_single_u32(node.eval(context)?)?;
-                        match comp_type {
-                            ComplexComparisionType::Equals => Ok(eval == v),
-                            ComplexComparisionType::NotEquals => Ok(eval != v),
-                            ComplexComparisionType::Greater => Ok(eval > v),
-                            ComplexComparisionType::GreaterEquals => Ok(eval >= v),
-                            ComplexComparisionType::Less => Ok(eval < v),
-                            ComplexComparisionType::LessEquals => Ok(eval <= v),
-                        }
+                        let eval = enforce_single(node.eval(context)?)?;
+                        Ok(comp_type.compare(&eval, &v))
                     }
                     // Assuming that the creation of the descriptor is done correctly,
                     // this will never happen and will be unreachable
@@ -721,34 +666,12 @@ fn apply_sc(
     Ok(results)
 }
 
-fn enforce_single_string(input: Vec<String>) -> Result<String, GenerativeProgramRuntimeError> {
+fn enforce_single<T>(input: Vec<T>) -> Result<T, GenerativeProgramRuntimeError>
+where
+    T: Clone,
+{
     if input.len() == 1 {
         Ok(input[0].clone())
-    } else {
-        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
-    }
-}
-
-// TODO: Figure out exactly how to represents enums
-fn _enforce_single_usize(input: Vec<usize>) -> Result<usize, GenerativeProgramRuntimeError> {
-    if input.len() == 1 {
-        Ok(input[0])
-    } else {
-        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
-    }
-}
-
-fn enforce_single_i32(input: Vec<i32>) -> Result<i32, GenerativeProgramRuntimeError> {
-    if input.len() == 1 {
-        Ok(input[0])
-    } else {
-        runtime_err(RuntimeErrorType::MismatchedRangeLengths)
-    }
-}
-
-fn enforce_single_u32(input: Vec<u32>) -> Result<u32, GenerativeProgramRuntimeError> {
-    if input.len() == 1 {
-        Ok(input[0])
     } else {
         runtime_err(RuntimeErrorType::MismatchedRangeLengths)
     }

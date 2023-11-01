@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt, rc::Rc, time::Instant};
 
-use crate::manual_ux::generative::parse_generative_table_line;
+use crate::manual_ux::generative::{execution::ExecutionContext, parse_generative_table_line};
 
 use super::{
     generative::{
@@ -70,6 +70,30 @@ pub enum TableContents {
     Int(i32),
 }
 
+impl From<String> for TableContents {
+    fn from(value: String) -> Self {
+        TableContents::String(value)
+    }
+}
+
+impl From<RuntimeEnum> for TableContents {
+    fn from(value: RuntimeEnum) -> Self {
+        TableContents::Enum(value)
+    }
+}
+
+impl From<u32> for TableContents {
+    fn from(value: u32) -> Self {
+        TableContents::UInt(value)
+    }
+}
+
+impl From<i32> for TableContents {
+    fn from(value: i32) -> Self {
+        TableContents::Int(value)
+    }
+}
+
 impl fmt::Display for TableContents {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let str = match self {
@@ -83,6 +107,25 @@ impl fmt::Display for TableContents {
 }
 
 impl TableContents {
+    pub fn to_data_type(&self, context: &ExecutionContext) -> TableDataTypeDescriptor {
+        match self {
+            TableContents::Enum(r) => {
+                // Construction error if it references a non-existent table
+                let table = match &context.project.tables[r.table.table_id] {
+                    Some(v) => v,
+                    None => panic!(),
+                };
+
+                table.table_descriptor.column_descriptors[r.column.column_id]
+                    .data_type
+                    .clone()
+            }
+            TableContents::String(_) => TableDataTypeDescriptor::String,
+            TableContents::UInt(_) => TableDataTypeDescriptor::UInt,
+            TableContents::Int(_) => TableDataTypeDescriptor::Int,
+        }
+    }
+
     pub fn to_string(&self, project: &Project) -> String {
         match self {
             TableContents::Enum(v) => {
