@@ -1,0 +1,9 @@
+| POS       | WORD     | TRANSLATION | INDEX |
+|-----------|----------|-------------|-------|
+| noun      | gosajka  | sword       | 1     |
+| noun      | kasʲiːka | lightning   | 6     |
+| noun      | eʃajka   | king        | 7     |
+| root      | an       | earth       | 0     |
+| pronoun   | ipi      | I           | 2     |
+| adjective | von      | red         | 3     |
+| adverb    | eː       | quickly     | 4     |

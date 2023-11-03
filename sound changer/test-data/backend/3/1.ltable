@@ -1,0 +1,4 @@
+1
+A|B|C|D
+UINT|UINT|STRING|STRING
+:={=foreach(0:A)+1|=foreach(0:A)+foreach(0:B)|=foreach(0:C)+th|=foreach(0:D)+foreach(0:E)}

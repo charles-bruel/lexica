@@ -108,23 +108,39 @@ fn test_table_output_fn() {
     );
 }
 
+fn int_test(path_str: &str) {
+    let path = String::from(path_str);
+    let mut project = load_project(path.clone()).unwrap();
+    rebuild(&mut project, 0, path.clone(), true);
+    let comp = io::load_from_file(&(path + "/correct.txt"), false)
+        .unwrap()
+        .replace("\r\n", "\n");
+
+    assert_eq!(
+        comp,
+        project.tables[project.tables.len() - 1]
+            .clone()
+            .unwrap()
+            .output(&project)
+    )
+}
+
 #[test]
 fn test_int_1() {
     const PATH_STR: &str = "test-data/backend/1";
-    let path = String::from(PATH_STR);
-    let mut project = load_project(path.clone()).unwrap();
-    rebuild(&mut project, 0, path, true);
-    const COMP: &str = "| POS       | WORD     | TRANSLATION | INDEX |
-|-----------|----------|-------------|-------|
-| noun      | gosajka  | sword       | 1     |
-| noun      | kasʲiːka | lightning   | 6     |
-| noun      | eʃajka   | king        | 7     |
-| root      | an       | earth       | 0     |
-| pronoun   | ipi      | I           | 2     |
-| adjective | von      | red         | 3     |
-| adverb    | eː       | quickly     | 4     |";
+    int_test(PATH_STR);
+}
 
-    assert_eq!(COMP, project.tables[2].clone().unwrap().output(&project))
+#[test]
+fn test_int_2() {
+    const PATH_STR: &str = "test-data/backend/2";
+    int_test(PATH_STR);
+}
+
+#[test]
+fn test_int_3() {
+    const PATH_STR: &str = "test-data/backend/3";
+    int_test(PATH_STR);
 }
 
 #[test]
@@ -317,3 +333,36 @@ fn table_generative_load_error_4() {
         })
     );
 }
+
+/*#[test]
+fn table_generative_load_correct_1() {
+    const TEST_HEADER: &str = "0\na\nstring\n:={foo}";
+    let mut empty_hash: HashMap<usize, Rc<TableDescriptor>> = HashMap::new();
+    let result = load_table(TEST_HEADER, &mut empty_hash, String::from("")).unwrap();
+    match result.table_rows[0].clone() {
+        TableRow::PopulatedTableRow {
+            source,
+            descriptor: _,
+            contents,
+        } => {
+            assert_eq!(source, PopulatedTableRowSource::EXPLICIT);
+            assert_eq!(contents[0], TableContents::String(String::from("test")));
+        }
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn table_generative_load_correct_2() {
+    const TEST_HEADER: &str = "0\na\nint\n:={1}";
+    let mut empty_hash: HashMap<usize, Rc<TableDescriptor>> = HashMap::new();
+    let result = load_table(TEST_HEADER, &mut empty_hash, String::from(""));
+    assert_eq!(
+        result.unwrap_err().error_type,
+        LoadingErrorType::GenerativeProgramCompileError(GenerativeProgramCompileError {
+            error_type: CompileErrorType::SyntaxError(SyntaxErrorType::MissingProgramSurrondings),
+            attribution: CompileAttribution::None
+        })
+    );
+}
+*/

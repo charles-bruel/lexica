@@ -1,0 +1,10 @@
+| POS       | WORD   | TRANSLATION | INDEX |
+|-----------|--------|-------------|-------|
+| noun      | gosa   | sword       | 1     |
+| noun      | kasʲiː | lightning   | 6     |
+| noun      | eʃa    | king        | 7     |
+| noun      | aːpa   | wind        | 11    |
+| root      | an     | earth       | 0     |
+| pronoun   | ipi    | I           | 2     |
+| adjective | von    | red         | 3     |
+| adverb    | eː     | quickly     | 4     |
