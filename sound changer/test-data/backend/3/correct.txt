@@ -1,7 +1,22 @@
-| A  | B  | C       | D             |
-|----|----|---------|---------------|
-| 2  | 3  | haveth  | youever       |
-| 10 | 14 | heardth | thetragedy    |
-| 2  | 4  | ofth    | darthplageius |
-| 3  | 6  | theth   | wise?         |
-| 9  | 14 | helloth | there!        |
+| A  | B  | C         | D             | F        |
+|----|----|-----------|---------------|----------|
+| 2  | 3  | haveth    | youever       | 11       |
+| 10 | 14 | heardth   | thetragedy    | 12       |
+| 2  | 4  | ofth      | darthplageius | 13       |
+| 3  | 6  | theth     | wise?         | 10       |
+| 9  | 14 | helloth   | there!        | 23423444 |
+| 5  | 66 | filtereth | eq            | 120      |
+| 2  | 66 | filtereth | neq           | 119      |
+| 3  | 66 | filtereth | neq           | 121      |
+| 4  | 66 | filtereth | neq           | 118      |
+| 6  | 66 | filtereth | neq           | 23423552 |
+| 6  | 66 | filtereth | lt            | 23423552 |
+| 2  | 66 | filtereth | gt            | 119      |
+| 3  | 66 | filtereth | gt            | 121      |
+| 4  | 66 | filtereth | gt            | 118      |
+| 5  | 66 | filtereth | lte           | 120      |
+| 6  | 66 | filtereth | lte           | 23423552 |
+| 2  | 66 | filtereth | gte           | 119      |
+| 5  | 66 | filtereth | gte           | 120      |
+| 3  | 66 | filtereth | gte           | 121      |
+| 4  | 66 | filtereth | gte           | 118      |

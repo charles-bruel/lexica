@@ -1,4 +1,10 @@
 1
-A|B|C|D
-UINT|UINT|STRING|STRING
-:={=foreach(0:A)+1|=foreach(0:A)+foreach(0:B)|=foreach(0:C)+th|=foreach(0:D)+foreach(0:E)}
+A|B|C|D|F
+UINT|UINT|STRING|STRING|INT
+:={=foreach(0:A)+1|=foreach(0:A)+foreach(0:B)|=foreach(0:C)+th|=foreach(0:D)+foreach(0:E)|=foreach(0:F)+12}
+:={=foreach(0:B).filter(0:B==5).save(a)|=66|=filtereth|=eq|=saved(a,0:F)+120}
+:={=foreach(0:B).filter(0:B!=5).save(a)|=66|=filtereth|=neq|=saved(a,0:F)+120}
+:={=foreach(0:B).filter(0:B< 5).save(a)|=66|=filtereth|=lt|=saved(a,0:F)+120}
+:={=foreach(0:B).filter(0:B> 5).save(a)|=66|=filtereth|=gt|=saved(a,0:F)+120}
+:={=foreach(0:B).filter(0:B<=5).save(a)|=66|=filtereth|=lte|=saved(a,0:F)+120}
+:={=foreach(0:B).filter(0:B>=5).save(a)|=66|=filtereth|=gte|=saved(a,0:F)+120}

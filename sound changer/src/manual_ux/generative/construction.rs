@@ -130,7 +130,7 @@ pub fn parse_generative_table_line(
         ));
     }
 
-    let tokens = tokenize(line[3..line.len() - 2].to_string());
+    let tokens = tokenize(line[3..line.len() - 1].to_string());
 
     // Then we extract each column into a vec of tokens
     // Programs are seperated by `|` tokens, so we just
@@ -314,8 +314,7 @@ fn parse_generative_segment(
                 _ => panic!(),
             },
             ParsingContext::AwaitingParameters(ref mut parameter_queue) => {
-                if parameter_queue.is_empty() {
-                } else {
+                if !parameter_queue.is_empty() {
                     // Actually fill in function parameters
                     // Safe to unwrap because len is non-zero
                     let target_data_type = parameter_queue.pop_front().unwrap();
@@ -423,6 +422,7 @@ fn parse_new_segment_ready(
             )?)
         }
         _ => {
+            println!("{:?}", current_token);
             panic!()
         }
     }
