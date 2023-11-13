@@ -54,7 +54,23 @@
     grid-row-end: 3;
     display: flex;
     flex-direction: column;
+}
 
+#lexicon-manager {
+    width: 100%;
+    height: 20px;
+    padding: 2px;
+    margin: 0px;
+    font-size: 12px;
+    display: flex;
+}
+
+#lexicon-manager-label {
+    font-size: 14px;
+}
+
+#lexicon-table-select {
+    height: calc(100%-4px)
 }
 
 #bottom-bar {
