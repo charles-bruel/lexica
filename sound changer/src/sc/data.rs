@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
+use crate::manual_ux::project::Project;
 use crate::{priority_queue::PriorityQueue, websocket_handler::WebSocketResponse};
 
 pub type PredicateDef = (Vec<Box<dyn Predicate>>, Vec<(usize, u64)>);
@@ -685,14 +686,18 @@ pub fn create_execution_context(result: &Word) -> ExecutionContext {
     }
 }
 
+// TODO: Move out of sc folder
 pub struct ThreadContext {
-    pub programs: HashMap<String, Program>,
-    pub queued_extra_messages: VecDeque<WebSocketResponse>,
+    pub project: Project,
+    pub queued_extra_messages: VecDeque<WebSocketResponse>, // TODO: Unify extra and regular response messages
 }
 
 pub fn create_thread_context() -> ThreadContext {
     ThreadContext {
-        programs: HashMap::new(),
+        project: Project {
+            tables: Vec::new(),
+            programs: HashMap::new(),
+        },
         queued_extra_messages: VecDeque::new(),
     }
 }

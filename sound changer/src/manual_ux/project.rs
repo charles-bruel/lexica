@@ -1,11 +1,11 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::{io, manual_ux::table};
+use crate::{io, manual_ux::table, sc::data::Program};
 
 use super::table::{LoadingErrorType, Table, TableDescriptor, TableLoadingError};
 
-#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Project {
+    pub programs: HashMap<String, Program>,
     pub tables: Vec<Option<Table>>,
 }
 
@@ -62,5 +62,8 @@ pub fn load_project(filepath: String) -> Result<Project, ProjectLoadError> {
         tables[id] = Option::Some(table);
     }
 
-    Ok(Project { tables })
+    Ok(Project {
+        tables,
+        programs: HashMap::new(),
+    })
 }

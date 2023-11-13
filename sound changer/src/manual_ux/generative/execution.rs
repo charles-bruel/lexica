@@ -3,11 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     io,
     manual_ux::project::Project,
-    sc::{
-        applicator::from_string,
-        constructor::construct,
-        data::{to_string, Program},
-    },
+    sc::{applicator::from_string, constructor::construct, data::to_string},
 };
 
 use super::super::table::*;
@@ -18,8 +14,7 @@ pub struct ExecutionContext<'a> {
     pub table_descriptor: Rc<TableDescriptor>,
     pub table_specifer: TableSpecifier,
     pub base_path: String,
-    pub project: &'a Project,
-    pub programs: &'a mut HashMap<String, Program>,
+    pub project: &'a mut Project,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -629,7 +624,7 @@ fn load_program_if_not_loaded(
     name: &String,
     context: &mut ExecutionContext,
 ) -> Result<(), GenerativeProgramRuntimeError> {
-    if context.programs.contains_key(name) {
+    if context.project.programs.contains_key(name) {
         return Ok(());
     }
 
@@ -645,7 +640,7 @@ fn load_program_if_not_loaded(
         Err(_) => return runtime_err(RuntimeErrorType::SoundChangeCompileError),
     };
 
-    context.programs.insert(name.clone(), program);
+    context.project.programs.insert(name.clone(), program);
 
     Ok(())
 }
@@ -656,7 +651,7 @@ fn apply_sc(
     inputs: Vec<String>,
     context: &mut ExecutionContext,
 ) -> Result<Vec<String>, GenerativeProgramRuntimeError> {
-    let program = context.programs.get(program_name).unwrap();
+    let program = context.project.programs.get(program_name).unwrap();
     let mut results = Vec::with_capacity(inputs.len());
 
     for input in inputs {

@@ -12,7 +12,6 @@ use crate::{
         },
         table::{PopulatedTableRowSource, TableContents},
     },
-    sc::data::Program,
 };
 
 use super::{
@@ -23,12 +22,9 @@ use super::{
 
 pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool) {
     let mut index = start as usize;
-    let mut programs = HashMap::new();
     while index < project.tables.len() {
         if let Some(mut table) = project.tables[index].clone() {
-            table
-                .rebuild(project, &mut programs, base_path.clone(), do_io)
-                .unwrap();
+            table.rebuild(project, base_path.clone(), do_io).unwrap();
 
             project.tables[index] = Some(table);
         }
@@ -40,8 +36,7 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
 impl Table {
     fn rebuild(
         &mut self,
-        project: &Project,
-        programs: &mut HashMap<String, Program>,
+        project: &mut Project,
         base_path: String,
         do_io: bool,
     ) -> Result<(), GenerativeProgramRuntimeError> {
@@ -78,7 +73,6 @@ impl Table {
                             table_id: self.id as usize,
                         },
                         project,
-                        programs,
                         base_path: base_path.clone(),
                     };
                     let mut results = Vec::with_capacity(procedure.programs.len());

@@ -129,10 +129,10 @@ fn handle_load_program(
     let program = construct(contents);
     match program {
         Ok(v) => {
-            if context.programs.contains_key(name) {
-                context.programs.remove(name);
+            if context.project.programs.contains_key(name) {
+                context.project.programs.remove(name);
             }
-            context.programs.insert(name.to_string(), v);
+            context.project.programs.insert(name.to_string(), v);
             WebSocketResponse::Success
         }
         Err(_) => WebSocketResponse::Error {
@@ -167,8 +167,8 @@ fn handle_run_sc(
     to_convert: &Vec<SCConversion>,
     context: &mut ThreadContext,
 ) -> WebSocketResponse {
-    if context.programs.contains_key(program_name) {
-        let program = context.programs.get(program_name).unwrap();
+    if context.project.programs.contains_key(program_name) {
+        let program = context.project.programs.get(program_name).unwrap();
         let mut result = (*to_convert).clone();
 
         let mut errors: Vec<(ApplicationError, usize, String)> = Vec::new();

@@ -103,7 +103,8 @@ fn test_table_output_fn() {
     assert_eq!(
         COMP,
         table.clone().output(&Project {
-            tables: vec![None, Some(table)]
+            tables: vec![None, Some(table)],
+            programs: HashMap::new()
         })
     );
 }
