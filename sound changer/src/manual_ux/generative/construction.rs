@@ -21,7 +21,7 @@ use crate::manual_ux::{
 };
 
 use super::{
-    execution::{ColumnSpecifier, FilterPredicate, TableSpecifier},
+    execution::{ColumnSpecifier, FilterPredicate, OutputNode, TableSpecifier},
     node_builder::{BuilderNode, FinalOperandIndex, FunctionType, UnderspecifiedLiteral},
     tokenizer::{tokenize, Token},
     CompileErrorType, GenerativeProgram, GenerativeProgramCompileError,
@@ -185,22 +185,36 @@ fn create_generative_table_row_procedure(
 
     let mut result: Vec<GenerativeProgram> = Vec::with_capacity(token_sets.len());
     for (index, tokens) in token_sets.into_iter().enumerate() {
-        result.push(create_generative_program(
-            tokens,
-            &context.clone().descriptor.column_descriptors[index].data_type,
-            &mut context,
-        )?);
+        let source_code = tokens_to_source(&tokens);
+
+        result.push(GenerativeProgram {
+            output_node: create_output_node(
+                tokens,
+                &context.clone().descriptor.column_descriptors[index].data_type,
+                &mut context,
+            )?,
+            source_code,
+        });
         context.current_column_id += 1;
     }
 
     Ok(GenerativeTableRowProcedure { programs: result })
 }
 
-fn create_generative_program(
+// TODO: Preserve actual source
+fn tokens_to_source(tokens: &Vec<Token>) -> String {
+    let mut result = String::new();
+    for token in tokens {
+        result += token.token_contents.as_str();
+    }
+    result
+}
+
+fn create_output_node(
     tokens: Vec<Token>,
     output_type: &TableDataTypeDescriptor,
     project_context: &mut ProjectContext,
-) -> Result<GenerativeProgram, GenerativeProgramCompileError> {
+) -> Result<OutputNode, GenerativeProgramCompileError> {
     let queue = &mut VecDeque::from(tokens);
     let main_segment = parse_generative_segment(
         true,
@@ -210,9 +224,7 @@ fn create_generative_program(
         None,
     )?;
 
-    Ok(GenerativeProgram {
-        output_node: main_segment.try_convert_output_node(output_type, project_context)?,
-    })
+    main_segment.try_convert_output_node(output_type, project_context)
 }
 
 // TODO: Allow any data type in some circumstances

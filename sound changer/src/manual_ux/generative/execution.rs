@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     io,
+    manual_ux::project::Project,
     sc::{
         applicator::from_string,
         constructor::construct,
@@ -70,12 +73,12 @@ pub struct Range {
     pub column_id: Option<usize>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub struct TableSpecifier {
     pub table_id: usize,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub struct ColumnSpecifier {
     pub column_id: usize,
 }
@@ -132,7 +135,7 @@ impl ComplexComparisionType {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug, Copy)]
 pub struct RuntimeEnum {
     pub index: usize,
     pub table: TableSpecifier,

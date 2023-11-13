@@ -76,6 +76,8 @@ pub mod tokenizer;
 
 use std::{collections::HashMap, num::ParseIntError, rc::Rc};
 
+use serde::{ser::SerializeStruct, Serialize, Serializer};
+
 use crate::io::IOError;
 
 use self::{
@@ -84,22 +86,19 @@ use self::{
     tokenizer::Token,
 };
 
-use super::{
-    project::Project,
-    table::{TableDescriptor, TableLoadingError, TableRow},
-};
+use super::table::{TableDescriptor, TableLoadingError, TableRow};
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeLine {
     pub columns: Vec<GenerativeProgram>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenerativeProgramRuntimeError {
     pub error_type: RuntimeErrorType,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum RuntimeErrorType {
     MismatchedRangeLengths,
     TypeMismatch,
@@ -107,6 +106,7 @@ pub enum RuntimeErrorType {
     TableNotFound,
     EnumNotFound,
     SoundChangeCompileError,
+    CompileError(CompileErrorType),
     IOError(IOError),
 }
 
@@ -224,6 +224,18 @@ pub fn runtime_err<T>(error_type: RuntimeErrorType) -> Result<T, GenerativeProgr
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeProgram {
     pub output_node: OutputNode,
+    pub source_code: String,
+}
+
+impl Serialize for GenerativeProgram {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("GenerativeProgram", 1)?;
+        state.serialize_field("source_code", &self.source_code)?;
+        state.end()
+    }
 }
 
 pub fn parse_generative_table_line(

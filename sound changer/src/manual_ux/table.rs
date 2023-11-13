@@ -1,5 +1,7 @@
 use std::{collections::HashMap, fmt, rc::Rc, time::Instant};
 
+use serde::Serialize;
+
 use crate::manual_ux::generative::{execution::ExecutionContext, parse_generative_table_line};
 
 use super::{
@@ -10,20 +12,21 @@ use super::{
     project::Project,
 };
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Table {
     pub id: u16,
     pub table_descriptor: Rc<TableDescriptor>,
     pub table_rows: Vec<TableRow>,
+    pub src_table_rows: Vec<TableRow>,
     pub source_path: String,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TableDescriptor {
     pub column_descriptors: Vec<TableColumnDescriptor>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableRow {
     PopulatedTableRow {
         source: PopulatedTableRowSource,
@@ -36,25 +39,25 @@ pub enum TableRow {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum PopulatedTableRowSource {
     EXPLICIT,
     CACHE(Rc<GenerativeTableRowProcedure>),
     MUTATE,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct GenerativeTableRowProcedure {
     pub programs: Vec<GenerativeProgram>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TableColumnDescriptor {
     pub name: String,
     pub data_type: TableDataTypeDescriptor,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableDataTypeDescriptor {
     Enum(Vec<String>),
     String,
@@ -62,7 +65,7 @@ pub enum TableDataTypeDescriptor {
     Int,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableContents {
     Enum(RuntimeEnum),
     String(String),
@@ -267,10 +270,13 @@ pub fn load_table(
     let table_elapsed = table_start.elapsed();
     println!("Loaded table in {:?}", table_elapsed);
 
+    let src_table_rows = table_rows.clone();
+
     Ok(Table {
         id,
         table_descriptor,
         table_rows,
+        src_table_rows,
         source_path,
     })
 }

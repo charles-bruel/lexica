@@ -133,7 +133,7 @@ pub fn web_socket_listener() {
     for stream in server.incoming() {
         spawn(move || {
             let websocket_result = accept(stream.unwrap());
-            let mut websocket: WebSocket<TcpStream> = match websocket_result {
+            let websocket: WebSocket<TcpStream> = match websocket_result {
                 Ok(v) => v,
                 Err(v) => {
                     println!("{}", v.to_string());
@@ -142,62 +142,72 @@ pub fn web_socket_listener() {
             };
             println!("Successfully opened websocket");
 
-            let mut context = create_thread_context();
-
-            loop {
-                let temp = websocket.read();
-                let msg = match temp {
-                    Ok(v) => v,
-                    Err(_) => break,
-                };
-
-                use std::time::Instant;
-                let now = Instant::now();
-
-                let message = decode(msg.to_string());
-                let response = message.handle(&mut context);
-                let response_message = response.handle();
-                match response_message {
-                    Some(msg) => push_messages(&mut websocket, msg),
-                    None => panic!("Couldn't serialize response"),
-                };
-
-                while !context.queued_extra_messages.is_empty() {
-                    let extra_message = context.queued_extra_messages.pop_front().unwrap().handle();
-                    match extra_message {
-                        Some(msg) => push_messages(&mut websocket, msg),
-                        None => panic!("Couldn't serialize response"),
-                    };
-                }
-
-                let elapsed = now.elapsed();
-                match message {
-                    WebSocketMessage::SaveFile {
-                        file_path: _,
-                        data: _,
-                        overwrite: _,
-                    } => print!("Handled save file message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::LoadFile { file_path: _ } => {
-                        print!("Handled load file message in: {:.2?}\n", elapsed)
-                    }
-                    WebSocketMessage::LoadProgram {
-                        name: _,
-                        contents: _,
-                    } => print!("Handled load program message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::TryCompile { program: _ } => {
-                        print!("Handled try compile message in: {:.2?}\n", elapsed)
-                    }
-                    WebSocketMessage::RunSC {
-                        program_name: _,
-                        to_convert: _,
-                    } => print!("Handled run sound changer message in: {:.2?}\n", elapsed),
-                    WebSocketMessage::Unknown { error: _ } => {
-                        print!("Handled unknown message in: {:.2?}\n", elapsed)
-                    }
-                }
-            }
+            web_socket_loop(websocket);
             println!("Thread closed")
         });
+    }
+}
+
+fn web_socket_loop(mut websocket: WebSocket<TcpStream>) {
+    let mut context = create_thread_context();
+
+    loop {
+        let temp = websocket.read();
+        let msg = match temp {
+            Ok(v) => v,
+            Err(_) => break,
+        };
+
+        use std::time::Instant;
+        let now = Instant::now();
+
+        let message = decode(msg.to_string());
+        let response = message.handle(&mut context);
+        let response_message = response.handle();
+        match response_message {
+            Some(msg) => push_messages(&mut websocket, msg),
+            None => panic!("Couldn't serialize response"),
+        };
+
+        while !context.queued_extra_messages.is_empty() {
+            let extra_message = context.queued_extra_messages.pop_front().unwrap().handle();
+            match extra_message {
+                Some(msg) => push_messages(&mut websocket, msg),
+                None => panic!("Couldn't serialize response"),
+            };
+        }
+
+        let elapsed = now.elapsed();
+        match message {
+            WebSocketMessage::SaveFile {
+                file_path: _,
+                data: _,
+                overwrite: _,
+            } => println!("Handled save file message in: {:.2?}", elapsed),
+            WebSocketMessage::LoadFile { file_path: _ } => {
+                println!("Handled load file message in: {:.2?}", elapsed)
+            }
+            WebSocketMessage::LoadProgram {
+                name: _,
+                contents: _,
+            } => println!("Handled load program message in: {:.2?}", elapsed),
+            WebSocketMessage::TryCompile { program: _ } => {
+                println!("Handled try compile message in: {:.2?}", elapsed)
+            }
+            WebSocketMessage::RunSC {
+                program_name: _,
+                to_convert: _,
+            } => println!("Handled run sound changer message in: {:.2?}", elapsed),
+            WebSocketMessage::Unknown { error: _ } => {
+                println!("Handled unknown message in: {:.2?}", elapsed)
+            }
+            WebSocketMessage::LoadTable { contents: _ } => {
+                println!("Handled load table message in: {:.2?}", elapsed)
+            }
+            WebSocketMessage::RebuildTables { start_index: _ } => {
+                println!("Handled rebuild tables message in: {:.2?}", elapsed)
+            }
+        }
     }
 }
 

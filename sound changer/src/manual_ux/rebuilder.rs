@@ -158,14 +158,14 @@ impl Table {
 
         let elapsed = start.elapsed();
 
-        // 2) Output
-        println!();
-        let output = self.output(project);
-        println!("{}", output);
-        let path_str = self.source_path.clone() + ".out";
-        println!("Rebuilt table in {:?}", elapsed);
-
         if do_io {
+            // 2) Output
+            println!();
+            let output = self.output(project);
+            println!("{}", output);
+            let path_str = self.source_path.clone() + ".out";
+            println!("Rebuilt table in {:?}", elapsed);
+
             io::save_to_file(&path_str, &output, true, false);
         }
 

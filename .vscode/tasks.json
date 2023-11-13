@@ -18,10 +18,14 @@
 		},
 		{
 			"type": "cargo",
-			"command": "test",
+			"command": "llvm-cov",
+			"args": ["--lcov", "--output-path", "lcov.info"],
 			"problemMatcher": [
 				"$rustc"
 			],
+			"options": {
+				"cwd": "${workspaceFolder}/sound changer"
+			},
 			"group": {
 				"kind": "test",
 				"isDefault": true

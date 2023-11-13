@@ -1,3 +1,4 @@
+use crate::manual_ux::table::Table;
 use crate::sc::constructor::construct;
 use crate::sc::data::ConstructorError;
 use serde::{Deserialize, Serialize};
@@ -6,7 +7,7 @@ use super::io::*;
 use super::sc::applicator::*;
 use super::sc::data::{to_string, ApplicationError, ThreadContext};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub enum WebSocketMessage {
     SaveFile {
         file_path: String,
@@ -27,12 +28,18 @@ pub enum WebSocketMessage {
         program_name: String,
         to_convert: Vec<SCConversion>,
     },
+    LoadTable {
+        contents: String,
+    },
+    RebuildTables {
+        start_index: u16,
+    },
     Unknown {
         error: String,
     },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub enum WebSocketResponse {
     Success,
     Error { message: String },
@@ -40,6 +47,7 @@ pub enum WebSocketResponse {
     LoadFileResult { data: String },
     RunSCResult { to_convert: Vec<SCConversion> },
     CompilationResult { result: Option<ConstructorError> },
+    TableResult { table: Option<Table> },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -78,6 +86,8 @@ impl WebSocketMessage {
             WebSocketMessage::Unknown { error } => WebSocketResponse::Error {
                 message: format!("Unknown message, err: {}", error),
             },
+            WebSocketMessage::LoadTable { contents: _ } => todo!(),
+            WebSocketMessage::RebuildTables { start_index: _ } => todo!(),
         }
     }
 }
