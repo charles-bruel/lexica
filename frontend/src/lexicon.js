@@ -1,7 +1,6 @@
 function new_lexicon_state() {    
     return {
         names: ["POS", "Class", "Gender", "Word", "Translation", "Notes"],
-        types: ["text", "text", "text", "text", "text", "note"],
         lens: [50, 55, 65, 200, 150, 100],
         num_rows: 20,
         cell_data: [],
@@ -10,7 +9,7 @@ function new_lexicon_state() {
 
 var current_lexicon_table_state = new_lexicon_state();
 
-var lexicon_states = [current_lexicon_table_state];
+var lexicon_states = { 0: current_lexicon_table_state};
 var current_lexicon_id = 0;
 
 const lexicon_root_element = document.getElementById("lexicon-table");
@@ -25,7 +24,7 @@ function handle_lexicon_column_resize(entries) {
     }
 }
 
-function create_lexicon(row_count) {
+function create_lexicon() {
     lexicon_table_element = document.createElement("table");
     lexicon_table_element.className = "lexicon-table";
     lexicon_root_element.appendChild(lexicon_table_element);
@@ -86,18 +85,18 @@ function generate_lexicon_row(table_element, row_id) {
     }
 }
 
-function save_lexicon_state() {
-    current_lexicon_table_state.cell_data = [];
-    for(var i = 0;i < current_lexicon_table_state.names.length;i ++) {
-        current_lexicon_table_state.cell_data.push([]);
-        for(var j = 0;j < current_lexicon_table_state.num_rows;j ++) {
-            var element = document.getElementById("lexicon-" + j + ":" + i);
-            current_lexicon_table_state.cell_data[i].push(element.value);
-        }
-    }
+// function save_lexicon_state() {
+//     current_lexicon_table_state.cell_data = [];
+//     for(var i = 0;i < current_lexicon_table_state.names.length;i ++) {
+//         current_lexicon_table_state.cell_data.push([]);
+//         for(var j = 0;j < current_lexicon_table_state.num_rows;j ++) {
+//             var element = document.getElementById("lexicon-" + j + ":" + i);
+//             current_lexicon_table_state.cell_data[i].push(element.value);
+//         }
+//     }
 
-    lexicon_states[current_lexicon_id] = current_lexicon_table_state;
-}
+//     lexicon_states[current_lexicon_id] = current_lexicon_table_state;
+// }
 
 function delete_lexicon() {
     var container = document.getElementById("lexicon-table");
@@ -105,12 +104,64 @@ function delete_lexicon() {
 }
 
 function switch_lexicon_state(new_index) {
-    save_lexicon_state();
+    // save_lexicon_state();
     delete_lexicon();
-    lexicon_states[current_lexicon_id] = current_lexicon_table_state;
-    current_lexicon_id = new_index;
-    current_lexicon_table_state = lexicon_states[current_lexicon_id];
-    create_lexicon();
+    if(new_index in lexicon_states) {
+        lexicon_states[current_lexicon_id] = current_lexicon_table_state;
+        current_lexicon_id = new_index;
+        current_lexicon_table_state = lexicon_states[current_lexicon_id];
+        create_lexicon();  
+    } else {
+        post_message({ LoadTable: { contents: "1\nPOS|WORD|TRANSLATION|INDEX\n[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT\nROOT|ran|earth|0\n" }});
+    }
+}
+
+function load_lexicon_table(table) {
+    console.log(table);
+
+    id = table.id;
+    
+    names = []
+    lens = []
+    for(let column of table.table_descriptor.column_descriptors) {
+        names.push(column.name);
+        lens.push(column.column_display_width)
+    }
+
+    cell_data = []
+    for(let i = 0;i < table.table_descriptor.column_descriptors.length;i ++) {
+        cell_data.push([]);
+    }
+
+    for(let row of table.table_rows) {
+        if(Object.hasOwn(row, "PopulatedTableRow")) {
+            column = 0;
+            for(let elem of row.PopulatedTableRow.contents) {
+                cell_data[column].push(elem);
+                column++;
+            }
+        } else {
+            // TODO: Proper error message
+            alert("issue")
+        }
+    }
+
+    lexicon_states[id] = {
+        names: names,
+        lens: lens,
+        num_rows: 20,
+        cell_data: cell_data,
+    }
+
+    if(id == current_lexicon_id) {
+        switch_lexicon_state(current_lexicon_id);
+    }
 }
 
 create_lexicon();
+
+function load_lexicon_program() {
+    switch_lexicon_state(+document.getElementById("lexicon-table-select").value);
+}
+
+document.getElementById("lexicon-table-select").addEventListener('change', load_lexicon_program);

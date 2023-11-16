@@ -20,7 +20,7 @@ function handle_bottom_bar_button(index) {
     set_root_variable("--color", bottom_bar_state.colors[bottom_bar_state.selected_index]);
 
     switch_spreadsheet_state(index);
-    switch_lexicon_state(index);
+    // switch_lexicon_state(index); // TODO: Default stops associated with tabs
 
     document.getElementById("top-bar-tab-name").textContent = bottom_bar_state.names[bottom_bar_state.selected_index];
 
@@ -68,7 +68,6 @@ function add_bottom_bar_button(name) {
     var element = generate_bottom_bar_button(bottom_bar_state.names.length - 1);
     parent_elem.appendChild(element);
     bottom_bar_state.colors.push(color_options[Math.floor(Math.random()*color_options.length)]);
-    lexicon_states.push(new_lexicon_state());
     spreadsheet_states.push(new_spreadsheet_state());
     handle_bottom_bar_button(spreadsheet_states.length - 1);
 }

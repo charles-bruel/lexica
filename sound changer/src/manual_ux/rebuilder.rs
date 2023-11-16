@@ -130,7 +130,8 @@ impl Table {
                                 GenerativeProgramExecutionOutput::Enum(v) => {
                                     // TODO: Check specific enum type
                                     descriptor.column_descriptors[i].data_type.assert_enum();
-                                    let table_contents = TableContents::Enum(v[actual_index]);
+                                    let table_contents =
+                                        TableContents::Enum(v[actual_index].clone());
                                     contents.push(table_contents);
                                 }
                             }

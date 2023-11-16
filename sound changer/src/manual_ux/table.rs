@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt, rc::Rc, time::Instant};
 
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use crate::manual_ux::generative::{execution::ExecutionContext, parse_generative_table_line};
 
@@ -55,6 +55,7 @@ pub struct GenerativeTableRowProcedure {
 pub struct TableColumnDescriptor {
     pub name: String,
     pub data_type: TableDataTypeDescriptor,
+    pub column_display_width: u32,
 }
 
 #[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
@@ -65,12 +66,26 @@ pub enum TableDataTypeDescriptor {
     Int,
 }
 
-#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableContents {
     Enum(RuntimeEnum),
     String(String),
     UInt(u32),
     Int(i32),
+}
+
+impl Serialize for TableContents {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            TableContents::Enum(v) => serializer.serialize_str(v.name.as_str()),
+            TableContents::String(v) => serializer.serialize_str(v),
+            TableContents::UInt(v) => serializer.serialize_str(&v.to_string()),
+            TableContents::Int(v) => serializer.serialize_str(&v.to_string()),
+        }
+    }
 }
 
 impl From<String> for TableContents {
@@ -236,6 +251,7 @@ pub fn load_table(
         descriptors.push(TableColumnDescriptor {
             name: name.to_string(),
             data_type,
+            column_display_width: 50,
         });
 
         i += 1;
@@ -367,6 +383,7 @@ fn parse_table_cell(
                         index: i,
                         table: TableSpecifier { table_id },
                         column: ColumnSpecifier { column_id },
+                        name: test_string,
                     }));
                 }
 

@@ -1,4 +1,4 @@
-use crate::manual_ux::table::Table;
+use crate::manual_ux::table::{self, Table};
 use crate::sc::constructor::construct;
 use crate::sc::data::ConstructorError;
 use serde::{Deserialize, Serialize};
@@ -86,7 +86,25 @@ impl WebSocketMessage {
             WebSocketMessage::Unknown { error } => WebSocketResponse::Error {
                 message: format!("Unknown message, err: {}", error),
             },
-            WebSocketMessage::LoadTable { contents: _ } => todo!(),
+            WebSocketMessage::LoadTable { contents } => {
+                let mut previous_descriptors = context
+                    .project
+                    .tables
+                    .iter()
+                    .filter_map(|p| {
+                        p.as_ref()
+                            .map(|v| (v.id as usize, v.table_descriptor.clone()))
+                    })
+                    .collect();
+                match table::load_table(
+                    contents.as_str(),
+                    &mut previous_descriptors,
+                    String::from("NOT GIVEN"),
+                ) {
+                    Ok(v) => WebSocketResponse::TableResult { table: Some(v) },
+                    Err(_) => WebSocketResponse::TableResult { table: None },
+                }
+            }
             WebSocketMessage::RebuildTables { start_index: _ } => todo!(),
         }
     }

@@ -40,6 +40,13 @@ function create_socket() {
             if(Object.hasOwn(last_message, 'LoadProgram')) { 
                 handle_program_area_compile_success();
             }
+        } else if(Object.hasOwn(obj, 'TableResult')) {
+            if(obj.TableResult.table === null) {
+                // TODO: Proper error handling
+                alert("compilation error")
+            } else {
+                load_lexicon_table(obj.TableResult.table);
+            }
         } else {
             alert(`[message] Unknown data received from server: ${event.data}`);
         }
@@ -66,7 +73,8 @@ function create_socket() {
 
 function get_state_for_save() {
     save_spreadsheet_state();
-    save_lexicon_state();
+    // TODO: Table saving
+    // save_lexicon_state();
     handle_program_manager_save();
 
     var obj = {};
@@ -90,7 +98,7 @@ function load_save_state(data) {
     current_lexicon_id = obj.current_index;
 
     current_spreadsheet_state = spreadsheet_states[current_spreadsheet_id];
-    current_lexicon_state = lexicon_states[current_lexicon_id];
+    current_lexicon_table_state = lexicon_states[current_lexicon_id];
 
     programs = obj.programs;
 

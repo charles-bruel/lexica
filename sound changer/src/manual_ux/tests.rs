@@ -268,7 +268,8 @@ fn table_type_load_correct() {
                 TableContents::Enum(RuntimeEnum {
                     index: 0,
                     table: TableSpecifier { table_id: 0 },
-                    column: ColumnSpecifier { column_id: 0 }
+                    column: ColumnSpecifier { column_id: 0 },
+                    name: String::from("a1"),
                 })
             );
             assert_eq!(contents[1], TableContents::String(String::from("test")));

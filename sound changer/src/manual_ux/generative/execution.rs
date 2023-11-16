@@ -130,11 +130,13 @@ impl ComplexComparisionType {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RuntimeEnum {
     pub index: usize,
     pub table: TableSpecifier,
     pub column: ColumnSpecifier,
+    // TODO: Find where this can be used instead of a lookup
+    pub name: String,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -370,11 +372,24 @@ impl EnumNode {
                     .iter()
                     .position(|elem| elem.to_lowercase() == key.to_lowercase())
                 {
-                    Some(index) => Ok(vec![RuntimeEnum {
-                        index,
-                        table: table_specifer,
-                        column: *column_specifier,
-                    }]),
+                    Some(index) => {
+                        let name = match &context.project.tables[table_specifer.table_id]
+                            .as_ref()
+                            .unwrap()
+                            .table_descriptor
+                            .column_descriptors[column_specifier.column_id]
+                            .data_type
+                        {
+                            TableDataTypeDescriptor::Enum(v) => v[index].clone(),
+                            _ => panic!(),
+                        };
+                        Ok(vec![RuntimeEnum {
+                            index,
+                            table: table_specifer,
+                            column: *column_specifier,
+                            name,
+                        }])
+                    }
                     None => runtime_err(RuntimeErrorType::EnumNotFound),
                 }
             }
@@ -472,6 +487,7 @@ fn mutate(
         column_descriptors: vec![TableColumnDescriptor {
             name: String::from("AUTO GENERATED FROM MUTATE"),
             data_type,
+            column_display_width: 50,
         }],
     });
     let mut rows = Vec::new();
@@ -563,11 +579,11 @@ impl FilterPredicate {
         // Crazy multi-level match statement
         match self {
             FilterPredicate::EnumCompare(_, comp_type, node) => match input_data_type {
-                TableDataTypeDescriptor::Enum(_) => match contents[column_id] {
+                TableDataTypeDescriptor::Enum(_) => match &contents[column_id] {
                     TableContents::Enum(v) => {
                         let check_value = node.eval(context)?;
                         if check_value.len() == 1 {
-                            Ok(comp_type.compare(&v, &check_value[0]))
+                            Ok(comp_type.compare(&v, &&check_value[0]))
                         } else {
                             // Check to see if it matches with any of the given values
                             todo!()
