@@ -24,6 +24,7 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
     let mut index = start as usize;
     while index < project.tables.len() {
         if let Some(mut table) = project.tables[index].clone() {
+            table.reset();
             table.rebuild(project, base_path.clone(), do_io).unwrap();
 
             project.tables[index] = Some(table);
@@ -34,6 +35,11 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
 }
 
 impl Table {
+    fn reset(&mut self) {
+        // Replaces table_rows with src_table_rows
+        self.table_rows = self.src_table_rows.clone();
+    }
+
     fn rebuild(
         &mut self,
         project: &mut Project,

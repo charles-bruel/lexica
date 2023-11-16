@@ -73,14 +73,13 @@ function create_socket() {
 
 function get_state_for_save() {
     save_spreadsheet_state();
-    // TODO: Table saving
-    // save_lexicon_state();
+    save_table_state();
     handle_program_manager_save();
 
     var obj = {};
     obj.bottom_bar_state = bottom_bar_state;
     obj.spreadsheet_states = spreadsheet_states;
-    obj.lexicon_states = table_states;
+    obj.table_sources = table_sources;
     obj.current_index = current_spreadsheet_id;
     obj.programs = programs;
     return JSON.stringify(obj);
@@ -92,13 +91,12 @@ function load_save_state(data) {
     var obj = JSON.parse(data);
     bottom_bar_state = obj.bottom_bar_state;
     spreadsheet_states = obj.spreadsheet_states;
-    table_states = obj.lexicon_states;
+    table_sources = obj.table_sources;
 
     current_spreadsheet_id = obj.current_index;
-    current_table_id = obj.current_index;
+    current_table_id = +document.getElementById("lexicon-table-select").value;
 
     current_spreadsheet_state = spreadsheet_states[current_spreadsheet_id];
-    current_lexicon_table_state = table_states[current_table_id];
 
     programs = obj.programs;
 
@@ -112,8 +110,9 @@ function load_save_state(data) {
     
     compile_programs();
 
+    compile_tables();
+
     create_spreadsheet();
-    create_table_display();
     create_bottom_bar();
 
     handle_bottom_bar_button(obj.current_index);

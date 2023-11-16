@@ -75,18 +75,12 @@ function generate_table_row(table_element, row_id) {
     }
 }
 
-// function save_lexicon_state() {
-//     current_lexicon_table_state.cell_data = [];
-//     for(var i = 0;i < current_lexicon_table_state.names.length;i ++) {
-//         current_lexicon_table_state.cell_data.push([]);
-//         for(var j = 0;j < current_lexicon_table_state.num_rows;j ++) {
-//             var element = document.getElementById("lexicon-" + j + ":" + i);
-//             current_lexicon_table_state.cell_data[i].push(element.value);
-//         }
-//     }
-
-//     lexicon_states[current_lexicon_id] = current_lexicon_table_state;
-// }
+function save_table_state() {
+    // Check if we're editing the textarea and save it if we are
+    if(document.getElementById("lexicon-textarea").style.display == "block") {
+        table_sources[current_table_id] = document.getElementById("lexicon-textarea").value;
+    }
+}
 
 function delete_table_display() {
     var container = document.getElementById("lexicon-table");
@@ -107,8 +101,18 @@ function switch_table(new_index) {
     } else {
         current_table_id = new_index;
         show_blank_table_elements();
-        // post_message({ LoadTable: { contents: "1\nPOS|WORD|TRANSLATION|INDEX\n[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT\nROOT|ran|earth|0\n" }});
     }
+}
+
+function compile_tables() {
+    // We've just loaded a save, so we have a bunch of table sources but
+    // they aren't loaded yet. We need to load them now.
+    for(let id in table_sources) {
+        post_message({ LoadTable: { contents: table_sources[id] }});
+    }
+
+    // Rebuild all tables
+    post_message({ RebuildTables: { start_index: 0 }});
 }
 
 function load_table_table(table) {
@@ -148,8 +152,6 @@ function load_table_table(table) {
         cell_data: cell_data,
     }
 
-    console.log(id + " vs " + current_table_id);
-
     if(id == current_table_id) {
         switch_table(current_table_id);
     }
@@ -173,6 +175,7 @@ function on_table_selector_change() {
 }
 
 function save_and_send_table() {
+    var id = +document.getElementById("lexicon-table-select").value;
     // Get textarea value to send
     var text = document.getElementById("lexicon-textarea").value;
     // Send message to backend
