@@ -45,7 +45,7 @@ function create_socket() {
                 // TODO: Proper error handling
                 alert("compilation error")
             } else {
-                load_lexicon_table(obj.TableResult.table);
+                load_table_table(obj.TableResult.table);
             }
         } else {
             alert(`[message] Unknown data received from server: ${event.data}`);
@@ -80,7 +80,7 @@ function get_state_for_save() {
     var obj = {};
     obj.bottom_bar_state = bottom_bar_state;
     obj.spreadsheet_states = spreadsheet_states;
-    obj.lexicon_states = lexicon_states;
+    obj.lexicon_states = table_states;
     obj.current_index = current_spreadsheet_id;
     obj.programs = programs;
     return JSON.stringify(obj);
@@ -92,13 +92,13 @@ function load_save_state(data) {
     var obj = JSON.parse(data);
     bottom_bar_state = obj.bottom_bar_state;
     spreadsheet_states = obj.spreadsheet_states;
-    lexicon_states = obj.lexicon_states;
+    table_states = obj.lexicon_states;
 
     current_spreadsheet_id = obj.current_index;
-    current_lexicon_id = obj.current_index;
+    current_table_id = obj.current_index;
 
     current_spreadsheet_state = spreadsheet_states[current_spreadsheet_id];
-    current_lexicon_table_state = lexicon_states[current_lexicon_id];
+    current_lexicon_table_state = table_states[current_table_id];
 
     programs = obj.programs;
 
@@ -106,14 +106,14 @@ function load_save_state(data) {
     clear_program_dropdown();
     insert_program_dropdown(obj.programs); 
 
-    delete_lexicon();
+    delete_table_display();
     delete_spreadsheet();
     delete_bottom_bar();
     
     compile_programs();
 
     create_spreadsheet();
-    create_lexicon();
+    create_table_display();
     create_bottom_bar();
 
     handle_bottom_bar_button(obj.current_index);

@@ -31,10 +31,12 @@
             <div id="lexicon-manager">
                 <label id="lexicon-manager-label">Table #:</label>
                 <input id="lexicon-table-select" type="number" min="0" max="32768">
-                <button id="lexicon-button-edit">Edit</button>
-                <button id="lexicon-button-save">Save</button>
+                <button id="lexicon-button-edit" style="display:none">Edit</button>
+                <button id="lexicon-button-save" style="display:none">Save</button>
             </div>
             <div id="lexicon-table" class="div-scroll"></div>
+            <textarea id="lexicon-textarea" style="display:none" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+            <div id="lexicon-blank-elements" style="display:none"><button id="lexicon-create-new">Create New Table</button></div>
         </div>
         <div id="spreadsheet" class="div-top-level">
             <input id="spreadsheet-cell-editor">

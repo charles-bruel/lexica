@@ -1,21 +1,11 @@
-function new_lexicon_state() {    
-    return {
-        names: ["POS", "Class", "Gender", "Word", "Translation", "Notes"],
-        lens: [50, 55, 65, 200, 150, 100],
-        num_rows: 20,
-        cell_data: [],
-    }
-}
+var table_sources = {};
+var table_states = {};
+var current_table_id = 0;
 
-var current_lexicon_table_state = new_lexicon_state();
+const table_root_element = document.getElementById("lexicon-table");
+var table_table_element;
 
-var lexicon_states = { 0: current_lexicon_table_state};
-var current_lexicon_id = 0;
-
-const lexicon_root_element = document.getElementById("lexicon-table");
-var lexicon_table_element;
-
-function handle_lexicon_column_resize(entries) {
+function handle_table_column_resize(entries) {
     for(const entry of entries) {
         if(entry.target.parentNode.id.startsWith("lexicon-header-")) {
             var size = entry.borderBoxSize[0].inlineSize;
@@ -24,17 +14,17 @@ function handle_lexicon_column_resize(entries) {
     }
 }
 
-function create_lexicon() {
-    lexicon_table_element = document.createElement("table");
-    lexicon_table_element.className = "lexicon-table";
-    lexicon_root_element.appendChild(lexicon_table_element);
+function create_table_display() {
+    table_table_element = document.createElement("table");
+    table_table_element.className = "lexicon-table";
+    table_root_element.appendChild(table_table_element);
 
     var header_row = document.createElement("tr");
-    lexicon_table_element.appendChild(header_row);
+    table_table_element.appendChild(header_row);
 
     var counter = 0;
 
-    const observer = new ResizeObserver((entries) => { handle_lexicon_column_resize(entries); });
+    const observer = new ResizeObserver((entries) => { handle_table_column_resize(entries); });
     for(var i = 0;i < current_lexicon_table_state.names.length;i ++) {
         var header = document.createElement("th");
         var text_container = document.createElement("div");
@@ -49,10 +39,10 @@ function create_lexicon() {
         observer.observe(text_container);
     }
 
-    lexicon_table_element.style.width = counter + "px";
+    table_table_element.style.width = counter + "px";
 
     for(var i = 0;i < current_lexicon_table_state.num_rows;i ++) {
-        generate_lexicon_row(lexicon_table_element, i);
+        generate_table_row(table_table_element, i);
     }
     
     if(current_lexicon_table_state.cell_data.length == 0) {
@@ -68,7 +58,7 @@ function create_lexicon() {
     }
 }
 
-function generate_lexicon_row(table_element, row_id) {
+function generate_table_row(table_element, row_id) {
     var row = document.createElement("tr");
     table_element.appendChild(row);
 
@@ -98,25 +88,30 @@ function generate_lexicon_row(table_element, row_id) {
 //     lexicon_states[current_lexicon_id] = current_lexicon_table_state;
 // }
 
-function delete_lexicon() {
+function delete_table_display() {
     var container = document.getElementById("lexicon-table");
     container.replaceChildren();
 }
 
-function switch_lexicon_state(new_index) {
+function switch_table(new_index) {
     // save_lexicon_state();
-    delete_lexicon();
-    if(new_index in lexicon_states) {
-        lexicon_states[current_lexicon_id] = current_lexicon_table_state;
-        current_lexicon_id = new_index;
-        current_lexicon_table_state = lexicon_states[current_lexicon_id];
-        create_lexicon();  
+    hide_blank_table_elements()
+    delete_table_display();
+    if(new_index in table_states) {
+        if(new_index != current_table_id && current_table_id in table_states) {
+            table_states[current_table_id] = current_lexicon_table_state;
+        }
+        current_table_id = new_index;
+        current_lexicon_table_state = table_states[current_table_id];
+        create_table_display();
     } else {
-        post_message({ LoadTable: { contents: "1\nPOS|WORD|TRANSLATION|INDEX\n[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT\nROOT|ran|earth|0\n" }});
+        current_table_id = new_index;
+        show_blank_table_elements();
+        // post_message({ LoadTable: { contents: "1\nPOS|WORD|TRANSLATION|INDEX\n[ROOT,NOUN,PRONOUN,VERB,ADJECTIVE,ADVERB,PARTICLE]|STRING|STRING|UINT\nROOT|ran|earth|0\n" }});
     }
 }
 
-function load_lexicon_table(table) {
+function load_table_table(table) {
     console.log(table);
 
     id = table.id;
@@ -142,26 +137,92 @@ function load_lexicon_table(table) {
             }
         } else {
             // TODO: Proper error message
-            alert("issue")
+            // alert("issue")
         }
     }
 
-    lexicon_states[id] = {
+    table_states[id] = {
         names: names,
         lens: lens,
-        num_rows: 20,
+        num_rows: cell_data[0].length,
         cell_data: cell_data,
     }
 
-    if(id == current_lexicon_id) {
-        switch_lexicon_state(current_lexicon_id);
+    console.log(id + " vs " + current_table_id);
+
+    if(id == current_table_id) {
+        switch_table(current_table_id);
     }
 }
 
-create_lexicon();
-
-function load_lexicon_program() {
-    switch_lexicon_state(+document.getElementById("lexicon-table-select").value);
+function show_blank_table_elements() {
+    document.getElementById("lexicon-blank-elements").style.display = "block";
+    // Also hide the edit button
+    document.getElementById("lexicon-button-edit").style.display = "none";
 }
 
-document.getElementById("lexicon-table-select").addEventListener('change', load_lexicon_program);
+function hide_blank_table_elements() {
+    document.getElementById("lexicon-blank-elements").style.display = "none";
+    // Also show the edit button
+    document.getElementById("lexicon-button-edit").style.display = "block";
+}
+
+function on_table_selector_change() {
+    var id = +document.getElementById("lexicon-table-select").value;
+    switch_table(id);
+}
+
+function save_and_send_table() {
+    // Get textarea value to send
+    var text = document.getElementById("lexicon-textarea").value;
+    // Send message to backend
+    post_message({ LoadTable: { contents: text }});
+
+    exit_table_edit_mode();
+    // Send rebuild message
+    post_message({ RebuildTables: { start_index: id }});
+}
+
+function create_new_table() {
+    var id = +document.getElementById("lexicon-table-select").value;
+    // If we already have contents for this table, it's been created
+    // and we're waiting on the response from the server, so we don't
+    // make anything new
+    if(id in table_sources) {
+        return;
+    }
+    table_sources[id] = `${id}\nCOLUMN1\nSTRING\nfoo`;
+    // Update backend with table contents
+    post_message({ LoadTable: { contents: table_sources[id] }});
+}
+
+function enter_table_edit_mode() {
+    // Show save button
+    document.getElementById("lexicon-button-save").style.display = "block";
+    // Hide edit button
+    document.getElementById("lexicon-button-edit").style.display = "none";
+    // Show textarea
+    document.getElementById("lexicon-textarea").style.display = "block";
+    // Hide regular table display
+    document.getElementById("lexicon-table").style.display = "none";
+    // Update textarea contents
+    document.getElementById("lexicon-textarea").value = table_sources[current_table_id];
+}
+
+function exit_table_edit_mode() {
+    // Hide save button
+    document.getElementById("lexicon-button-save").style.display = "none";
+    // Show edit button
+    document.getElementById("lexicon-button-edit").style.display = "block";
+    // Hide textarea
+    document.getElementById("lexicon-textarea").style.display = "none";
+    // Show regular table display
+    document.getElementById("lexicon-table").style.display = "block";
+    // Save textarea contents
+    table_sources[current_table_id] = document.getElementById("lexicon-textarea").value;
+}
+
+document.getElementById("lexicon-table-select").addEventListener('change', on_table_selector_change);
+document.getElementById("lexicon-create-new").addEventListener('mousedown', create_new_table);
+document.getElementById("lexicon-button-save").addEventListener('mousedown', save_and_send_table);
+document.getElementById("lexicon-button-edit").addEventListener('mousedown', enter_table_edit_mode);

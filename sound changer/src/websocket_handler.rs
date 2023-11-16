@@ -1,3 +1,4 @@
+use crate::manual_ux::rebuilder::rebuild;
 use crate::manual_ux::table::{self, Table};
 use crate::sc::constructor::construct;
 use crate::sc::data::ConstructorError;
@@ -67,25 +68,25 @@ pub fn decode(raw_message: String) -> WebSocketMessage {
 }
 
 impl WebSocketMessage {
-    pub fn handle(&self, context: &mut ThreadContext) -> WebSocketResponse {
+    pub fn handle(&self, context: &mut ThreadContext) -> Vec<WebSocketResponse> {
         match self {
             WebSocketMessage::SaveFile {
                 file_path,
                 data,
                 overwrite,
-            } => handle_save_file(file_path, data, *overwrite),
-            WebSocketMessage::LoadFile { file_path } => handle_load_file(file_path),
+            } => vec![handle_save_file(file_path, data, *overwrite)],
+            WebSocketMessage::LoadFile { file_path } => vec![handle_load_file(file_path)],
             WebSocketMessage::LoadProgram { name, contents } => {
-                handle_load_program(name, contents, context)
+                vec![handle_load_program(name, contents, context)]
             }
-            WebSocketMessage::TryCompile { program } => handle_try_compilation(program),
+            WebSocketMessage::TryCompile { program } => vec![handle_try_compilation(program)],
             WebSocketMessage::RunSC {
                 program_name,
                 to_convert,
-            } => handle_run_sc(program_name, to_convert, context),
-            WebSocketMessage::Unknown { error } => WebSocketResponse::Error {
+            } => vec![handle_run_sc(program_name, to_convert, context)],
+            WebSocketMessage::Unknown { error } => vec![WebSocketResponse::Error {
                 message: format!("Unknown message, err: {}", error),
-            },
+            }],
             WebSocketMessage::LoadTable { contents } => {
                 let mut previous_descriptors = context
                     .project
@@ -101,11 +102,36 @@ impl WebSocketMessage {
                     &mut previous_descriptors,
                     String::from("NOT GIVEN"),
                 ) {
-                    Ok(v) => WebSocketResponse::TableResult { table: Some(v) },
-                    Err(_) => WebSocketResponse::TableResult { table: None },
+                    Ok(v) => {
+                        context.project.insert_table(v.clone());
+                        vec![WebSocketResponse::TableResult { table: Some(v) }]
+                    }
+                    Err(_) => vec![WebSocketResponse::TableResult { table: None }],
                 }
             }
-            WebSocketMessage::RebuildTables { start_index: _ } => todo!(),
+            WebSocketMessage::RebuildTables { start_index } => {
+                rebuild(
+                    &mut context.project,
+                    *start_index,
+                    String::from("TODO"),
+                    false,
+                );
+
+                // Send all tables from after the start index
+                let mut result = Vec::new();
+                for table in context
+                    .project
+                    .tables
+                    .iter()
+                    .skip(*start_index as usize)
+                    .flatten()
+                {
+                    result.push(WebSocketResponse::TableResult {
+                        table: Some(table.clone()),
+                    });
+                }
+                result
+            }
         }
     }
 }

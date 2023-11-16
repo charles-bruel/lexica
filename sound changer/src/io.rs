@@ -162,13 +162,14 @@ fn web_socket_loop(mut websocket: WebSocket<TcpStream>) {
         let now = Instant::now();
 
         let message = decode(msg.to_string());
-        let response = message.handle(&mut context);
-        let response_message = response.handle();
-        match response_message {
-            Some(msg) => push_messages(&mut websocket, msg),
-            None => panic!("Couldn't serialize response"),
-        };
-
+        let responses = message.handle(&mut context);
+        for response in responses {
+            let response_message = response.handle();
+            match response_message {
+                Some(msg) => push_messages(&mut websocket, msg),
+                None => panic!("Couldn't serialize response"),
+            };
+        }
         while !context.queued_extra_messages.is_empty() {
             let extra_message = context.queued_extra_messages.pop_front().unwrap().handle();
             match extra_message {

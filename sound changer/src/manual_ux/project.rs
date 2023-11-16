@@ -9,6 +9,27 @@ pub struct Project {
     pub tables: Vec<Option<Table>>,
 }
 
+impl Project {
+    pub fn insert_table(&mut self, table: Table) {
+        // Inserts a table into the the vector of tables
+        // First checks if the vector is big enough to not need expanding
+        // If it is, it replaces the relevant None with Some(table)
+        // If it isn't, it expands the vector to the required size and then inserts the table
+        let id: usize = table.id.into();
+        if id < self.tables.len() {
+            self.tables[id] = Option::Some(table);
+        } else {
+            let required_capacity = id + 1;
+            let mut i = self.tables.len();
+            while i < required_capacity {
+                self.tables.push(Option::None);
+                i += 1;
+            }
+            self.tables[id] = Option::Some(table);
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum ProjectLoadError {
     TableError(TableLoadingError),
