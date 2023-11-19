@@ -1,3 +1,4 @@
+pub mod conjugator;
 pub mod generative;
 pub mod output;
 pub mod project;
