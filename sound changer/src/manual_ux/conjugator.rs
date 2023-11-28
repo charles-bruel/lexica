@@ -1,4 +1,6 @@
-use std::{collections::HashMap, rc::Rc};
+// TODO: Custom char that is an enum for stronger typing on alternations
+
+use std::{collections::HashMap, fmt, rc::Rc};
 
 use tabled::{builder::Builder, settings::Style};
 
@@ -6,12 +8,13 @@ use tabled::{builder::Builder, settings::Style};
 pub struct ConjugatorInput {
     pub words: Vec<Vec<String>>,
     pub max_conjugations: usize,
-    pub max_interconjugation_roots: usize,
+    pub max_intraconjugation_roots: usize,
     pub max_alternations: usize,
 }
 
-pub trait Conjugation {
-    fn conjugate(&self, roots: Vec<String>, alternation_data: usize) -> String;
+pub trait Conjugation: fmt::Debug {
+    fn conjugate(&self, roots: &[String], alternation_info: &[usize]) -> Vec<String>;
+    fn to_string(&self) -> String;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -34,16 +37,42 @@ pub struct Alternation {
 }
 
 impl Conjugation for AffixConjugation {
-    fn conjugate(&self, _roots: Vec<String>, _alternation_data: usize) -> String {
-        todo!()
+    fn conjugate(&self, roots: &[String], alternation_data: &[usize]) -> Vec<String> {
+        let mut conjugated_forms = Vec::new();
+        for affix_set in &self.affices {
+            let root = roots[affix_set.root_id].as_str();
+            let mut result = format!("{}{}{}", affix_set.prefix, root, affix_set.suffix);
+
+            for alternation_id in alternation_data {
+                let alternation_set = &self.alternations[*alternation_id];
+                for alternation in alternation_set {
+                    let target = &alternation.target_pattern;
+                    let replacement = match &alternation.replacement_pattern {
+                        Some(c) => String::from(*c),
+                        None => String::from(""),
+                    };
+                    result = result.replace(target, &replacement.to_string());
+                }
+            }
+
+            conjugated_forms.push(result);
+        }
+
+        conjugated_forms
+    }
+
+    fn to_string(&self) -> String {
+        format!("{:?}", self.alternations)
     }
 }
 
+#[derive(Debug)]
 pub enum ConjugatedWord {
     Regular {
         roots: Vec<String>,
+        // TODO: Make this Weak<dyn Conjugation>
         conjugation: Rc<dyn Conjugation>,
-        alternation_id: usize,
+        alternation_info: Vec<usize>,
     },
     Irregular {
         word: Vec<String>,
@@ -57,14 +86,93 @@ pub struct ConjugatorOutput {
 
 type AlternationIntermediateResult = Option<(String, String, Vec<(Option<char>, Option<char>)>)>;
 
+type InternalAlternation = (String, Vec<(Option<char>, Option<char>)>);
+
+type InternalAlternationBlob<'a> =
+    HashMap<&'a (Option<char>, Option<char>), (Vec<(usize, usize)>, usize)>;
+
+/// Creates a set of affix conjugations for the input.
 pub fn create_conjugations(input: ConjugatorInput) -> ConjugatorOutput {
     // First we model each word as it's own conjugation
-    // Then we try to find commonalities between them
+    // Then we try to find commonalities between them and eliminate
 
-    let mut conjugations = create_base_conjugations(&input);
+    let (mut conjugations, mut words) = create_base_conjugations(&input);
 
-    remove_duplicate_conjugations(&mut conjugations);
+    remove_duplicate_conjugations(&mut conjugations, &mut words);
 
+    find_and_collapse_alternations(&input, &mut conjugations, &mut words);
+
+    let table_string = {
+        let mut builder = Builder::default();
+
+        let mut headers = Vec::new();
+        for id in 0..conjugations.len() {
+            headers.push(id.to_string());
+        }
+        builder.set_header(headers);
+
+        for index in 0..conjugations[0].affices.len() {
+            let mut strings = Vec::new();
+            for conjugation in &conjugations {
+                let affix = &conjugation.affices[index];
+                strings.push(format!(
+                    "{}-{}-{}",
+                    affix.prefix, affix.root_id, affix.suffix
+                ));
+            }
+            builder.push_record(strings);
+        }
+
+        let mut table = builder.build();
+        table.with(Style::markdown()).to_string()
+    };
+
+    println!("{}", conjugations[0].to_string());
+    println!("{}", table_string);
+
+    verify_conjugations(&words, &input.words);
+
+    // Cast all AffixConjugations to dyn Conjugation
+    let final_conjugations = conjugations
+        .into_iter()
+        .map(|x| x as Rc<dyn Conjugation>)
+        .collect();
+
+    ConjugatorOutput {
+        conjugations: final_conjugations,
+        conjugated_words: words,
+    }
+}
+
+/// Conjugates every word and verifies that the conjugations are correct.
+/// Panics if they are not.
+fn verify_conjugations(words: &[ConjugatedWord], original_words: &[Vec<String>]) {
+    for (word, expected_forms) in words.iter().zip(original_words.iter()) {
+        match word {
+            ConjugatedWord::Regular {
+                roots,
+                conjugation,
+                alternation_info,
+            } => {
+                let conjugated_forms = conjugation.conjugate(roots, alternation_info);
+                assert_eq!(conjugated_forms.len(), expected_forms.len());
+                for (conjugated_form, expected_form) in
+                    conjugated_forms.iter().zip(expected_forms.iter())
+                {
+                    assert_eq!(conjugated_form, expected_form);
+                }
+            }
+            ConjugatedWord::Irregular { word: _ } => {}
+        }
+    }
+}
+
+/// Finds and collapses alternations within the conjugations.
+fn find_and_collapse_alternations(
+    input: &ConjugatorInput,
+    conjugations: &mut Vec<Rc<AffixConjugation>>,
+    words: &mut [ConjugatedWord],
+) {
     // Now we want to find similar conjugations, where simple alternations can be made.
     // i.e. ita ito is => eta eto es.
     // Alternations are represented within the affix with an escape sequence, \0, \1, \2, etc.
@@ -73,16 +181,24 @@ pub fn create_conjugations(input: ConjugatorInput) -> ConjugatorOutput {
     // We first try collapsing every pair of conjugations with one alternation, then increase.
     for alternation_count in 1..input.max_alternations {
         // The flag allows us to break multiple times.
-        let mut flag = true;
+        let mut flag: bool = true;
         while flag {
             flag = false;
+
+            struct AlternationCollapse {
+                index1: usize,
+                index2: usize,
+                alternation_idx1: Vec<usize>,
+                alternation_idx2: Vec<usize>,
+                new_conjugation: AffixConjugation,
+            }
 
             let mut action = None;
 
             // We loop through every pair of conjugations
-            'outer: for (index, conjugation) in conjugations.iter().enumerate() {
+            'outer: for (index1, conjugation) in conjugations.iter().enumerate() {
                 'pair_loop: for (index2, conjugation2) in conjugations.iter().enumerate() {
-                    if index >= index2 {
+                    if index1 >= index2 {
                         continue;
                     }
 
@@ -136,22 +252,7 @@ pub fn create_conjugations(input: ConjugatorInput) -> ConjugatorOutput {
 
                     // We use a HashMap to store the intermediate alternation blob because we need to keep
                     // track of the alternation ids.
-                    let mut combined_alternations = HashMap::new();
-
-                    for (affix_index, alternations) in alternation_sum.iter().enumerate() {
-                        for (alternation_index, alternation) in alternations.1.iter().enumerate() {
-                            if !combined_alternations.contains_key(alternation) {
-                                combined_alternations
-                                    .insert(alternation, (Vec::new(), combined_alternations.len()));
-                            }
-                            // We need to add the ids to the HashMap
-                            combined_alternations
-                                .get_mut(alternation)
-                                .unwrap()
-                                .0
-                                .push((alternation_index, affix_index));
-                        }
-                    }
+                    let combined_alternations = combine_alternations(&alternation_sum);
 
                     // If the combined map has more than max_alternations, we can't use alternations on these
                     // two conjugations.
@@ -159,126 +260,222 @@ pub fn create_conjugations(input: ConjugatorInput) -> ConjugatorOutput {
                         continue;
                     }
 
-                    println!("{}:{} => {:?}", index, index2, combined_alternations);
-
                     // We need to make a new list of affices
-                    let mut new_affices = Vec::new();
-                    for iter_out in alternation_sum
-                        .iter()
-                        .zip(conjugation.affices.iter())
-                        .enumerate()
-                    {
-                        let item = iter_out.1;
-                        let mut affix = item.0 .0.clone();
-                        let root_id = item.1.root_id;
-                        let affix_id = iter_out.0;
+                    let new_affices =
+                        form_new_affices(&alternation_sum, conjugation, &combined_alternations);
 
-                        affix = affix
-                            .chars()
-                            .map(|c| {
-                                if c.is_ascii_digit() {
-                                    // Get ID for *this* alternation
-                                    let alternation_id = c.to_digit(10).unwrap() as usize;
-                                    // Search through the combined alternations to find the matching one
-                                    let new_alternation_id = combined_alternations
-                                        .iter()
-                                        .find(|(_, v)| v.0.contains(&(alternation_id, affix_id)))
-                                        .unwrap()
-                                        .1
-                                         .1;
-                                    // Convert the new alternation id to a char
-                                    std::char::from_digit(new_alternation_id as u32, 10).unwrap()
-                                } else {
-                                    c
-                                }
-                            })
-                            .collect();
-
-                        new_affices.push(AffixSet {
-                            root_id,
-                            prefix: String::new(),
-                            suffix: affix,
-                        });
-                    }
-
-                    let mut alternations = Vec::new();
+                    let mut alternations = {
+                        let mut temp = conjugation.alternations.clone();
+                        temp.append(&mut conjugation2.alternations.clone());
+                        temp
+                    };
+                    let mut alternation_idx1 = Vec::new();
+                    let mut alternation_idx2 = Vec::new();
                     for (alternation, map) in combined_alternations {
-                        alternations.push(vec![Alternation {
-                            target_pattern: format!("\\{}", map.1),
-                            replacement_pattern: alternation.0,
-                        }]);
-                        alternations.push(vec![Alternation {
-                            target_pattern: format!("\\{}", map.1),
-                            replacement_pattern: alternation.1,
-                        }]);
-                    }
+                        // If the alternation is a digit, then it is a previously existing alternation already covered
+                        if should_append_alternation(alternation.0) {
+                            alternations.push(vec![Alternation {
+                                target_pattern: format!("\\{}", map.1),
+                                replacement_pattern: alternation.0,
+                            }]);
+                            // We need to record the indices of the alternations that we are using.
+                            // This is for the first conjugation we process.
+                            alternation_idx1.push(alternations.len() - 1);
+                        }
 
-                    for affix in &new_affices {
-                        println!("{:?}", affix.suffix);
+                        if should_append_alternation(alternation.1) {
+                            alternations.push(vec![Alternation {
+                                target_pattern: format!("\\{}", map.1),
+                                replacement_pattern: alternation.1,
+                            }]);
+                            // And this is for the second conjugation.
+                            alternation_idx2.push(alternations.len() - 1);
+                        }
                     }
 
                     // We need to kick modifying the conjugations to outside the loop
                     // because of the iterators
-                    action = Some((
-                        index,
+                    action = Some(AlternationCollapse {
+                        index1,
                         index2,
-                        AffixConjugation {
+                        alternation_idx1,
+                        alternation_idx2,
+                        new_conjugation: AffixConjugation {
                             affices: new_affices,
                             alternations,
                         },
-                    ));
+                    });
 
                     break 'outer;
                 }
             }
 
             if let Some(v) = action {
+                // We found something we have to do.
+                // Mark that we did something and collapse the conjugations together.
                 flag = true;
-                conjugations.remove(v.0);
-                let r = if v.0 < v.1 { v.1 - 1 } else { v.1 };
-                conjugations[r] = v.2;
+
+                let new_conjugation = Rc::new(v.new_conjugation);
+                let old_conjugation1 = conjugations.remove(v.index1);
+                let r = if v.index1 < v.index2 {
+                    v.index2 - 1
+                } else {
+                    v.index2
+                };
+                let old_conjugation2 =
+                    std::mem::replace(&mut conjugations[r], new_conjugation.clone());
+                let conjugation1_ref_ptr = std::rc::Rc::<dyn Conjugation>::as_ptr(
+                    &(old_conjugation1.clone() as Rc<dyn Conjugation>),
+                );
+                let conjugation2_ref_ptr = std::rc::Rc::<dyn Conjugation>::as_ptr(
+                    &(old_conjugation2.clone() as Rc<dyn Conjugation>),
+                );
+                let alternation_set_1 = v.alternation_idx1.clone();
+                let alternation_set_2 = v.alternation_idx2.clone();
+                let operator = |word: &mut ConjugatedWord, from: &Rc<dyn Conjugation>, _: &_| {
+                    // It's not enough to simply change the conjugation here, we need to identify and record
+                    // the alternations that are used.
+
+                    // Determine which conjugation we had previously and therefore which alternations to use
+
+                    // For std::ptr::eq to work we need ptrs to the same type.
+                    // Clippy incorrectly flags this as an error. I believe that
+                    // std::ptr::eq is the correct way to do this. If not, it works
+                    // because the vtables are equal because everything is created
+                    // in this translation unit.
+                    #[allow(clippy::vtable_address_comparisons)]
+                    let alternations = if std::ptr::eq(
+                        std::rc::Rc::<dyn Conjugation>::as_ptr(from),
+                        conjugation1_ref_ptr,
+                    ) {
+                        &alternation_set_1
+                    } else {
+                        // We assume that it's the other one if we've gotten here
+                        assert!(std::ptr::eq(
+                            std::rc::Rc::<dyn Conjugation>::as_ptr(from),
+                            conjugation2_ref_ptr
+                        ));
+                        &alternation_set_2
+                    };
+
+                    match word {
+                        ConjugatedWord::Regular {
+                            roots: _,
+                            conjugation: _,
+                            ref mut alternation_info,
+                        } => {
+                            alternation_info.append(&mut alternations.clone());
+                        }
+                        _ => {
+                            unreachable!()
+                        }
+                    }
+                };
+
+                // All words that have ptr::eq to the old
+                replace_conjugations(
+                    words,
+                    old_conjugation1.clone() as Rc<dyn Conjugation>,
+                    new_conjugation.clone(),
+                    &operator,
+                );
+                replace_conjugations(
+                    words,
+                    old_conjugation2.clone() as Rc<dyn Conjugation>,
+                    new_conjugation,
+                    &operator,
+                );
             }
         }
     }
-
-    let table_string = {
-        let mut builder = Builder::default();
-
-        let mut headers = Vec::new();
-        for id in 0..conjugations.len() {
-            headers.push(id.to_string());
-        }
-        builder.set_header(headers);
-
-        for index in 0..conjugations[0].affices.len() {
-            let mut strings = Vec::new();
-            for conjugation in &conjugations {
-                let affix = &conjugation.affices[index];
-                strings.push(format!(
-                    "{}-{}-{}",
-                    affix.prefix, affix.root_id, affix.suffix
-                ));
-            }
-            builder.push_record(strings);
-        }
-
-        let mut table = builder.build();
-        table.with(Style::markdown()).to_string()
-    };
-
-    println!("{:?}", conjugations);
-    println!("{}", table_string);
-
-    todo!()
 }
 
-fn remove_duplicate_conjugations(conjugations: &mut Vec<AffixConjugation>) {
+/// Returns true if this is None or not a digit
+fn should_append_alternation(value: Option<char>) -> bool {
+    value.is_none() || !value.unwrap().is_ascii_digit()
+}
+
+/// Takes the alternation sum, the current conjugation, and the combined alternations
+/// and forms a new set of affices to replace the old ones.
+fn form_new_affices(
+    alternation_sum: &[InternalAlternation],
+    conjugation: &Rc<AffixConjugation>,
+    combined_alternations: &InternalAlternationBlob,
+) -> Vec<AffixSet> {
+    let mut new_affices = Vec::new();
+    for iter_out in alternation_sum
+        .iter()
+        .zip(conjugation.affices.iter())
+        .enumerate()
+    {
+        let item = iter_out.1;
+        let mut affix = item.0 .0.clone();
+        let root_id = item.1.root_id;
+        let affix_id = iter_out.0;
+
+        affix = affix
+            .chars()
+            .map(|c| {
+                if c.is_ascii_digit() {
+                    // Get ID for *this* alternation
+                    let alternation_id = c.to_digit(10).unwrap() as usize;
+                    // Search through the combined alternations to find the matching one
+                    let new_alternation_id = combined_alternations
+                        .iter()
+                        .find(|(_, v)| v.0.contains(&(alternation_id, affix_id)))
+                        .unwrap()
+                        .1
+                         .1;
+                    // Convert the new alternation id to a char
+                    std::char::from_digit(new_alternation_id as u32, 10).unwrap()
+                } else {
+                    c
+                }
+            })
+            .collect();
+
+        new_affices.push(AffixSet {
+            root_id,
+            prefix: String::new(),
+            suffix: affix,
+        });
+    }
+    new_affices
+}
+
+/// Combines the alternations into a single HashMap. The HashMap maps the alternation
+/// to a tuple of (Vec<(alternation_index, affix_index)>, alternation_id).
+fn combine_alternations(alternation_sum: &[InternalAlternation]) -> InternalAlternationBlob {
+    let mut combined_alternations = HashMap::new();
+    for (affix_index, alternations) in alternation_sum.iter().enumerate() {
+        for (alternation_index, alternation) in alternations.1.iter().enumerate() {
+            if !combined_alternations.contains_key(alternation) {
+                combined_alternations
+                    .insert(alternation, (Vec::new(), combined_alternations.len()));
+            }
+            // We need to add the ids to the HashMap
+            combined_alternations
+                .get_mut(alternation)
+                .unwrap()
+                .0
+                .push((alternation_index, affix_index));
+        }
+    }
+    combined_alternations
+}
+
+/// Performs a simple check to see if the conjugations are exactly the same and remove
+/// any duplicates.
+fn remove_duplicate_conjugations(
+    conjugations: &mut Vec<Rc<AffixConjugation>>,
+    words: &mut [ConjugatedWord],
+) {
     // First we check for any duplicate conjugations
     // If we find any, we merge them together
     // We do this by checking if the affices are the same
     let mut flag = true;
     while flag {
-        let mut index_to_delete = None;
+        let mut indices = None;
         'outer: for (index, conjugation) in conjugations.iter().enumerate() {
             for (index2, conjugation2) in conjugations.iter().enumerate() {
                 if index == index2 {
@@ -287,13 +484,21 @@ fn remove_duplicate_conjugations(conjugations: &mut Vec<AffixConjugation>) {
                 if conjugation.affices == conjugation2.affices {
                     // We have a duplicate conjugation
                     // We need to merge them together
-                    index_to_delete = Some(index2);
+                    indices = Some((index, index2));
                     break 'outer;
                 }
             }
         }
-        if let Some(index) = index_to_delete {
-            conjugations.remove(index);
+        if let Some(index) = indices {
+            // Delete the conjugation
+            let removed: Rc<dyn Conjugation> = conjugations.remove(index.1);
+            // let operator = |_: &_, _: &_, _: &_| {};
+            replace_conjugations(
+                words,
+                removed,
+                conjugations[index.0].clone() as Rc<dyn Conjugation>,
+                &|_: &mut ConjugatedWord, _: &_, _: &_| {},
+            );
             flag = true;
         } else {
             flag = false;
@@ -301,22 +506,68 @@ fn remove_duplicate_conjugations(conjugations: &mut Vec<AffixConjugation>) {
     }
 }
 
+/// Takes a list of words and replaces any conjugations that are equal to removed with the conjugation.
+/// This is done by checking pointer equality not value equality.
+fn replace_conjugations(
+    words: &mut [ConjugatedWord],
+    to_replace: Rc<dyn Conjugation>,
+    to_replace_with: Rc<dyn Conjugation>,
+    operator: &impl Fn(&mut ConjugatedWord, &Rc<dyn Conjugation>, &Rc<dyn Conjugation>),
+) {
+    // We now need to take every word that uses the removed conjugation and replace it with the
+    // remaining conjugation. These conjugations are identical, which makes our life difficulty,
+    // as the == operator checks value equality. We need to check reference equality, which is
+    // Rc::ptr_eq.
+    for word in words.iter_mut() {
+        // True if it was modified, which indicates that we need to call the operator.
+        let mut flag = false;
+        match word {
+            ConjugatedWord::Regular {
+                roots: _,
+                conjugation,
+                alternation_info: _,
+            } => {
+                // For std::ptr::eq to work we need ptrs to the same type.
+                // Clippy incorrectly flags this as an error. I believe that
+                // std::ptr::eq is the correct way to do this. If not, it works
+                // because the vtables are equal because everything is created
+                // in this translation unit.
+                #[allow(clippy::vtable_address_comparisons)]
+                if std::ptr::eq(
+                    std::rc::Rc::<dyn Conjugation>::as_ptr(conjugation),
+                    std::rc::Rc::<dyn Conjugation>::as_ptr(&to_replace),
+                ) {
+                    *conjugation = to_replace_with.clone();
+                    flag = true;
+                }
+            }
+            ConjugatedWord::Irregular { .. } => {}
+        }
+        if flag {
+            operator(word, &to_replace, &to_replace_with);
+        }
+    }
+}
+
 /// Creates base conjugations; each word will have it's own conjugation.
 /// Automatically finds the roots and does all of that.
-fn create_base_conjugations(input: &ConjugatorInput) -> Vec<AffixConjugation> {
+fn create_base_conjugations(
+    input: &ConjugatorInput,
+) -> (Vec<Rc<AffixConjugation>>, Vec<ConjugatedWord>) {
     let mut conjugations = Vec::new();
+    let mut words = Vec::new();
 
     // We start by finding the longest common root
     for word in &input.words {
         let roots = match root_searcher_helper(
             Vec::new(),
-            input.max_interconjugation_roots - 1,
+            input.max_intraconjugation_roots - 1,
             word.to_vec(),
         ) {
             Some(roots) => roots,
             None => {
                 // We have an irregular word
-                // TODO: Handle irregular words
+                words.push(ConjugatedWord::Irregular { word: word.clone() });
                 continue;
             }
         };
@@ -350,13 +601,22 @@ fn create_base_conjugations(input: &ConjugatorInput) -> Vec<AffixConjugation> {
             };
             affices.push(affix);
         }
-        let conjugation = AffixConjugation {
+        let conjugation = Rc::new(AffixConjugation {
             affices,
             alternations: Vec::new(),
+        });
+
+        let word = ConjugatedWord::Regular {
+            roots,
+            conjugation: conjugation.clone(),
+            alternation_info: Vec::new(),
         };
+
         conjugations.push(conjugation);
+        words.push(word);
     }
-    conjugations
+
+    (conjugations, words)
 }
 
 /// Recursive helper function for create_base_conjugations. For every root length and starting index of the
@@ -466,12 +726,33 @@ fn alternation_helper(
             // TODO: Make this work
             return None;
         }
-        let char1 = char1_opt.unwrap();
-        let char2 = char2_opt.unwrap();
+        let mut char1 = char1_opt.unwrap();
+        let mut char2 = char2_opt.unwrap();
 
         if char1 == char2 {
             // We're good
             continue;
+        }
+
+        // We now check for previous alternations from previous runs of the entire procedure
+        // We just treat it as a single character, namely the id of the escape sequence.
+        // This may cause problems.
+        // TODO: Test this more throughly
+        // We also need to remember that this is already an escape sequence, so we don't insert
+        // another one and create endless recursion.
+        let mut char1_escape = false;
+        let mut char2_escape = false;
+        if char1 == '\\' {
+            // It is an error for there to be an unbounded escape sequence
+            char1 = iter1.next().unwrap();
+            char_index1 += 1;
+            char1_escape = true;
+        }
+        if char2 == '\\' {
+            // It is an error for there to be an unbounded escape sequence
+            char2 = iter2.next().unwrap();
+            char_index2 += 1;
+            char2_escape = true;
         }
 
         // We have a mismatched character
@@ -493,6 +774,7 @@ fn alternation_helper(
             let find_or_insert_result =
                 find_or_insert(&mut alternations, (Some(char1), Some(char2)));
             let newstr = &format!("\\{}", find_or_insert_result.0);
+            let newid = &format!("{}", find_or_insert_result.0);
             let new_remaining_alternations = if find_or_insert_result.1 {
                 remaining_alternations
             } else if remaining_alternations > 0 {
@@ -503,8 +785,16 @@ fn alternation_helper(
             };
 
             // We need to add the escape sequences to the affices
-            let new_affix1 = replace_nth_char(affix1, char_index1 - 1, newstr);
-            let new_affix2 = replace_nth_char(affix2, char_index2 - 1, newstr);
+            let new_affix1 = if char1_escape {
+                replace_nth_char(affix1, char_index1 - 1, newid)
+            } else {
+                replace_nth_char(affix1, char_index1 - 1, newstr)
+            };
+            let new_affix2 = if char2_escape {
+                replace_nth_char(affix2, char_index2 - 1, newid)
+            } else {
+                replace_nth_char(affix2, char_index2 - 1, newstr)
+            };
 
             alternation_helper(
                 &new_affix1,
@@ -518,6 +808,7 @@ fn alternation_helper(
             let mut alternations = previous_alternations.clone();
             let find_or_insert_result = find_or_insert(&mut alternations, (Some(char1), None));
             let newstr = &format!("\\{}", find_or_insert_result.0);
+            let newid = &format!("{}", find_or_insert_result.0);
             let new_remaining_alternations = if find_or_insert_result.1 {
                 remaining_alternations
             } else if remaining_alternations > 0 {
@@ -528,7 +819,11 @@ fn alternation_helper(
             };
 
             // We need to add the escape sequences to the affices
-            let new_affix1 = replace_nth_char(affix1, char_index1 - 1, newstr);
+            let new_affix1 = if char1_escape {
+                replace_nth_char(affix1, char_index1 - 1, newid)
+            } else {
+                replace_nth_char(affix1, char_index1 - 1, newstr)
+            };
             let new_affix2 = insert_nth_char(affix2, char_index2 - 1, newstr);
 
             alternation_helper(
@@ -543,6 +838,7 @@ fn alternation_helper(
             let mut alternations = previous_alternations;
             let find_or_insert_result = find_or_insert(&mut alternations, (None, Some(char2)));
             let newstr = &format!("\\{}", find_or_insert_result.0);
+            let newid = &format!("{}", find_or_insert_result.0);
             let new_remaining_alternations = if find_or_insert_result.1 {
                 remaining_alternations
             } else if remaining_alternations > 0 {
@@ -554,7 +850,11 @@ fn alternation_helper(
 
             // We need to add the escape sequences to the affices
             let new_affix1 = insert_nth_char(affix1, char_index1 - 1, newstr);
-            let new_affix2 = replace_nth_char(affix2, char_index2 - 1, newstr);
+            let new_affix2 = if char2_escape {
+                replace_nth_char(affix2, char_index2 - 1, newid)
+            } else {
+                replace_nth_char(affix2, char_index2 - 1, newstr)
+            };
 
             alternation_helper(
                 &new_affix1,

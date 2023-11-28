@@ -338,10 +338,9 @@ fn table_generative_load_error_4() {
 }
 
 #[test]
-#[should_panic] // It's not finished yet
 fn conjugator_indep_int_1() {
     let contents = io::load_from_file(
-        &String::from("test-data/backend/conjugator_test_data.txt"),
+        &String::from("test-data/backend/conjugator_test_data_1.txt"),
         false,
     )
     .unwrap();
@@ -359,11 +358,41 @@ fn conjugator_indep_int_1() {
     let input = ConjugatorInput {
         words,
         max_conjugations: 1,
-        max_interconjugation_roots: 1,
+        max_intraconjugation_roots: 1,
         max_alternations: 3,
     };
 
     create_conjugations(input);
+}
+
+#[test]
+fn conjugator_indep_int_2() {
+    let contents = io::load_from_file(
+        &String::from("test-data/backend/conjugator_test_data_2.txt"),
+        false,
+    )
+    .unwrap();
+    let lines: Vec<&str> = contents.lines().collect();
+    let mut words = vec![vec![]];
+    for line in lines {
+        // Fill the vector in words until there are 8 elements in it, then move onto the next vector
+        if words[words.len() - 1].len() == 8 {
+            words.push(vec![]);
+        }
+        let idx = words.len() - 1;
+        words[idx].push(String::from(line));
+    }
+
+    let input = ConjugatorInput {
+        words,
+        max_conjugations: 1,
+        max_intraconjugation_roots: 1,
+        max_alternations: 10,
+    };
+
+    let out = create_conjugations(input);
+
+    assert_eq!(out.conjugations.len(), 1);
 }
 
 /*#[test]
