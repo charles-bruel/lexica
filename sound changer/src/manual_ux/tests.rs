@@ -1,5 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
+use crate::rand::Rng;
+
 use crate::{
     io,
     manual_ux::{
@@ -395,6 +397,38 @@ fn conjugator_indep_int_2() {
     assert_eq!(out.conjugations.len(), 1);
 }
 
+#[test]
+fn conjugator_fuzz_1() {
+    let mut rng = rand::thread_rng();
+    for _ in 0..100 {
+        let mut words = vec![];
+        let affices_per_word = rng.gen_range(5..10);
+        for _ in 0..100 {
+            let mut word = String::new();
+            let mut forms = Vec::new();
+            for _ in 0..rng.gen_range(3..8) {
+                word.push(rng.gen_range(b'a'..=b'z') as char);
+            }
+            for _ in 0..affices_per_word {
+                let mut form = word.clone();
+                for _ in 0..rng.gen_range(1..3) {
+                    form.push(rng.gen_range(b'a'..=b'z') as char);
+                }
+                forms.push(form)
+            }
+
+            words.push(forms);
+        }
+
+        let input = ConjugatorInput {
+            words,
+            max_conjugations: 100,
+            max_intraconjugation_roots: 6,
+            max_alternations: 6,
+        };
+        _ = create_conjugations(input);
+    }
+}
 /*#[test]
 fn table_generative_load_correct_1() {
     const TEST_HEADER: &str = "0\na\nstring\n:={foo}";

@@ -8,6 +8,7 @@ extern crate clap;
 extern crate fancy_regex;
 extern crate no_panic;
 extern crate priority_queue;
+extern crate rand;
 extern crate serde;
 extern crate tabled;
 extern crate tungstenite;
