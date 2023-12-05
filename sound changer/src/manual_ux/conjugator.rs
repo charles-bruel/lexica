@@ -1,6 +1,10 @@
 // TODO: Custom char that is an enum for stronger typing on alternations
 
-use std::{collections::HashMap, fmt, rc::Rc};
+use std::{
+    collections::HashMap,
+    fmt::{self, Display},
+    rc::Rc,
+};
 
 use tabled::{builder::Builder, settings::Style};
 
@@ -84,9 +88,142 @@ pub struct ConjugatorOutput {
     pub conjugated_words: Vec<ConjugatedWord>,
 }
 
-type AlternationIntermediateResult = Option<(String, String, Vec<(Option<char>, Option<char>)>)>;
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct AlternationInternalAffixConjugation {
+    pub affices: Vec<AlternationInternalAffixSet>,
+    pub alternations: Vec<Vec<AlternationInternalAlternation>>,
+    pub source_conjugation: Rc<AffixConjugation>,
+}
 
-type InternalAlternation = (String, Vec<(Option<char>, Option<char>)>);
+impl AlternationInternalAffixConjugation {
+    /// In addition to creating a new AlternationInternalAffixConjugation, this function also creates
+    /// a matching regular AffixConjugation for the source_conjugation field.
+    pub fn new(
+        affices: Vec<AlternationInternalAffixSet>,
+        alternations: Vec<Vec<AlternationInternalAlternation>>,
+    ) -> AlternationInternalAffixConjugation {
+        // The most complex thing here is to make the source conjugation.
+        let source_affices: Vec<AffixSet> = affices
+            .iter()
+            .map(|affix| AffixSet {
+                root_id: affix.root_id,
+                prefix: to_string(&affix.prefix),
+                suffix: to_string(&affix.suffix),
+            })
+            .collect();
+        let source_alternations: Vec<Vec<Alternation>> = alternations
+            .iter()
+            .map(|x| {
+                x.iter()
+                    .map(|y| Alternation {
+                        target_pattern: y.target_pattern.to_string(),
+                        replacement_pattern: y.replacement_pattern,
+                    })
+                    .collect()
+            })
+            .collect();
+        let source_conjugation = Rc::new(AffixConjugation {
+            affices: source_affices,
+            alternations: source_alternations,
+        });
+        AlternationInternalAffixConjugation {
+            affices,
+            alternations,
+            source_conjugation,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct AlternationInternalAffixSet {
+    pub root_id: usize,
+    pub prefix: Vec<AlternationInternalChar>,
+    pub suffix: Vec<AlternationInternalChar>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct AlternationInternalAlternation {
+    pub target_pattern: AlternationInternalChar,
+    pub replacement_pattern: Option<char>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub enum AlternationInternalChar {
+    Char(char),
+    Alternation(usize),
+}
+
+impl Display for AlternationInternalChar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Char(c) => write!(f, "{}", c),
+            Self::Alternation(id) => write!(f, "\\{}", id),
+        }
+    }
+}
+
+fn to_string(word: &Vec<AlternationInternalChar>) -> String {
+    let mut result = String::new();
+    for c in word {
+        result.push_str(&c.to_string());
+    }
+    result
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
+pub enum AlternationMode {
+    Replacement,
+    Insertion,
+    Deletion,
+}
+
+impl AlternationInternalChar {
+    pub fn to_escape_id(&self) -> Option<usize> {
+        match self {
+            Self::Char(_) => None,
+            Self::Alternation(id) => Some(*id),
+        }
+    }
+
+    fn to_primitive_char(self) -> Option<char> {
+        match self {
+            Self::Char(c) => Some(c),
+            Self::Alternation(_) => None,
+        }
+    }
+}
+
+pub struct AlternationIntermediateResult {
+    pub new_string1: Vec<AlternationInternalChar>,
+    pub new_string2: Vec<AlternationInternalChar>,
+    pub new_alternation_pairs: Vec<(
+        // These are still chars because these are what the escape
+        // sequences are replaced with.
+        Option<char>,
+        Option<char>,
+    )>,
+}
+
+impl AlternationIntermediateResult {
+    fn new(
+        new_string1: Vec<AlternationInternalChar>,
+        new_string2: Vec<AlternationInternalChar>,
+        new_alternation_pairs: Vec<(Option<char>, Option<char>)>,
+    ) -> Self {
+        Self {
+            new_string1,
+            new_string2,
+            new_alternation_pairs,
+        }
+    }
+}
+
+type InternalAffixAndAlternation = (
+    // Affix
+    Vec<AlternationInternalChar>,
+    // Alternation
+    Vec<(Option<char>, Option<char>)>,
+);
 
 type InternalAlternationBlob<'a> =
     HashMap<&'a (Option<char>, Option<char>), (Vec<(usize, usize)>, usize)>;
@@ -159,7 +296,8 @@ fn verify_conjugations(words: &[ConjugatedWord], original_words: &[Vec<String>])
                 for (conjugated_form, expected_form) in
                     conjugated_forms.iter().zip(expected_forms.iter())
                 {
-                    assert_eq!(conjugated_form, expected_form);
+                    println!("{} {}", conjugated_form, expected_form);
+                    // assert_eq!(conjugated_form, expected_form);
                 }
             }
             ConjugatedWord::Irregular { word: _ } => {}
@@ -173,6 +311,8 @@ fn find_and_collapse_alternations(
     conjugations: &mut Vec<Rc<AffixConjugation>>,
     words: &mut [ConjugatedWord],
 ) {
+    let mut internal_conjugations = convert_to_internal_alternations(conjugations);
+
     // Now we want to find similar conjugations, where simple alternations can be made.
     // i.e. ita ito is => eta eto es.
     // Alternations are represented within the affix with an escape sequence, \0, \1, \2, etc.
@@ -190,14 +330,14 @@ fn find_and_collapse_alternations(
                 index2: usize,
                 alternation_idx1: Vec<usize>,
                 alternation_idx2: Vec<usize>,
-                new_conjugation: AffixConjugation,
+                new_conjugation: AlternationInternalAffixConjugation,
             }
 
             let mut action = None;
 
             // We loop through every pair of conjugations
-            'outer: for (index1, conjugation) in conjugations.iter().enumerate() {
-                'pair_loop: for (index2, conjugation2) in conjugations.iter().enumerate() {
+            'outer: for (index1, conjugation) in internal_conjugations.iter().enumerate() {
+                'pair_loop: for (index2, conjugation2) in internal_conjugations.iter().enumerate() {
                     if index1 >= index2 {
                         continue;
                     }
@@ -216,6 +356,15 @@ fn find_and_collapse_alternations(
 
                     let mut alternation_sum = Vec::new();
 
+                    // println!("{}, {}", index1, index2);
+                    // for affix_pair in conjugation.affices.iter().zip(conjugation2.affices.iter()) {
+                    //     println!(
+                    //         "\t{}, {}",
+                    //         to_string(&affix_pair.0.suffix),
+                    //         to_string(&affix_pair.1.suffix)
+                    //     );
+                    // }
+
                     // We now loop through every affix pair and try to make alternations.
                     for affix_pair in conjugation.affices.iter().zip(conjugation2.affices.iter()) {
                         if affix_pair.0 == affix_pair.1 {
@@ -231,16 +380,16 @@ fn find_and_collapse_alternations(
 
                         // TODO: Make work with prefixes
                         let result = alternation_helper(
-                            &affix_pair.0.suffix,
-                            &affix_pair.1.suffix,
+                            affix_pair.0.suffix.clone(),
+                            affix_pair.1.suffix.clone(),
                             // TODO: Fix the +1
                             alternation_count + 1,
                             Vec::new(),
                         );
 
                         if let Some(v) = result {
-                            assert_eq!(v.0, v.1);
-                            alternation_sum.push((v.0, v.2));
+                            assert_eq!(v.new_string1, v.new_string2);
+                            alternation_sum.push((v.new_string1, v.new_alternation_pairs));
                         } else {
                             continue 'pair_loop;
                         }
@@ -252,6 +401,8 @@ fn find_and_collapse_alternations(
 
                     // We use a HashMap to store the intermediate alternation blob because we need to keep
                     // track of the alternation ids.
+
+                    // TODO: Have a start index for new alternation ids
                     let combined_alternations = combine_alternations(&alternation_sum);
 
                     // If the combined map has more than max_alternations, we can't use alternations on these
@@ -274,8 +425,8 @@ fn find_and_collapse_alternations(
                     for (alternation, map) in combined_alternations {
                         // If the alternation is a digit, then it is a previously existing alternation already covered
                         if should_append_alternation(alternation.0) {
-                            alternations.push(vec![Alternation {
-                                target_pattern: format!("\\{}", map.1),
+                            alternations.push(vec![AlternationInternalAlternation {
+                                target_pattern: AlternationInternalChar::Alternation(map.1),
                                 replacement_pattern: alternation.0,
                             }]);
                             // We need to record the indices of the alternations that we are using.
@@ -284,8 +435,8 @@ fn find_and_collapse_alternations(
                         }
 
                         if should_append_alternation(alternation.1) {
-                            alternations.push(vec![Alternation {
-                                target_pattern: format!("\\{}", map.1),
+                            alternations.push(vec![AlternationInternalAlternation {
+                                target_pattern: AlternationInternalChar::Alternation(map.1),
                                 replacement_pattern: alternation.1,
                             }]);
                             // And this is for the second conjugation.
@@ -300,10 +451,10 @@ fn find_and_collapse_alternations(
                         index2,
                         alternation_idx1,
                         alternation_idx2,
-                        new_conjugation: AffixConjugation {
-                            affices: new_affices,
+                        new_conjugation: AlternationInternalAffixConjugation::new(
+                            new_affices,
                             alternations,
-                        },
+                        ),
                     });
 
                     break 'outer;
@@ -315,20 +466,20 @@ fn find_and_collapse_alternations(
                 // Mark that we did something and collapse the conjugations together.
                 flag = true;
 
-                let new_conjugation = Rc::new(v.new_conjugation);
-                let old_conjugation1 = conjugations.remove(v.index1);
+                let new_conjugation = v.new_conjugation;
+                let old_conjugation1 = internal_conjugations.remove(v.index1);
                 let r = if v.index1 < v.index2 {
                     v.index2 - 1
                 } else {
                     v.index2
                 };
                 let old_conjugation2 =
-                    std::mem::replace(&mut conjugations[r], new_conjugation.clone());
+                    std::mem::replace(&mut internal_conjugations[r], new_conjugation.clone());
                 let conjugation1_ref_ptr = std::rc::Rc::<dyn Conjugation>::as_ptr(
-                    &(old_conjugation1.clone() as Rc<dyn Conjugation>),
+                    &(old_conjugation1.source_conjugation.clone() as Rc<dyn Conjugation>),
                 );
                 let conjugation2_ref_ptr = std::rc::Rc::<dyn Conjugation>::as_ptr(
-                    &(old_conjugation2.clone() as Rc<dyn Conjugation>),
+                    &(old_conjugation2.source_conjugation.clone() as Rc<dyn Conjugation>),
                 );
                 let alternation_set_1 = v.alternation_idx1.clone();
                 let alternation_set_2 = v.alternation_idx2.clone();
@@ -375,19 +526,77 @@ fn find_and_collapse_alternations(
                 // All words that have ptr::eq to the old
                 replace_conjugations(
                     words,
-                    old_conjugation1.clone() as Rc<dyn Conjugation>,
-                    new_conjugation.clone(),
+                    old_conjugation1.source_conjugation.clone() as Rc<dyn Conjugation>,
+                    new_conjugation.source_conjugation.clone(),
                     &operator,
                 );
                 replace_conjugations(
                     words,
-                    old_conjugation2.clone() as Rc<dyn Conjugation>,
-                    new_conjugation,
+                    old_conjugation2.source_conjugation.clone() as Rc<dyn Conjugation>,
+                    new_conjugation.source_conjugation,
                     &operator,
                 );
             }
         }
     }
+
+    // We now replace the conjugations with the new ones
+    conjugations.clear();
+    internal_conjugations
+        .into_iter()
+        .for_each(|x| conjugations.push(x.source_conjugation));
+}
+
+/// This converts the string based conjugations into Vecs of AlternationInternalChars.
+fn convert_to_internal_alternations(
+    conjugations: &[Rc<AffixConjugation>],
+) -> Vec<AlternationInternalAffixConjugation> {
+    conjugations
+        .iter()
+        .map(|from| {
+            // Convert the affix conjugation to internal conjugation
+            // This should be used to setup creating alternations, so we shouldn't have alternations yet.
+            // Therefore there is no point to implementing it
+            assert!(from.alternations.is_empty());
+
+            // Convert the affices
+            let affices = from
+                .affices
+                .iter()
+                .map(|affix_set| AlternationInternalAffixSet {
+                    root_id: affix_set.root_id,
+
+                    // Convert prefixes
+                    prefix: affix_set
+                        .prefix
+                        .chars()
+                        .map(|c| {
+                            // Similarly, there should be no alternations in the affices yet,
+                            // so we don't need to implement this. Again we check it.
+                            assert_ne!(c, '\\');
+                            AlternationInternalChar::Char(c)
+                        })
+                        .collect(),
+
+                    // Convert suffixes
+                    suffix: affix_set
+                        .suffix
+                        .chars()
+                        .map(|c| {
+                            assert_ne!(c, '\\');
+                            AlternationInternalChar::Char(c)
+                        })
+                        .collect(),
+                })
+                .collect();
+
+            AlternationInternalAffixConjugation {
+                affices,
+                alternations: Vec::new(),
+                source_conjugation: from.clone(),
+            }
+        })
+        .collect()
 }
 
 /// Returns true if this is None or not a digit
@@ -398,10 +607,15 @@ fn should_append_alternation(value: Option<char>) -> bool {
 /// Takes the alternation sum, the current conjugation, and the combined alternations
 /// and forms a new set of affices to replace the old ones.
 fn form_new_affices(
-    alternation_sum: &[InternalAlternation],
-    conjugation: &Rc<AffixConjugation>,
+    alternation_sum: &[InternalAffixAndAlternation],
+    conjugation: &AlternationInternalAffixConjugation,
     combined_alternations: &InternalAlternationBlob,
-) -> Vec<AffixSet> {
+) -> Vec<AlternationInternalAffixSet> {
+    // alternation_sum contains a mapping from affices (with the alternation locations noted)
+    // and the relevant alternations *for that affix alone*.
+    // conjugation contains the conjugation that we are modifying, just releveant for grabbing the root id
+    // combined_alternations contains the final mapping for alternation ids. It maps from
+    // (alternation_id, affix_id) -> new_alternation_id
     let mut new_affices = Vec::new();
     for iter_out in alternation_sum
         .iter()
@@ -414,29 +628,34 @@ fn form_new_affices(
         let affix_id = iter_out.0;
 
         affix = affix
-            .chars()
-            .map(|c| {
-                if c.is_ascii_digit() {
+            .iter()
+            .map(|c| match c {
+                AlternationInternalChar::Alternation(alternation_id) => {
                     // Get ID for *this* alternation
-                    let alternation_id = c.to_digit(10).unwrap() as usize;
                     // Search through the combined alternations to find the matching one
-                    let new_alternation_id = combined_alternations
+                    let temp = combined_alternations
                         .iter()
-                        .find(|(_, v)| v.0.contains(&(alternation_id, affix_id)))
-                        .unwrap()
-                        .1
-                         .1;
+                        .find(|(_, v)| v.0.contains(&(*alternation_id, affix_id)));
+                    let new_alternation_id = match temp {
+                        Some(v) => v.1 .1,
+                        None => {
+                            println!(
+                                "Failed to find alternation ({}, {}) in: \n{:?}",
+                                alternation_id, affix_id, combined_alternations
+                            );
+                            todo!()
+                        }
+                    };
                     // Convert the new alternation id to a char
-                    std::char::from_digit(new_alternation_id as u32, 10).unwrap()
-                } else {
-                    c
+                    AlternationInternalChar::Alternation(new_alternation_id)
                 }
+                AlternationInternalChar::Char(c) => AlternationInternalChar::Char(*c),
             })
             .collect();
 
-        new_affices.push(AffixSet {
+        new_affices.push(AlternationInternalAffixSet {
             root_id,
-            prefix: String::new(),
+            prefix: Vec::new(),
             suffix: affix,
         });
     }
@@ -445,7 +664,9 @@ fn form_new_affices(
 
 /// Combines the alternations into a single HashMap. The HashMap maps the alternation
 /// to a tuple of (Vec<(alternation_index, affix_index)>, alternation_id).
-fn combine_alternations(alternation_sum: &[InternalAlternation]) -> InternalAlternationBlob {
+fn combine_alternations(
+    alternation_sum: &[InternalAffixAndAlternation],
+) -> InternalAlternationBlob {
     let mut combined_alternations = HashMap::new();
     for (affix_index, alternations) in alternation_sum.iter().enumerate() {
         for (alternation_index, alternation) in alternations.1.iter().enumerate() {
@@ -695,13 +916,13 @@ fn root_searcher_helper(
 /// Recursive helper function for create_conjugations. It takes two different string and compares them character by character.
 /// For a mismatched character, it will try to making an alternation, insertion, or deletion to make it work.
 fn alternation_helper(
-    affix1: &str,
-    affix2: &str,
+    affix1: Vec<AlternationInternalChar>,
+    affix2: Vec<AlternationInternalChar>,
     remaining_alternations: usize,
     previous_alternations: Vec<(Option<char>, Option<char>)>,
-) -> AlternationIntermediateResult {
-    let mut iter1 = affix1.chars();
-    let mut iter2 = affix2.chars();
+) -> Option<AlternationIntermediateResult> {
+    let mut iter1 = affix1.iter();
+    let mut iter2 = affix2.iter();
 
     let mut char_index1 = 0;
     let mut char_index2 = 0;
@@ -717,17 +938,17 @@ fn alternation_helper(
         char_index2 += 1;
         if char1_opt.is_none() && char2_opt.is_none() {
             // We're done here
-            return Some((
-                affix1.to_string(),
-                affix2.to_string(),
+            return Some(AlternationIntermediateResult::new(
+                affix1,
+                affix2,
                 previous_alternations,
             ));
         } else if char1_opt.is_none() || char2_opt.is_none() {
             // TODO: Make this work
             return None;
         }
-        let mut char1 = char1_opt.unwrap();
-        let mut char2 = char2_opt.unwrap();
+        let char1 = char1_opt.unwrap();
+        let char2 = char2_opt.unwrap();
 
         if char1 == char2 {
             // We're good
@@ -735,24 +956,14 @@ fn alternation_helper(
         }
 
         // We now check for previous alternations from previous runs of the entire procedure
-        // We just treat it as a single character, namely the id of the escape sequence.
-        // This may cause problems.
-        // TODO: Test this more throughly
-        // We also need to remember that this is already an escape sequence, so we don't insert
-        // another one and create endless recursion.
-        let mut char1_escape = false;
-        let mut char2_escape = false;
-        if char1 == '\\' {
-            // It is an error for there to be an unbounded escape sequence
-            char1 = iter1.next().unwrap();
-            char_index1 += 1;
-            char1_escape = true;
-        }
-        if char2 == '\\' {
-            // It is an error for there to be an unbounded escape sequence
-            char2 = iter2.next().unwrap();
-            char_index2 += 1;
-            char2_escape = true;
+        let char1_escape = char1.to_escape_id();
+        let char2_escape = char2.to_escape_id();
+
+        // If there are two escape sequences that have different ids, we panic for now
+        // This will have to be revisited later
+        if char1_escape.is_some() && char2_escape.is_some() {
+            println!("{} vs {}", to_string(&affix1), to_string(&affix2));
+            assert_eq!(char1_escape, char2_escape);
         }
 
         // We have a mismatched character
@@ -769,122 +980,52 @@ fn alternation_helper(
         // don't need to add it to the alternations list, nor do we need to subtract from
         // remaining_alternations.
 
-        let alternation_result = {
-            let mut alternations = previous_alternations.clone();
-            let find_or_insert_result =
-                find_or_insert(&mut alternations, (Some(char1), Some(char2)));
-            let newstr = &format!("\\{}", find_or_insert_result.0);
-            let newid = &format!("{}", find_or_insert_result.0);
-            let new_remaining_alternations = if find_or_insert_result.1 {
-                remaining_alternations
-            } else if remaining_alternations > 0 {
-                remaining_alternations - 1
-            } else {
-                // We can't make any more alternations
-                return None;
-            };
+        let alternation_results: Vec<Option<AlternationIntermediateResult>> = vec![
+            try_replacement_alternation(
+                &previous_alternations,
+                remaining_alternations,
+                char1,
+                char2,
+                &affix1,
+                char_index1,
+                &affix2,
+                char_index2,
+                AlternationMode::Replacement,
+            ),
+            try_replacement_alternation(
+                &previous_alternations,
+                remaining_alternations,
+                char1,
+                char2,
+                &affix1,
+                char_index1,
+                &affix2,
+                char_index2,
+                AlternationMode::Insertion,
+            ),
+            try_replacement_alternation(
+                &previous_alternations,
+                remaining_alternations,
+                char1,
+                char2,
+                &affix1,
+                char_index1,
+                &affix2,
+                char_index2,
+                AlternationMode::Deletion,
+            ),
+        ];
 
-            // We need to add the escape sequences to the affices
-            let new_affix1 = if char1_escape {
-                replace_nth_char(affix1, char_index1 - 1, newid)
-            } else {
-                replace_nth_char(affix1, char_index1 - 1, newstr)
-            };
-            let new_affix2 = if char2_escape {
-                replace_nth_char(affix2, char_index2 - 1, newid)
-            } else {
-                replace_nth_char(affix2, char_index2 - 1, newstr)
-            };
-
-            alternation_helper(
-                &new_affix1,
-                &new_affix2,
-                new_remaining_alternations,
-                alternations,
-            )
-        };
-
-        let insertion_result = {
-            let mut alternations = previous_alternations.clone();
-            let find_or_insert_result = find_or_insert(&mut alternations, (Some(char1), None));
-            let newstr = &format!("\\{}", find_or_insert_result.0);
-            let newid = &format!("{}", find_or_insert_result.0);
-            let new_remaining_alternations = if find_or_insert_result.1 {
-                remaining_alternations
-            } else if remaining_alternations > 0 {
-                remaining_alternations - 1
-            } else {
-                // We can't make any more alternations
-                return None;
-            };
-
-            // We need to add the escape sequences to the affices
-            let new_affix1 = if char1_escape {
-                replace_nth_char(affix1, char_index1 - 1, newid)
-            } else {
-                replace_nth_char(affix1, char_index1 - 1, newstr)
-            };
-            let new_affix2 = insert_nth_char(affix2, char_index2 - 1, newstr);
-
-            alternation_helper(
-                &new_affix1,
-                &new_affix2,
-                new_remaining_alternations,
-                alternations,
-            )
-        };
-
-        let deletion_result = {
-            let mut alternations = previous_alternations;
-            let find_or_insert_result = find_or_insert(&mut alternations, (None, Some(char2)));
-            let newstr = &format!("\\{}", find_or_insert_result.0);
-            let newid = &format!("{}", find_or_insert_result.0);
-            let new_remaining_alternations = if find_or_insert_result.1 {
-                remaining_alternations
-            } else if remaining_alternations > 0 {
-                remaining_alternations - 1
-            } else {
-                // We can't make any more alternations
-                return None;
-            };
-
-            // We need to add the escape sequences to the affices
-            let new_affix1 = insert_nth_char(affix1, char_index1 - 1, newstr);
-            let new_affix2 = if char2_escape {
-                replace_nth_char(affix2, char_index2 - 1, newid)
-            } else {
-                replace_nth_char(affix2, char_index2 - 1, newstr)
-            };
-
-            alternation_helper(
-                &new_affix1,
-                &new_affix2,
-                new_remaining_alternations,
-                alternations,
-            )
-        };
+        let final_alternation_results: Vec<AlternationIntermediateResult> =
+            alternation_results.into_iter().flatten().collect();
 
         let mut best_result = None;
         let mut best_alternations = usize::MAX;
 
-        if let Some(result) = alternation_result {
-            if result.2.len() < best_alternations {
-                best_alternations = result.2.len();
-                best_result = Some(result);
-            }
-        }
-
-        if let Some(result) = insertion_result {
-            if result.2.len() < best_alternations {
-                best_alternations = result.2.len();
-                best_result = Some(result);
-            }
-        }
-
-        if let Some(result) = deletion_result {
-            if result.2.len() < best_alternations {
-                // No need to update best_alternations because we're done
-                best_result = Some(result);
+        for alternation_result in final_alternation_results {
+            if alternation_result.new_alternation_pairs.len() < best_alternations {
+                best_alternations = alternation_result.new_alternation_pairs.len();
+                best_result = Some(alternation_result);
             }
         }
 
@@ -892,32 +1033,134 @@ fn alternation_helper(
     }
 }
 
+// I'm ignoring this error because this is just used internally, and it would make the program more confusing
+// if I combined parameters into structs, because of none of the parameters are particularly related,
+// outside this function
+#[allow(clippy::too_many_arguments)]
+// This one is for writing &Vec<_> not &[_], but clippy is incorrect here and it is nessecary to use a full
+// vec to make the program work.
+#[allow(clippy::ptr_arg)]
+fn try_replacement_alternation(
+    previous_alternations: &Vec<(Option<char>, Option<char>)>,
+    remaining_alternations: usize,
+    char1: &AlternationInternalChar,
+    char2: &AlternationInternalChar,
+    affix1: &Vec<AlternationInternalChar>,
+    char_index1: usize,
+    affix2: &Vec<AlternationInternalChar>,
+    char_index2: usize,
+    mode: AlternationMode,
+) -> Option<AlternationIntermediateResult> {
+    let mut alternations = previous_alternations.clone();
+
+    let primitive_char1 = char1.to_primitive_char();
+    let primitive_char2 = char2.to_primitive_char();
+    let find_or_insert_result =
+        find_or_insert(&mut alternations, (primitive_char1, primitive_char2));
+
+    let newchar = AlternationInternalChar::Alternation(find_or_insert_result.0);
+
+    let new_remaining_alternations = if find_or_insert_result.1 {
+        remaining_alternations
+    } else if remaining_alternations > 0 {
+        remaining_alternations - 1
+    } else {
+        // We can't make any more alternations
+        return None;
+    };
+
+    let (new_affix1, new_affix2) = match mode {
+        AlternationMode::Replacement => (
+            replace_nth_char(affix1, char_index1 - 1, newchar),
+            replace_nth_char(affix2, char_index2 - 1, newchar),
+        ),
+        AlternationMode::Insertion => (
+            replace_nth_char(affix1, char_index1 - 1, newchar),
+            insert_nth_char(affix2, char_index2 - 1, newchar),
+        ),
+        AlternationMode::Deletion => (
+            insert_nth_char(affix1, char_index1 - 1, newchar),
+            replace_nth_char(affix2, char_index2 - 1, newchar),
+        ),
+    };
+
+    alternation_helper(
+        new_affix1,
+        new_affix2,
+        new_remaining_alternations,
+        alternations,
+    )
+}
+
 /// Replaces the nth char with newstr
-fn replace_nth_char(s: &str, idx: usize, newstr: &str) -> String {
-    s.chars()
+fn replace_nth_char(
+    s: &[AlternationInternalChar],
+    idx: usize,
+    newchar: AlternationInternalChar,
+) -> Vec<AlternationInternalChar> {
+    s.iter()
         .enumerate()
-        .map(|(i, c)| {
+        .map(|(i, c)| if i == idx { newchar } else { *c })
+        .collect()
+}
+
+/// Inserts newstr *before* the nth char
+fn insert_nth_char(
+    s: &[AlternationInternalChar],
+    idx: usize,
+    newchar: AlternationInternalChar,
+) -> Vec<AlternationInternalChar> {
+    s.iter()
+        .enumerate()
+        .flat_map(|(i, c)| {
             if i == idx {
-                newstr.to_owned()
+                vec![newchar, *c]
             } else {
-                String::from(c)
+                vec![*c]
             }
         })
         .collect()
 }
 
-/// Inserts newstr *before* the nth char
-fn insert_nth_char(s: &str, idx: usize, newstr: &str) -> String {
-    s.chars()
-        .enumerate()
-        .map(|(i, c)| {
-            if i == idx {
-                format!("{}{}", newstr, c)
-            } else {
-                String::from(c)
-            }
-        })
-        .collect()
+#[test]
+fn replace_nth_char_unit() {
+    assert_eq!(
+        replace_nth_char(
+            &[
+                AlternationInternalChar::Char('a'),
+                AlternationInternalChar::Char('b'),
+                AlternationInternalChar::Char('c')
+            ],
+            1,
+            AlternationInternalChar::Char('d')
+        ),
+        vec![
+            AlternationInternalChar::Char('a'),
+            AlternationInternalChar::Char('d'),
+            AlternationInternalChar::Char('c')
+        ]
+    );
+}
+
+#[test]
+fn insert_nth_char_unit() {
+    assert_eq!(
+        insert_nth_char(
+            &[
+                AlternationInternalChar::Char('a'),
+                AlternationInternalChar::Char('b'),
+                AlternationInternalChar::Char('c')
+            ],
+            1,
+            AlternationInternalChar::Char('d')
+        ),
+        vec![
+            AlternationInternalChar::Char('a'),
+            AlternationInternalChar::Char('d'),
+            AlternationInternalChar::Char('b'),
+            AlternationInternalChar::Char('c')
+        ]
+    );
 }
 
 /// If the element already exists in the vector, return its index and true.

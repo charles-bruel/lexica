@@ -399,7 +399,7 @@ fn conjugator_indep_int_2() {
 
 #[test]
 fn conjugator_fuzz_1() {
-    let mut rng = rand::thread_rng();
+    let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(2);
     for _ in 0..100 {
         let mut words = vec![];
         let affices_per_word = rng.gen_range(5..10);
@@ -414,7 +414,7 @@ fn conjugator_fuzz_1() {
                 for _ in 0..rng.gen_range(1..3) {
                     form.push(rng.gen_range(b'a'..=b'z') as char);
                 }
-                forms.push(form)
+                forms.push(form);
             }
 
             words.push(forms);
