@@ -1,5 +1,3 @@
-// TODO: Custom char that is an enum for stronger typing on alternations
-
 use std::{
     collections::HashMap,
     fmt::{self, Display},
@@ -197,6 +195,8 @@ pub struct AlternationIntermediateResult {
     pub new_string1: Vec<AlternationInternalChar>,
     pub new_string2: Vec<AlternationInternalChar>,
     pub new_alternation_pairs: Vec<(
+        // Escape sequence id
+        usize,
         // These are still chars because these are what the escape
         // sequences are replaced with.
         Option<char>,
@@ -208,7 +208,7 @@ impl AlternationIntermediateResult {
     fn new(
         new_string1: Vec<AlternationInternalChar>,
         new_string2: Vec<AlternationInternalChar>,
-        new_alternation_pairs: Vec<(Option<char>, Option<char>)>,
+        new_alternation_pairs: Vec<(usize, Option<char>, Option<char>)>,
     ) -> Self {
         Self {
             new_string1,
@@ -222,11 +222,10 @@ type InternalAffixAndAlternation = (
     // Affix
     Vec<AlternationInternalChar>,
     // Alternation
-    Vec<(Option<char>, Option<char>)>,
+    Vec<(usize, Option<char>, Option<char>)>,
 );
 
-type InternalAlternationBlob<'a> =
-    HashMap<&'a (Option<char>, Option<char>), (Vec<(usize, usize)>, usize)>;
+type InternalAlternationBlob = HashMap<(Option<char>, Option<char>), (Vec<(usize, usize)>, usize)>;
 
 /// Creates a set of affix conjugations for the input.
 pub fn create_conjugations(input: ConjugatorInput) -> ConjugatorOutput {
@@ -336,7 +335,7 @@ fn find_and_collapse_alternations(
             let mut action = None;
 
             // We loop through every pair of conjugations
-            'outer: for (index1, conjugation) in internal_conjugations.iter().enumerate() {
+            'outer: for (index1, conjugation1) in internal_conjugations.iter().enumerate() {
                 'pair_loop: for (index2, conjugation2) in internal_conjugations.iter().enumerate() {
                     if index1 >= index2 {
                         continue;
@@ -345,7 +344,7 @@ fn find_and_collapse_alternations(
                     // Check if this can be collapsed. If the root ids don't match, then alternations
                     // wont help.
                     let mut can_collapse = true;
-                    for affix_pair in conjugation.affices.iter().zip(conjugation2.affices.iter()) {
+                    for affix_pair in conjugation1.affices.iter().zip(conjugation2.affices.iter()) {
                         if affix_pair.0.root_id != affix_pair.1.root_id {
                             can_collapse = false;
                         }
@@ -356,17 +355,11 @@ fn find_and_collapse_alternations(
 
                     let mut alternation_sum = Vec::new();
 
-                    // println!("{}, {}", index1, index2);
-                    // for affix_pair in conjugation.affices.iter().zip(conjugation2.affices.iter()) {
-                    //     println!(
-                    //         "\t{}, {}",
-                    //         to_string(&affix_pair.0.suffix),
-                    //         to_string(&affix_pair.1.suffix)
-                    //     );
-                    // }
+                    let alternation_start_index =
+                        determine_alternation_start_index(conjugation1, conjugation2);
 
                     // We now loop through every affix pair and try to make alternations.
-                    for affix_pair in conjugation.affices.iter().zip(conjugation2.affices.iter()) {
+                    for affix_pair in conjugation1.affices.iter().zip(conjugation2.affices.iter()) {
                         if affix_pair.0 == affix_pair.1 {
                             // Insert an empty alternation into the sum so that the indices match up
                             alternation_sum.push((affix_pair.0.suffix.clone(), Vec::new()));
@@ -385,6 +378,7 @@ fn find_and_collapse_alternations(
                             // TODO: Fix the +1
                             alternation_count + 1,
                             Vec::new(),
+                            alternation_start_index,
                         );
 
                         if let Some(v) = result {
@@ -403,6 +397,7 @@ fn find_and_collapse_alternations(
                     // track of the alternation ids.
 
                     // TODO: Have a start index for new alternation ids
+                    println!("{:?}", alternation_sum);
                     let combined_alternations = combine_alternations(&alternation_sum);
 
                     // If the combined map has more than max_alternations, we can't use alternations on these
@@ -413,10 +408,10 @@ fn find_and_collapse_alternations(
 
                     // We need to make a new list of affices
                     let new_affices =
-                        form_new_affices(&alternation_sum, conjugation, &combined_alternations);
+                        form_new_affices(&alternation_sum, conjugation1, &combined_alternations);
 
                     let mut alternations = {
-                        let mut temp = conjugation.alternations.clone();
+                        let mut temp = conjugation1.alternations.clone();
                         temp.append(&mut conjugation2.alternations.clone());
                         temp
                     };
@@ -547,6 +542,26 @@ fn find_and_collapse_alternations(
         .for_each(|x| conjugations.push(x.source_conjugation));
 }
 
+/// Determines the last used alternation index, then returns the index after it.
+fn determine_alternation_start_index(
+    conjugation1: &AlternationInternalAffixConjugation,
+    conjugation2: &AlternationInternalAffixConjugation,
+) -> usize {
+    let mut index1 = 0;
+    let mut index2 = 0;
+    conjugation1.alternations.iter().for_each(|x| {
+        x.iter()
+            // We assume that all alternations come from an escape sequence. This should be the case and it's safe to assume that here.
+            .for_each(|x| index1 = std::cmp::max(index1, x.target_pattern.to_escape_id().unwrap()));
+    });
+    conjugation2.alternations.iter().for_each(|x| {
+        x.iter()
+            // We assume that all alternations come from an escape sequence. This should be the case and it's safe to assume that here.
+            .for_each(|x| index2 = std::cmp::max(index2, x.target_pattern.to_escape_id().unwrap()));
+    });
+    std::cmp::max(index1, index2)
+}
+
 /// This converts the string based conjugations into Vecs of AlternationInternalChars.
 fn convert_to_internal_alternations(
     conjugations: &[Rc<AffixConjugation>],
@@ -667,22 +682,34 @@ fn form_new_affices(
 fn combine_alternations(
     alternation_sum: &[InternalAffixAndAlternation],
 ) -> InternalAlternationBlob {
-    let mut combined_alternations = HashMap::new();
+    let mut combined_alternations: InternalAlternationBlob = HashMap::new();
     for (affix_index, alternations) in alternation_sum.iter().enumerate() {
-        for (alternation_index, alternation) in alternations.1.iter().enumerate() {
-            if !combined_alternations.contains_key(alternation) {
-                combined_alternations
-                    .insert(alternation, (Vec::new(), combined_alternations.len()));
+        for (_, alternation) in alternations.1.iter().enumerate() {
+            let key = alternation_to_key(alternation);
+            let alternation_index = alternation.0;
+
+            // I get a borrow checker error here if I implement clippy's suggestion, so I'm keeping it as is.
+            #[allow(clippy::map_entry)]
+            if !combined_alternations.contains_key(&key) {
+                combined_alternations.insert(key, (Vec::new(), combined_alternations.len()));
             }
             // We need to add the ids to the HashMap
             combined_alternations
-                .get_mut(alternation)
+                .get_mut(&key)
                 .unwrap()
                 .0
                 .push((alternation_index, affix_index));
         }
     }
     combined_alternations
+}
+
+/// Converts an alternation (&(usize, Option<char>, Option<char>)) to a valid key
+/// for the alternation blob (&(Option<char>, Option<char>)).
+fn alternation_to_key(
+    alternation: &(usize, Option<char>, Option<char>),
+) -> (Option<char>, Option<char>) {
+    (alternation.1, alternation.2)
 }
 
 /// Performs a simple check to see if the conjugations are exactly the same and remove
@@ -919,7 +946,8 @@ fn alternation_helper(
     affix1: Vec<AlternationInternalChar>,
     affix2: Vec<AlternationInternalChar>,
     remaining_alternations: usize,
-    previous_alternations: Vec<(Option<char>, Option<char>)>,
+    previous_alternations: Vec<(usize, Option<char>, Option<char>)>,
+    alternation_start_index: usize,
 ) -> Option<AlternationIntermediateResult> {
     let mut iter1 = affix1.iter();
     let mut iter2 = affix2.iter();
@@ -962,6 +990,8 @@ fn alternation_helper(
         // If there are two escape sequences that have different ids, we panic for now
         // This will have to be revisited later
         if char1_escape.is_some() && char2_escape.is_some() {
+            // We have two escape sequences with different ids
+            // We will replace both sequences with a new id
             println!("{} vs {}", to_string(&affix1), to_string(&affix2));
             assert_eq!(char1_escape, char2_escape);
         }
@@ -990,6 +1020,7 @@ fn alternation_helper(
                 char_index1,
                 &affix2,
                 char_index2,
+                alternation_start_index,
                 AlternationMode::Replacement,
             ),
             try_replacement_alternation(
@@ -1001,6 +1032,7 @@ fn alternation_helper(
                 char_index1,
                 &affix2,
                 char_index2,
+                alternation_start_index,
                 AlternationMode::Insertion,
             ),
             try_replacement_alternation(
@@ -1012,6 +1044,7 @@ fn alternation_helper(
                 char_index1,
                 &affix2,
                 char_index2,
+                alternation_start_index,
                 AlternationMode::Deletion,
             ),
         ];
@@ -1041,7 +1074,7 @@ fn alternation_helper(
 // vec to make the program work.
 #[allow(clippy::ptr_arg)]
 fn try_replacement_alternation(
-    previous_alternations: &Vec<(Option<char>, Option<char>)>,
+    previous_alternations: &Vec<(usize, Option<char>, Option<char>)>,
     remaining_alternations: usize,
     char1: &AlternationInternalChar,
     char2: &AlternationInternalChar,
@@ -1049,18 +1082,24 @@ fn try_replacement_alternation(
     char_index1: usize,
     affix2: &Vec<AlternationInternalChar>,
     char_index2: usize,
+    alternation_start_index: usize,
     mode: AlternationMode,
 ) -> Option<AlternationIntermediateResult> {
     let mut alternations = previous_alternations.clone();
 
     let primitive_char1 = char1.to_primitive_char();
     let primitive_char2 = char2.to_primitive_char();
-    let find_or_insert_result =
-        find_or_insert(&mut alternations, (primitive_char1, primitive_char2));
 
-    let newchar = AlternationInternalChar::Alternation(find_or_insert_result.0);
+    let otherwise_index = alternation_start_index + alternations.len();
+    let find_or_insert_result = find_or_insert_alternation(
+        &mut alternations,
+        (primitive_char1, primitive_char2),
+        otherwise_index,
+    );
 
-    let new_remaining_alternations = if find_or_insert_result.1 {
+    let newchar = AlternationInternalChar::Alternation(find_or_insert_result.1);
+
+    let new_remaining_alternations = if find_or_insert_result.2 {
         remaining_alternations
     } else if remaining_alternations > 0 {
         remaining_alternations - 1
@@ -1089,6 +1128,7 @@ fn try_replacement_alternation(
         new_affix2,
         new_remaining_alternations,
         alternations,
+        alternation_start_index,
     )
 }
 
@@ -1165,6 +1205,7 @@ fn insert_nth_char_unit() {
 
 /// If the element already exists in the vector, return its index and true.
 /// Otherwise, insert it and return its index and false.
+#[allow(dead_code)]
 fn find_or_insert<T>(vec: &mut Vec<T>, elem: T) -> (usize, bool)
 where
     T: PartialEq,
@@ -1176,4 +1217,20 @@ where
     }
     vec.push(elem);
     (vec.len() - 1, false)
+}
+
+/// If the element already exists in the vector, return its index, it's id, and true.
+/// Otherwise, insert it and return its index, the specified id, and false.
+fn find_or_insert_alternation(
+    vec: &mut Vec<(usize, Option<char>, Option<char>)>,
+    elem: (Option<char>, Option<char>),
+    otherwise_index: usize,
+) -> (usize, usize, bool) {
+    for (index, existing_elem) in vec.iter().enumerate() {
+        if alternation_to_key(existing_elem) == elem {
+            return (index, existing_elem.0, true);
+        }
+    }
+    vec.push((otherwise_index, elem.0, elem.1));
+    (vec.len() - 1, otherwise_index, false)
 }

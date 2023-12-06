@@ -398,6 +398,34 @@ fn conjugator_indep_int_2() {
 }
 
 #[test]
+fn conjugator_indep_int_3() {
+    let contents = io::load_from_file(
+        &String::from("test-data/backend/conjugator_test_data_3.txt"),
+        false,
+    )
+    .unwrap();
+    let lines: Vec<&str> = contents.lines().collect();
+    let mut words = vec![vec![]];
+    for line in lines {
+        // Fill the vector in words until there are 2 elements in it, then move onto the next vector
+        if words[words.len() - 1].len() == 2 {
+            words.push(vec![]);
+        }
+        let idx = words.len() - 1;
+        words[idx].push(String::from(line));
+    }
+
+    let input = ConjugatorInput {
+        words,
+        max_conjugations: 1,
+        max_intraconjugation_roots: 1,
+        max_alternations: 3,
+    };
+
+    create_conjugations(input);
+}
+
+#[test]
 fn conjugator_fuzz_1() {
     let mut rng: rand::rngs::StdRng = rand::SeedableRng::seed_from_u64(2);
     for _ in 0..100 {
