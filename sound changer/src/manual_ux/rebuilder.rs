@@ -34,8 +34,8 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
 
     if debug {
         for (name, program) in &project.programs {
-            let mut f = File::create(format!("./{}.tmp", name)).unwrap();
-            let line = format!("Start,{}\n",(1..program.rules.len()).into_iter().map(|i| i.to_string()).collect::<Vec<String>>().join(","));
+            let mut f = File::create(format!("./{}.csv", name)).unwrap();
+            let line = format!("Start,{}\n", program.rules.iter().map(|r| r.get_name()).collect::<Vec<String>>().join(","));
             f.write(line.as_bytes()).unwrap();
             let cache = program.cache.borrow();
             let stride = program.rules.len()+1;

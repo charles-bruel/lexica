@@ -59,6 +59,15 @@ impl super::data::Program {
 }
 
 impl super::data::Rule {
+    pub fn get_name(&self) -> String {
+        match self {
+            Rule::TransformationRule { bytes: _, flags: _, name } |
+            Rule::CallSubroutine { name } |
+            Rule::JumpSubRoutine { name, condition: _, inverted: _ } => name.to_string(),
+            Rule::Detect { predicate: _, enviorment: _ } => String::from("<ERR>"),
+        }
+    }
+
     pub fn apply(
         &self,
         program: &Program,
