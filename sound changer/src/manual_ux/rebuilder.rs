@@ -1,6 +1,5 @@
 use std::{
-    collections::{HashMap, VecDeque},
-    time::Instant,
+    collections::{HashMap, VecDeque}, fs::File, io::Write, time::Instant,
 };
 
 use crate::{
@@ -20,7 +19,7 @@ use super::{
     table::{Table, TableRow},
 };
 
-pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool) {
+pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool, debug: bool) {
     let mut index = start as usize;
     while index < project.tables.len() {
         if let Some(mut table) = project.tables[index].clone() {
@@ -31,6 +30,20 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
         }
 
         index += 1;
+    }
+
+    if debug {
+        for (name, program) in &project.programs {
+            let mut f = File::create(format!("./{}.tmp", name)).unwrap();
+            let line = format!("Start,{}\n",(1..program.rules.len()).into_iter().map(|i| i.to_string()).collect::<Vec<String>>().join(","));
+            f.write(line.as_bytes()).unwrap();
+            let cache = program.cache.borrow();
+            let stride = program.rules.len()+1;
+            for i in 0..cache.len()/stride {
+                let line = format!("{}\n",cache[i*stride..(i+1)*stride].join(","));
+                f.write(line.as_bytes()).unwrap();
+            }
+        }
     }
 }
 

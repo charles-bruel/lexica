@@ -115,7 +115,7 @@ fn test_table_output_fn() {
 fn int_test(path_str: &str) {
     let path = String::from(path_str);
     let mut project = load_project(path.clone()).unwrap();
-    rebuild(&mut project, 0, path.clone(), true);
+    rebuild(&mut project, 0, path.clone(), true, false);
     let comp = io::load_from_file(&(path + "/correct.txt"), false)
         .unwrap()
         .replace("\r\n", "\n");

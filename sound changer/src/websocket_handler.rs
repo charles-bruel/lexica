@@ -115,6 +115,7 @@ impl WebSocketMessage {
                     *start_index,
                     String::from("TODO"),
                     false,
+                    false,
                 );
 
                 // Send all tables from after the start index

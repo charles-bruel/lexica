@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
 
@@ -19,6 +20,7 @@ pub struct Program {
     pub features_to_idx: HashMap<String, (u32, usize)>,
     pub symbol_to_letter: HashMap<String, (Letter, u64)>,
     pub letter_to_symbol: HashMap<Letter, String>,
+    pub cache: RefCell<Vec<String>>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -372,6 +374,7 @@ pub fn create_empty_program() -> Program {
         features_to_idx: HashMap::new(),
         letter_to_symbol: HashMap::new(),
         symbol_to_letter: HashMap::new(),
+        cache: RefCell::new(Vec::new()),
     }
 }
 

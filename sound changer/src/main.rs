@@ -34,6 +34,7 @@ fn main() {
                 v.start,
                 command.path,
                 true,
+                command.debug,
             ),
         },
     }

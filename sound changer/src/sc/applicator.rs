@@ -4,8 +4,20 @@ impl super::data::Program {
     pub fn apply(&self, input: Word) -> std::result::Result<Word, ApplicationError> {
         let mut context: ExecutionContext = create_execution_context(&input);
         let mut instruction_count: u16 = 0;
+        
+        let mut single_word_cache = vec![String::new(); self.rules.len() + 1];
+        single_word_cache[0] = match to_string(self, input.clone()) {
+            Ok(v) => v,
+            Err(_) => String::from("<ERR>"),
+        };
+
         while context.instruction_ptr < self.rules.len() {
             self.rules[context.instruction_ptr].apply(self, &mut context)?;
+
+            single_word_cache[context.instruction_ptr+1] = match to_string(self, context.result.clone()) {
+                Ok(v) => v,
+                Err(_) => String::from("<ERR>"),
+            };
 
             if !context.jump_flag {
                 context.instruction_ptr += 1;
@@ -18,7 +30,10 @@ impl super::data::Program {
                     "Infinite loop detected; executed u16::MAX instructions without ending",
                 )));
             }
+
         }
+
+        self.cache.borrow_mut().append(&mut single_word_cache);
 
         Ok(context.result)
     }

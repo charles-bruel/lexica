@@ -22,6 +22,9 @@ pub struct ManualCommand {
 
     #[clap(subcommand)]
     pub command: ManualSubcommand,
+
+    #[arg(short, long)]
+    pub debug: bool,
 }
 
 #[derive(Debug, Subcommand)]
