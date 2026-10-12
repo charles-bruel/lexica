@@ -7,7 +7,12 @@
 // If possible, the final, strong, "true" versions of each node
 // will be used.
 
-use crate::manual_ux::table::TableDataTypeDescriptor;
+use crate::{
+    manual_ux::{
+        generative::execution::RangeNode::ConversionNodeString, table::TableDataTypeDescriptor,
+    },
+    sc::data,
+};
 
 use super::{
     compile_err_builder_node, compile_err_literal, compile_err_output_node, compile_err_typed_node,
@@ -84,12 +89,11 @@ impl BuilderNode {
         data_type: &TableDataTypeDescriptor,
         context: &ProjectContext,
     ) -> Result<OutputNode, GenerativeProgramCompileError> {
-        let output_node = self
-            .convert_to_node(
-                context,
-                &Some(DataTypeDescriptor::TableDataType(data_type.clone())),
-            )?
-            .try_convert_output_node(context)?;
+        let temp = self.convert_to_node(
+            context,
+            &Some(DataTypeDescriptor::TableDataType(data_type.clone())),
+        )?;
+        let output_node = temp.try_convert_output_node(context)?;
         match output_node {
             // TODO: Verify enum type
             OutputNode::Enum(_) => match data_type {
@@ -292,7 +296,7 @@ impl BuilderNode {
                     [column_id]
                     .clone()
                     .data_type;
-                match data_type_descriptor {
+                match data_type_descriptor.clone() {
                     TableDataTypeDescriptor::Enum(v2) => {
                         let mut found_flag = false;
                         for s in v2 {
@@ -314,7 +318,10 @@ impl BuilderNode {
 
                         Ok(TypedNode::EnumNode(EnumNode::LiteralNode(
                             name,
-                            ColumnSpecifier { column_id },
+                            ColumnSpecifier {
+                                column_id,
+                                data_type: data_type_descriptor.clone(),
+                            },
                             TableSpecifier { table_id },
                         )))
                     }
@@ -481,6 +488,7 @@ impl TypedNode {
     fn try_convert_range(self) -> Result<RangeNode, GenerativeProgramCompileError> {
         match self {
             TypedNode::RangeNode(v) => Ok(v),
+            TypedNode::StringNode(v) => Ok(ConversionNodeString(Box::new(v))),
             _ => compile_err_typed_node(CompileErrorType::TypeMismatch("Expected range"), self),
         }
     }
@@ -548,9 +556,7 @@ impl RangeNode {
             RangeNode::FilterNode(prev, _) | RangeNode::Save(prev, _) => {
                 prev.get_data_type(context)
             }
-            RangeNode::Saved(_, column) => context.descriptor.column_descriptors[column.column_id]
-                .data_type
-                .clone(),
+            RangeNode::Saved(_, column) => column.data_type.clone(),
             RangeNode::ForeachNode(table, column) => context.all_descriptors[&table.table_id]
                 .column_descriptors[column.column_id]
                 .data_type
@@ -559,6 +565,7 @@ impl RangeNode {
                 // TODO: Better data type heuristic
                 a.get_data_type(context)
             }
+            RangeNode::ConversionNodeString(_) => TableDataTypeDescriptor::String,
         }
     }
 }

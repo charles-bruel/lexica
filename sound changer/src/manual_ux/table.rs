@@ -44,6 +44,7 @@ pub enum PopulatedTableRowSource {
     EXPLICIT,
     CACHE(Rc<GenerativeTableRowProcedure>),
     MUTATE,
+    CONVERSION,
 }
 
 #[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
@@ -284,7 +285,7 @@ pub fn load_table(
     }
 
     let table_elapsed = table_start.elapsed();
-    println!("Loaded table in {:?}", table_elapsed);
+    println!("Loaded table {} in {:?}", id, table_elapsed);
 
     let src_table_rows = table_rows.clone();
 
@@ -382,7 +383,10 @@ fn parse_table_cell(
                     return Ok(TableContents::Enum(RuntimeEnum {
                         index: i,
                         table: TableSpecifier { table_id },
-                        column: ColumnSpecifier { column_id },
+                        column: ColumnSpecifier {
+                            column_id,
+                            data_type: descriptor.clone(),
+                        },
                         name: test_string,
                     }));
                 }

@@ -1,5 +1,8 @@
 use std::{
-    collections::{HashMap, VecDeque}, fs::File, io::Write, time::Instant,
+    collections::{HashMap, VecDeque},
+    fs::File,
+    io::Write,
+    time::Instant,
 };
 
 use crate::{
@@ -24,6 +27,7 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
     while index < project.tables.len() {
         if let Some(mut table) = project.tables[index].clone() {
             table.reset();
+            println!("Rebuilding table {}", index);
             table.rebuild(project, base_path.clone(), do_io).unwrap();
 
             project.tables[index] = Some(table);
@@ -35,12 +39,20 @@ pub fn rebuild(project: &mut Project, start: u16, base_path: String, do_io: bool
     if debug {
         for (name, program) in &project.programs {
             let mut f = File::create(format!("./{}.csv", name)).unwrap();
-            let line = format!("Start,{}\n", program.rules.iter().map(|r| r.get_name()).collect::<Vec<String>>().join(","));
+            let line = format!(
+                "Start,{}\n",
+                program
+                    .rules
+                    .iter()
+                    .map(|r| r.get_name())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            );
             f.write(line.as_bytes()).unwrap();
             let cache = program.cache.borrow();
-            let stride = program.rules.len()+1;
-            for i in 0..cache.len()/stride {
-                let line = format!("{}\n",cache[i*stride..(i+1)*stride].join(","));
+            let stride = program.rules.len() + 1;
+            for i in 0..cache.len() / stride {
+                let line = format!("{}\n", cache[i * stride..(i + 1) * stride].join(","));
                 f.write(line.as_bytes()).unwrap();
             }
         }
@@ -60,7 +72,6 @@ impl Table {
         do_io: bool,
     ) -> Result<(), GenerativeProgramRuntimeError> {
         // 1) Execute all unpopulated table rows
-
         let start = Instant::now();
 
         let new_rows = Vec::with_capacity(self.table_rows.len());

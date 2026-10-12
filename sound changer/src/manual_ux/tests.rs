@@ -271,7 +271,13 @@ fn table_type_load_correct() {
                 TableContents::Enum(RuntimeEnum {
                     index: 0,
                     table: TableSpecifier { table_id: 0 },
-                    column: ColumnSpecifier { column_id: 0 },
+                    column: ColumnSpecifier {
+                        column_id: 0,
+                        data_type: crate::manual_ux::table::TableDataTypeDescriptor::Enum(vec![
+                            String::from("a1"),
+                            String::from("a2")
+                        ])
+                    },
                     name: String::from("a1"),
                 })
             );

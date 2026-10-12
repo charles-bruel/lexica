@@ -6,17 +6,20 @@ use std::{
     rc::Rc,
 };
 
-use crate::manual_ux::{
-    generative::{
-        compile_err, compile_err_token,
-        data_types::{Keyword, Operator},
-        execution::{ComplexComparisionType, SimpleComparisionType},
-        tokenizer::{GroupType, TokenType},
-        SyntaxErrorType,
-    },
-    table::{
-        loading_err, GenerativeTableRowProcedure, LoadingErrorType, TableDataTypeDescriptor,
-        TableDescriptor, TableLoadingError, TableRow,
+use crate::{
+    main,
+    manual_ux::{
+        generative::{
+            compile_err, compile_err_token,
+            data_types::{Keyword, Operator},
+            execution::{ComplexComparisionType, SimpleComparisionType},
+            tokenizer::{GroupType, TokenType},
+            SyntaxErrorType,
+        },
+        table::{
+            loading_err, GenerativeTableRowProcedure, LoadingErrorType, TableDataTypeDescriptor,
+            TableDescriptor, TableLoadingError, TableRow,
+        },
     },
 };
 
@@ -69,7 +72,7 @@ enum ParsingContext {
     AwaitingParameters(VecDeque<DataTypeDescriptor>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TableColumnSpecifier {
     Table(TableSpecifier),
     Column(ColumnSpecifier),
@@ -435,6 +438,7 @@ fn parse_new_segment_ready(
         }
         _ => {
             println!("{:?}", current_token);
+            println!("{:?}", old_node);
             panic!()
         }
     }
@@ -939,6 +943,10 @@ fn create_literal_node(
             current_token.token_contents,
             ColumnSpecifier {
                 column_id: project_context.current_column_id,
+                data_type: project_context.all_descriptors[&project_context.table_id]
+                    .column_descriptors[project_context.current_column_id]
+                    .data_type
+                    .clone(),
             },
             TableSpecifier {
                 table_id: project_context.table_id,
@@ -1008,7 +1016,7 @@ fn _create_enum_literal(
     specifier: Option<TableColumnSpecifier>,
     current_column: ColumnSpecifier,
 ) -> Result<EnumSpecifier, GenerativeProgramCompileError> {
-    let column = match specifier {
+    let column = match specifier.clone() {
         Some(TableColumnSpecifier::Both(_, v)) | Some(TableColumnSpecifier::Column(v)) => v,
         Some(TableColumnSpecifier::Table(_)) => {
             return compile_err(CompileErrorType::OnlySpecifiedTable)
@@ -1043,20 +1051,31 @@ fn create_table_column_specifier(
                 let next_token = other_tokens.pop_front().unwrap();
                 match next_token.token_type {
                     TokenType::NumericLiteral => match next_token.token_contents.parse::<usize>() {
-                        Ok(column_id) => {
-                            Ok(TableColumnSpecifier::Column(ColumnSpecifier { column_id }))
-                        }
+                        Ok(column_id) => Ok(TableColumnSpecifier::Column(ColumnSpecifier {
+                            column_id,
+                            data_type: project_context.all_descriptors[&project_context.table_id]
+                                .column_descriptors[column_id]
+                                .data_type
+                                .clone(),
+                        })),
                         Err(error) => {
                             compile_err_token(CompileErrorType::IntParseError(error), current_token)
                         }
                     },
                     // Specifying column by name
-                    TokenType::Symbol => Ok(TableColumnSpecifier::Column(ColumnSpecifier {
-                        column_id: column_id_from_symbol(
+                    TokenType::Symbol => Ok(TableColumnSpecifier::Column({
+                        let column_id = column_id_from_symbol(
                             project_context.table_id,
                             &next_token.token_contents,
                             project_context,
-                        )?,
+                        )?;
+                        ColumnSpecifier {
+                            column_id,
+                            data_type: project_context.all_descriptors[&project_context.table_id]
+                                .column_descriptors[column_id]
+                                .data_type
+                                .clone(),
+                        }
                     })),
                     _ => compile_err_token(
                         CompileErrorType::SyntaxError(
@@ -1088,7 +1107,14 @@ fn create_table_column_specifier(
                                         match next_token.token_contents.parse::<usize>() {
                                             Ok(column_id) => Ok(TableColumnSpecifier::Both(
                                                 TableSpecifier { table_id },
-                                                ColumnSpecifier { column_id },
+                                                ColumnSpecifier {
+                                                    column_id,
+                                                    data_type: project_context.all_descriptors
+                                                        [&table_id]
+                                                        .column_descriptors[column_id]
+                                                        .data_type
+                                                        .clone(),
+                                                },
                                             )),
                                             Err(error) => compile_err_token(
                                                 CompileErrorType::IntParseError(error),
@@ -1097,16 +1123,24 @@ fn create_table_column_specifier(
                                         }
                                     }
                                     // Specifying column by name
-                                    TokenType::Symbol => Ok(TableColumnSpecifier::Both(
-                                        TableSpecifier { table_id },
-                                        ColumnSpecifier {
-                                            column_id: column_id_from_symbol(
-                                                table_id,
-                                                &next_token.token_contents,
-                                                project_context,
-                                            )?,
-                                        },
-                                    )),
+                                    TokenType::Symbol => {
+                                        let column_id = column_id_from_symbol(
+                                            table_id,
+                                            &next_token.token_contents,
+                                            project_context,
+                                        )?;
+                                        Ok(TableColumnSpecifier::Both(
+                                            TableSpecifier { table_id },
+                                            ColumnSpecifier {
+                                                column_id,
+                                                data_type: project_context.all_descriptors
+                                                    [&table_id]
+                                                    .column_descriptors[column_id]
+                                                    .data_type
+                                                    .clone(),
+                                            },
+                                        ))
+                                    }
                                     _ => {
                                         // In this case, the specifier is over so we return what
                                         // we have

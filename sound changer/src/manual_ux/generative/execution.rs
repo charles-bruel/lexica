@@ -60,6 +60,7 @@ pub enum RangeNode {
     Save(Box<RangeNode>, Box<StringNode>),
     Saved(Box<StringNode>, ColumnSpecifier),
     Mutate(Box<RangeNode>, Box<RangeNode>, Box<UIntNode>),
+    ConversionNodeString(Box<StringNode>),
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -73,9 +74,10 @@ pub struct TableSpecifier {
     pub table_id: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ColumnSpecifier {
     pub column_id: usize,
+    pub data_type: TableDataTypeDescriptor,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -130,7 +132,7 @@ impl ComplexComparisionType {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Serialize, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RuntimeEnum {
     pub index: usize,
     pub table: TableSpecifier,
@@ -303,6 +305,29 @@ where
     Ok(result)
 }
 
+// TODO: Make generic
+fn unconvert_string(input: Vec<String>) -> Result<Range, GenerativeProgramRuntimeError> {
+    let contents: Vec<TableRow> = input
+        .into_iter()
+        .map(|i| TableRow::PopulatedTableRow {
+            source: PopulatedTableRowSource::CONVERSION,
+            descriptor: Rc::new(TableDescriptor {
+                column_descriptors: vec![TableColumnDescriptor {
+                    name: String::from("TEMP"),
+                    data_type: TableDataTypeDescriptor::String,
+                    column_display_width: 0,
+                }],
+            }),
+            contents: vec![TableContents::String(i)],
+        })
+        .collect();
+
+    Ok(Range {
+        rows: contents,
+        column_id: Some(0),
+    })
+}
+
 impl StringNode {
     pub fn eval(
         &self,
@@ -386,7 +411,7 @@ impl EnumNode {
                         Ok(vec![RuntimeEnum {
                             index,
                             table: table_specifer,
-                            column: *column_specifier,
+                            column: column_specifier.clone(),
                             name,
                         }])
                     }
@@ -449,6 +474,9 @@ impl RangeNode {
                     mode.eval(context)?[0],
                     context,
                 )
+            }
+            RangeNode::ConversionNodeString(string_node) => {
+                unconvert_string(string_node.eval(context)?)
             }
         }
     }

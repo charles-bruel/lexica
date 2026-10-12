@@ -4,7 +4,7 @@ impl super::data::Program {
     pub fn apply(&self, input: Word) -> std::result::Result<Word, ApplicationError> {
         let mut context: ExecutionContext = create_execution_context(&input);
         let mut instruction_count: u16 = 0;
-        
+
         let mut single_word_cache = vec![String::new(); self.rules.len() + 1];
         single_word_cache[0] = match to_string(self, input.clone()) {
             Ok(v) => v,
@@ -14,10 +14,11 @@ impl super::data::Program {
         while context.instruction_ptr < self.rules.len() {
             self.rules[context.instruction_ptr].apply(self, &mut context)?;
 
-            single_word_cache[context.instruction_ptr+1] = match to_string(self, context.result.clone()) {
-                Ok(v) => v,
-                Err(_) => String::from("<ERR>"),
-            };
+            single_word_cache[context.instruction_ptr + 1] =
+                match to_string(self, context.result.clone()) {
+                    Ok(v) => v,
+                    Err(_) => String::from("<ERR>"),
+                };
 
             if !context.jump_flag {
                 context.instruction_ptr += 1;
@@ -30,7 +31,6 @@ impl super::data::Program {
                     "Infinite loop detected; executed u16::MAX instructions without ending",
                 )));
             }
-
         }
 
         self.cache.borrow_mut().append(&mut single_word_cache);
@@ -61,10 +61,21 @@ impl super::data::Program {
 impl super::data::Rule {
     pub fn get_name(&self) -> String {
         match self {
-            Rule::TransformationRule { bytes: _, flags: _, name } |
-            Rule::CallSubroutine { name } |
-            Rule::JumpSubRoutine { name, condition: _, inverted: _ } => name.to_string(),
-            Rule::Detect { predicate: _, enviorment: _ } => String::from("<ERR>"),
+            Rule::TransformationRule {
+                bytes: _,
+                flags: _,
+                name,
+            }
+            | Rule::CallSubroutine { name }
+            | Rule::JumpSubRoutine {
+                name,
+                condition: _,
+                inverted: _,
+            } => name.to_string(),
+            Rule::Detect {
+                predicate: _,
+                enviorment: _,
+            } => String::from("<ERR>"),
         }
     }
 
@@ -76,21 +87,34 @@ impl super::data::Rule {
         match self {
             Rule::TransformationRule {
                 bytes,
-                flags: _,
+                flags,
                 name: _,
             } => {
                 context.flag_flag = false;
                 context.mod_flag = false;
+                let mut local_mod_flag;
+                let mut i = 0;
 
-                for rule in bytes {
-                    let mut mod_flag: bool = false;
-                    context.result = rule.apply(
-                        std::mem::replace(&mut context.result, create_empty_word()),
-                        &mut mod_flag,
-                    )?;
-                    context.mod_flag = mod_flag;
-                    //Replaces with an empty struct to avoid ownership issues. I think this is faster than clone.
-                    //Maybe use Option?
+                loop {
+                    local_mod_flag = false;
+                    i += 1;
+                    for rule in bytes {
+                        let mut mod_flag: bool = false;
+                        context.result = rule.apply(
+                            std::mem::replace(&mut context.result, create_empty_word()),
+                            &mut mod_flag,
+                        )?;
+                        context.mod_flag |= mod_flag;
+                        local_mod_flag |= mod_flag;
+                        //Replaces with an empty struct to avoid ownership issues. I think this is faster than clone.
+                        //Maybe use Option?
+                    }
+                    if i == u8::MAX {
+                        break;
+                    }
+                    if flags & 1 == 0 || !local_mod_flag {
+                        break;
+                    }
                 }
                 Ok(())
             }
@@ -598,10 +622,12 @@ pub fn from_string(
                 result.push(*letter);
                 index += 1;
                 flag = true;
+                break;
             }
         }
         depth += 1;
-        if depth > 1024 {
+        if depth > 128 {
+            println!("{:?}", keys);
             return Err(ApplicationError::IntoConversionError(format!(
                 "Could not convert string \"{0}\", got to \"{1}\"",
                 input, string

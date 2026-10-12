@@ -1257,7 +1257,15 @@ fn construct_rule_header(data: &str) -> std::result::Result<(String, u16), Const
         );
     }
 
-    Ok((name, 0)) //TODO add flags
+    let mut flags = 0;
+    for i in 2..words.len() {
+        match words[i] {
+            "propagate" => flags |= 1, // TODO: Proper definition of flag indices
+            _ => todo!()
+        }
+    }
+
+    Ok((name, flags)) //TODO add flags
 }
 
 fn construct_symbol(
